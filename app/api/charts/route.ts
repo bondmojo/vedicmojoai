@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       clientName: chart.meta.client_name,
       lagna: chart.meta.lagna_sign,
       yogakaraka,
-      chartJson: body as Record<string, unknown>,
+      chartJson: body as any,
       chartHash,
       moonLongitude,
       birthDatetime: new Date(chart.meta.birth_datetime),

@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       queryTypes,
       userQuery: userQuery ?? null,
       isFollowup,
-      plannerOutput: executionPlan as unknown as Record<string, unknown>,
+      plannerOutput: executionPlan as any,
       status: 'queued',
     },
   })

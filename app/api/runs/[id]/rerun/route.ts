@@ -54,7 +54,7 @@ export async function POST(
   // Reset run status
   await prisma.pipelineRun.update({
     where: { id: run.id },
-    data: { status: 'queued', haltReason: null, completedAt: null },
+    data: { status: 'queued', haltReason: null as any, completedAt: null },
   })
 
   // Reconstruct and re-execute

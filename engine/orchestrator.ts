@@ -338,7 +338,7 @@ async function executeAgent(
     await prisma.waveOutput.update({
       where: { runId_agentId: { runId, agentId } },
       data: {
-        outputJson,
+        outputJson: outputJson as any,
         factSummary: agentId === '4X' ? response.content : null,
         modelId: modelConfig.modelId,
         provider: modelConfig.provider,
@@ -534,15 +534,15 @@ async function cacheWave1(
     where: { chartHash },
     update: {
       chartSummary,
-      wave1Delta,
-      dashaTree: dashaTree as unknown as Record<string, unknown>,
+      wave1Delta: wave1Delta as any,
+      dashaTree: dashaTree as any,
       updatedAt: new Date(),
     },
     create: {
       chartHash,
       chartSummary,
-      wave1Delta,
-      dashaTree: dashaTree as unknown as Record<string, unknown>,
+      wave1Delta: wave1Delta as any,
+      dashaTree: dashaTree as any,
     },
   })
 }
