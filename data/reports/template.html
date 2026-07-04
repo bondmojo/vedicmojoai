@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vedic Astrology Analysis Report — MojoAI</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0d1a;
+      --card:        #1a1a2e;
+      --card-alt:    #16162a;
+      --border:      #2d2d4e;
+      --gold:        #c9a84c;
+      --gold-dark:   #a07832;
+      --text:        #e0e0f0;
+      --text-muted:  #8888aa;
+      --green:       #2ecc71;
+      --amber:       #f39c12;
+      --red:         #e74c3c;
+      --radius:      8px;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+      padding: 0 0 48px;
+    }
+
+    /* ── Typography ───────────────────────────────────────────────── */
+    h1, h2, h3, h4 { line-height: 1.25; font-weight: 600; }
+    h2 { font-size: 1.25rem; color: var(--gold); margin-bottom: 12px; }
+    h3 { font-size: 1rem;    color: var(--text);  margin-bottom: 8px; }
+    p  { margin-bottom: 0.75em; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── Layout ───────────────────────────────────────────────────── */
+    .page-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────── */
+    .report-header {
+      background: var(--card);
+      border-bottom: 2px solid var(--gold);
+      padding: 36px 20px 28px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .report-header h1 {
+      font-size: 2rem;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .report-header .subtitle {
+      font-size: 0.9rem;
+      color: var(--gold-dark);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── Cards ────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Score Grid (2×2) ─────────────────────────────────────────── */
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .score-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .score-value {
+      font-size: 3rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .score-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 8px;
+      background: var(--card-alt);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    .fill-green  { background: var(--green); }
+    .fill-amber  { background: var(--amber); }
+    .fill-red    { background: var(--red);   }
+
+    .color-green { color: var(--green); }
+    .color-amber { color: var(--amber); }
+    .color-red   { color: var(--red);   }
+
+    /* ── Priority Alerts ──────────────────────────────────────────── */
+    .alert-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .alert-item {
+      background: rgba(231, 76, 60, 0.12);
+      border: 1px solid rgba(231, 76, 60, 0.45);
+      border-left: 4px solid var(--red);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: #f0a0a0;
+      font-size: 0.9rem;
+    }
+
+    .alert-item::before {
+      content: "! ";
+      font-weight: 700;
+      color: var(--red);
+    }
+
+    /* ── Key-Value Pairs ──────────────────────────────────────────── */
+    .kv-block { display: flex; flex-direction: column; gap: 10px; }
+
+    .kv-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .kv-label {
+      min-width: 180px;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+      padding-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .kv-value {
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    /* ── Tables ───────────────────────────────────────────────────── */
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead tr {
+      background: var(--gold);
+    }
+
+    thead th {
+      color: #1a1208;
+      font-weight: 700;
+      padding: 10px 14px;
+      text-align: left;
+      white-space: nowrap;
+      letter-spacing: 0.04em;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+
+    tbody tr:nth-child(odd)  { background: var(--card);     }
+    tbody tr:nth-child(even) { background: var(--card-alt); }
+
+    tbody td {
+      padding: 9px 14px;
+      border-top: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    /* ── Prose blocks ─────────────────────────────────────────────── */
+    .prose { font-size: 0.9rem; color: var(--text); }
+
+    /* ── Corrections list ─────────────────────────────────────────── */
+    .corrections-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .corrections-list li {
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Section Divider ──────────────────────────────────────────── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0 16px;
+    }
+
+    /* ── Print ────────────────────────────────────────────────────── */
+    @media print {
+      body { background: #fff; color: #111; }
+      .report-header { background: #fff; border-bottom: 2px solid #c9a84c; }
+      .report-header h1 { color: #a07832; }
+      .report-header .subtitle { color: #a07832; }
+      .card { background: #fff; border-color: #ccc; }
+      .card-alt, tbody tr:nth-child(even) { background: #f5f5f5; }
+      tbody tr:nth-child(odd) { background: #fff; }
+      .alert-item { background: #fff0f0; border-color: #e74c3c; color: #800; }
+      .kv-label { color: #7a5c00; }
+      .score-card { background: #fff; border-color: #ccc; }
+      .progress-bar-track { background: #eee; }
+      thead tr { background: #c9a84c; }
+    }
+
+    /* ── Responsive ───────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .report-header h1 { font-size: 1.4rem; }
+      .score-grid { grid-template-columns: 1fr; }
+      .table-wrapper { overflow-x: scroll; }
+      .kv-row { flex-direction: column; gap: 2px; }
+      .kv-label { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ================================================================
+     HEADER
+     ================================================================ -->
+<div class="report-header">
+  <div class="page-wrapper">
+    <h1>Vedic Astrology Analysis Report</h1>
+    <p class="subtitle">Powered by MojoAI Multi-Agent Engine</p>
+  </div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- =============================================================
+       SCORE CARDS  (2×2 grid)
+       ============================================================= -->
+  <div class="score-grid">
+
+    <!-- Wealth Potential -->
+    {% set wp = scores.wealth_potential %}
+    {% if wp > 7 %}
+      {% set wp_class = "color-green" %}{% set wp_fill = "fill-green" %}
+    {% elif wp >= 5 %}
+      {% set wp_class = "color-amber" %}{% set wp_fill = "fill-amber" %}
+    {% else %}
+      {% set wp_class = "color-red" %}{% set wp_fill = "fill-red" %}
+    {% endif %}
+    <div class="score-card">
+      <div class="score-value {{ wp_class }}">{{ wp }}</div>
+      <div class="score-label">Wealth Potential</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill {{ wp_fill }}" style="width: {{ (wp / 10 * 100) | round(1) }}%;"></div>
+      </div>
+    </div>
+
+    <!-- Wealth Retention -->
+    {% set wr = scores.wealth_retention %}
+    {% if wr > 7 %}
+      {% set wr_class = "color-green" %}{% set wr_fill = "fill-green" %}
+    {% elif wr >= 5 %}
+      {% set wr_class = "color-amber" %}{% set wr_fill = "fill-amber" %}
+    {% else %}
+      {% set wr_class = "color-red" %}{% set wr_fill = "fill-red" %}
+    {% endif %}
+    <div class="score-card">
+      <div class="score-value {{ wr_class }}">{{ wr }}</div>
+      <div class="score-label">Wealth Retention</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill {{ wr_fill }}" style="width: {{ (wr / 10 * 100) | round(1) }}%;"></div>
+      </div>
+    </div>
+
+    <!-- Financial Freedom % -->
+    {% set ff = scores.financial_freedom_pct %}
+    {% if ff > 60 %}
+      {% set ff_class = "color-green" %}{% set ff_fill = "fill-green" %}
+    {% elif ff >= 40 %}
+      {% set ff_class = "color-amber" %}{% set ff_fill = "fill-amber" %}
+    {% else %}
+      {% set ff_class = "color-red" %}{% set ff_fill = "fill-red" %}
+    {% endif %}
+    <div class="score-card">
+      <div class="score-value {{ ff_class }}">{{ ff }}%</div>
+      <div class="score-label">Financial Freedom</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill {{ ff_fill }}" style="width: {{ [ff, 100] | min }}%;"></div>
+      </div>
+    </div>
+
+    <!-- Health Resilience -->
+    {% set hr = scores.health_resilience %}
+    {% if hr > 7 %}
+      {% set hr_class = "color-green" %}{% set hr_fill = "fill-green" %}
+    {% elif hr >= 5 %}
+      {% set hr_class = "color-amber" %}{% set hr_fill = "fill-amber" %}
+    {% else %}
+      {% set hr_class = "color-red" %}{% set hr_fill = "fill-red" %}
+    {% endif %}
+    <div class="score-card">
+      <div class="score-value {{ hr_class }}">{{ hr }}</div>
+      <div class="score-label">Health Resilience</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill {{ hr_fill }}" style="width: {{ (hr / 10 * 100) | round(1) }}%;"></div>
+      </div>
+    </div>
+
+  </div><!-- /.score-grid -->
+
+  <!-- =============================================================
+       1. EXECUTIVE SUMMARY
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Executive Summary</h2>
+    </div>
+    <div class="prose">{{ executive_summary }}</div>
+  </div>
+
+  <!-- =============================================================
+       2. PRIORITY ALERTS
+       ============================================================= -->
+  {% if priority_alerts %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Priority Alerts</h2>
+    </div>
+    <div class="alert-list">
+      {% for alert in priority_alerts %}
+      <div class="alert-item">{{ alert }}</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============================================================
+       3. LAGNA LORD RULING
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Lagna Lord Ruling</h2>
+    </div>
+    {% if lagna_lord_ruling is mapping %}
+    <div class="kv-block">
+      {% for key, value in lagna_lord_ruling.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">{{ value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ lagna_lord_ruling }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       4. YOGAKARAKA STATUS
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Yogakaraka Status</h2>
+    </div>
+    {% if yogakaraka_status is mapping %}
+    <div class="kv-block">
+      {% for key, value in yogakaraka_status.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">{{ value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ yogakaraka_status }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       5. SADE SATI IMPACT
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Sade Sati Impact</h2>
+    </div>
+    {% if sade_sati_impact is mapping %}
+    <div class="kv-block">
+      {% for key, value in sade_sati_impact.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">{{ value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ sade_sati_impact }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       6. ATMA KARAKA THEME
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Atma Karaka Theme</h2>
+    </div>
+    {% if atma_karaka_theme is mapping %}
+    <div class="kv-block">
+      {% for key, value in atma_karaka_theme.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">{{ value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ atma_karaka_theme }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       7. YOGA REGISTRY
+       ============================================================= -->
+  {% if yoga_registry %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Yoga Registry</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Yoga Name</th>
+            <th>Active</th>
+            <th>Strength</th>
+            <th>Houses Involved</th>
+            <th>Planets</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for yoga in yoga_registry %}
+          <tr>
+            <td>{{ yoga.name | default("—") }}</td>
+            <td>{{ "Yes" if yoga.active else "No" }}</td>
+            <td>{{ yoga.strength | default("—") }}</td>
+            <td>{{ yoga.houses | default([]) | join(", ") }}</td>
+            <td>{{ yoga.planets | default([]) | join(", ") }}</td>
+            <td>{{ yoga.notes | default("") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============================================================
+       8. PLANET STRENGTH HIERARCHY
+       ============================================================= -->
+  {% if planet_hierarchy %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Planet Strength Hierarchy</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Planet</th>
+            <th>Sign</th>
+            <th>House</th>
+            <th>Dignity</th>
+            <th>Shadbala</th>
+            <th>Functional Role</th>
+            <th>Net Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for planet in planet_hierarchy %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ planet.name | default("—") }}</td>
+            <td>{{ planet.sign | default("—") }}</td>
+            <td>{{ planet.house | default("—") }}</td>
+            <td>{{ planet.dignity | default("—") }}</td>
+            <td>{{ planet.shadbala | default("—") }}</td>
+            <td>{{ planet.functional_role | default("—") }}</td>
+            <td>{{ planet.net_score | default("—") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============================================================
+       9. CASH FLOW TIMELINE
+       ============================================================= -->
+  {% if cashflow_timeline %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Cash Flow Timeline</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Dasha / Antardasha</th>
+            <th>Direction</th>
+            <th>Magnitude</th>
+            <th>Key Driver</th>
+            <th>Caution</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in cashflow_timeline %}
+          <tr>
+            <td>{{ entry.period | default("—") }}</td>
+            <td>{{ entry.dasha | default("—") }}</td>
+            <td>
+              {% if entry.direction | default("") | lower == "positive" %}
+                <span class="color-green">{{ entry.direction }}</span>
+              {% elif entry.direction | default("") | lower == "negative" %}
+                <span class="color-red">{{ entry.direction }}</span>
+              {% else %}
+                <span class="color-amber">{{ entry.direction | default("—") }}</span>
+              {% endif %}
+            </td>
+            <td>{{ entry.magnitude | default("—") }}</td>
+            <td>{{ entry.key_driver | default("—") }}</td>
+            <td>{{ entry.caution | default("—") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============================================================
+       10. PROPERTY ANALYSIS
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Property Analysis</h2>
+    </div>
+    {% if property_analysis is mapping %}
+    <div class="kv-block">
+      {% for key, value in property_analysis.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">
+          {% if value is iterable and value is not string %}
+            {{ value | join(", ") }}
+          {% else %}
+            {{ value }}
+          {% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ property_analysis }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       11. FINANCIAL FREEDOM
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Financial Freedom</h2>
+    </div>
+    {% if financial_freedom is mapping %}
+    <div class="kv-block">
+      {% for key, value in financial_freedom.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">
+          {% if value is iterable and value is not string %}
+            {{ value | join(", ") }}
+          {% else %}
+            {{ value }}
+          {% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ financial_freedom }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       12. HEALTH ANALYSIS
+       ============================================================= -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Health Analysis</h2>
+    </div>
+    {% if health_analysis is mapping %}
+    <div class="kv-block">
+      {% for key, value in health_analysis.items() %}
+      <div class="kv-row">
+        <span class="kv-label">{{ key | replace("_", " ") | title }}</span>
+        <span class="kv-value">
+          {% if value is iterable and value is not string %}
+            {{ value | join(", ") }}
+          {% else %}
+            {{ value }}
+          {% endif %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="prose">{{ health_analysis }}</div>
+    {% endif %}
+  </div>
+
+  <!-- =============================================================
+       13. CROSS-CHANNEL MATRIX
+       ============================================================= -->
+  {% if cross_channel_matrix %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Cross-Channel Matrix</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Channel A</th>
+            <th>Channel B</th>
+            <th>Interaction</th>
+            <th>Net Effect</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in cross_channel_matrix %}
+          <tr>
+            <td>{{ row.channel_a | default("—") }}</td>
+            <td>{{ row.channel_b | default("—") }}</td>
+            <td>{{ row.interaction | default("—") }}</td>
+            <td>
+              {% set ne = row.net_effect | default("") | lower %}
+              {% if ne in ["positive", "benefic", "strong"] %}
+                <span class="color-green">{{ row.net_effect }}</span>
+              {% elif ne in ["negative", "malefic", "weak"] %}
+                <span class="color-red">{{ row.net_effect }}</span>
+              {% else %}
+                {{ row.net_effect | default("—") }}
+              {% endif %}
+            </td>
+            <td>{{ row.remarks | default("—") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============================================================
+       14. CONFIDENCE MATRIX
+       ============================================================= -->
+  {% if confidence_matrix %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Confidence Matrix</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Domain</th>
+            <th>Confidence (%)</th>
+            <th>Data Quality</th>
+            <th>Limiting Factors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in confidence_matrix %}
+          <tr>
+            <td>{{ row.domain | default("—") }}</td>
+            <td>
+              {% set conf = row.confidence | default(0) %}
+              {% if conf > 70 %}
+                <span class="color-green">{{ conf }}%</span>
+              {% elif conf >= 50 %}
+                <span class="color-amber">{{ conf }}%</span>
+              {% else %}
+                <span class="color-red">{{ conf }}%</span>
+              {% endif %}
+            </td>
+            <td>{{ row.data_quality | default("—") }}</td>
+            <td>{{ row.limiting_factors | default("—") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- =============================================================
+       15. CORRECTIONS APPLIED
+       ============================================================= -->
+  {% if corrections_applied %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Corrections Applied</h2>
+    </div>
+    <ul class="corrections-list">
+      {% for correction in corrections_applied %}
+      <li>{{ correction }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+</div><!-- /.page-wrapper -->
+
+</body>
+</html>

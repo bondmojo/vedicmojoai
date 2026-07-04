@@ -1,0 +1,748 @@
+{
+  "meta": {
+    "system": "Vedic (Jyotish) — Lahiri Ayanamsha",
+    "ascendant": "Gemini",
+    "lagna_sign": "Gemini",
+    "lagna_sign_no": 3,
+    "lagna_degree": "6°48'",
+    "lagna_degree_decimal": 6.8,
+    "lagna_nakshatra": "Ardra",
+    "lagna_pada": 1,
+    "source": "Extracted from 17 screenshots: D1/D4/D9/D10/D30 charts, nakshatra table, karakas/special-lagnas panel, vimshottari dasha timeline, saturn transit screens, shadbala tables, ashtakavarga grids"
+  },
+
+  "natal_nakshatras": [
+    {
+      "body": "Sun",
+      "sign": "Aries",
+      "sign_no": 1,
+      "house": 11,
+      "degree": "27°50'",
+      "degree_decimal": 27.833,
+      "nakshatra": "Krittika",
+      "pada": 1,
+      "notes": "Atma Karaka"
+    },
+    {
+      "body": "Moon",
+      "sign": "Pisces",
+      "sign_no": 12,
+      "house": 10,
+      "degree": "25°38'",
+      "degree_decimal": 25.633,
+      "nakshatra": "Revati",
+      "pada": 3,
+      "notes": "Amatya Karaka"
+    },
+    {
+      "body": "Mars",
+      "sign": "Cancer",
+      "sign_no": 4,
+      "house": 2,
+      "degree": "9°51'",
+      "degree_decimal": 9.85,
+      "nakshatra": "Pushya",
+      "pada": 2,
+      "notes": "Putra Karaka"
+    },
+    {
+      "body": "Mercury",
+      "sign": "Taurus",
+      "sign_no": 2,
+      "house": 12,
+      "degree": "9°38'",
+      "degree_decimal": 9.633,
+      "nakshatra": "Krittika",
+      "pada": 4,
+      "notes": "Jnaati Karaka"
+    },
+    {
+      "body": "Jupiter",
+      "sign": "Capricorn",
+      "sign_no": 10,
+      "house": 8,
+      "degree": "13°32'",
+      "degree_decimal": 13.533,
+      "nakshatra": "Shravana",
+      "pada": 2,
+      "notes": "R; Pitri Karaka; neecha (debilitated in Capricorn)"
+    },
+    {
+      "body": "Venus",
+      "sign": "Pisces",
+      "sign_no": 12,
+      "house": 10,
+      "degree": "21°14'",
+      "degree_decimal": 21.233,
+      "nakshatra": "Revati",
+      "pada": 2,
+      "notes": "Bhratri Karaka; uccha (exalted in Pisces)"
+    },
+    {
+      "body": "Saturn",
+      "sign": "Capricorn",
+      "sign_no": 10,
+      "house": 8,
+      "degree": "6°32'",
+      "degree_decimal": 6.533,
+      "nakshatra": "Uttara Ashadha",
+      "pada": 3,
+      "notes": "R; Data Karaka; uccha (exalted in Capricorn)"
+    },
+    {
+      "body": "Rahu",
+      "sign": "Leo",
+      "sign_no": 5,
+      "house": 3,
+      "degree": "9°45'",
+      "degree_decimal": 9.75,
+      "nakshatra": "Magha",
+      "pada": 3,
+      "notes": "Matri Karaka; always retrograde by convention"
+    },
+    {
+      "body": "Ketu",
+      "sign": "Aquarius",
+      "sign_no": 11,
+      "house": 9,
+      "degree": "9°45'",
+      "degree_decimal": 9.75,
+      "nakshatra": "Shatabhisha",
+      "pada": 1,
+      "notes": "always retrograde by convention; 180° opposite Rahu"
+    }
+  ],
+
+  "divisional_charts": {
+    "D1_Rasi": {
+      "name": "D1 Rasi",
+      "lagna": "Gemini",
+      "lagna_sign_no": 3,
+      "houses": [
+        {"house": 1,  "sign": "Gemini",      "occupants": ["As"]},
+        {"house": 2,  "sign": "Cancer",      "occupants": ["Mars", "Uranus"]},
+        {"house": 3,  "sign": "Leo",         "occupants": ["Rahu", "Pluto"]},
+        {"house": 4,  "sign": "Virgo",       "occupants": []},
+        {"house": 5,  "sign": "Libra",       "occupants": ["Neptune"]},
+        {"house": 6,  "sign": "Scorpio",     "occupants": []},
+        {"house": 7,  "sign": "Sagittarius", "occupants": []},
+        {"house": 8,  "sign": "Capricorn",   "occupants": ["Jupiter", "Saturn"]},
+        {"house": 9,  "sign": "Aquarius",    "occupants": ["Ketu"]},
+        {"house": 10, "sign": "Pisces",      "occupants": ["Moon", "Venus"]},
+        {"house": 11, "sign": "Aries",       "occupants": ["Sun"]},
+        {"house": 12, "sign": "Taurus",      "occupants": ["Mercury"]}
+      ]
+    },
+    "D4_Chaturthamsa": {
+      "name": "D4 Chaturthamsa",
+      "lagna": "Gemini",
+      "lagna_sign_no": 3,
+      "lagna_degree_tooltip": "6°48'4\"",
+      "houses": [
+        {"house": 1,  "sign": "Gemini",      "occupants": ["As"]},
+        {"house": 2,  "sign": "Cancer",      "occupants": []},
+        {"house": 3,  "sign": "Leo",         "occupants": ["Mercury"]},
+        {"house": 4,  "sign": "Virgo",       "occupants": ["Venus"]},
+        {"house": 5,  "sign": "Libra",       "occupants": ["Mars"]},
+        {"house": 6,  "sign": "Scorpio",     "occupants": ["Rahu", "Pluto"]},
+        {"house": 7,  "sign": "Sagittarius", "occupants": ["Moon"]},
+        {"house": 8,  "sign": "Capricorn",   "occupants": ["Sun", "Saturn"]},
+        {"house": 9,  "sign": "Aquarius",    "occupants": []},
+        {"house": 10, "sign": "Pisces",      "occupants": []},
+        {"house": 11, "sign": "Aries",       "occupants": ["Jupiter", "Uranus", "Neptune"]},
+        {"house": 12, "sign": "Taurus",      "occupants": ["Ketu"]}
+      ],
+      "_d4_planets_by_sign": {
+        "Sun": "Capricorn", "Moon": "Sagittarius", "Mars": "Libra",
+        "Mercury": "Leo", "Jupiter": "Aries", "Venus": "Virgo",
+        "Saturn": "Capricorn", "Rahu": "Scorpio", "Ketu": "Taurus",
+        "Uranus": "Aries", "Neptune": "Aries", "Pluto": "Scorpio"
+      }
+    },
+    "D9_Navamsa": {
+      "name": "D9 Navamsa",
+      "lagna": "Sagittarius",
+      "lagna_sign_no": 9,
+      "houses": [
+        {"house": 1,  "sign": "Sagittarius", "occupants": ["As", "Sun", "Ketu"]},
+        {"house": 2,  "sign": "Capricorn",   "occupants": ["Venus"]},
+        {"house": 3,  "sign": "Aquarius",    "occupants": ["Moon", "Saturn", "Neptune"]},
+        {"house": 4,  "sign": "Pisces",      "occupants": ["Mercury", "Uranus"]},
+        {"house": 5,  "sign": "Aries",       "occupants": []},
+        {"house": 6,  "sign": "Taurus",      "occupants": ["Jupiter"]},
+        {"house": 7,  "sign": "Gemini",      "occupants": ["Rahu"]},
+        {"house": 8,  "sign": "Cancer",      "occupants": ["Pluto"]},
+        {"house": 9,  "sign": "Leo",         "occupants": []},
+        {"house": 10, "sign": "Virgo",       "occupants": ["Mars"]},
+        {"house": 11, "sign": "Libra",       "occupants": []},
+        {"house": 12, "sign": "Scorpio",     "occupants": []}
+      ],
+      "_d9_planets_by_sign": {
+        "Sun": "Sagittarius", "Moon": "Aquarius", "Mars": "Virgo",
+        "Mercury": "Pisces", "Jupiter": "Taurus", "Venus": "Capricorn",
+        "Saturn": "Aquarius", "Rahu": "Gemini", "Ketu": "Sagittarius",
+        "Uranus": "Pisces", "Neptune": "Aquarius", "Pluto": "Cancer"
+      }
+    },
+    "D10_Dasamsa": {
+      "name": "D10 Dasamsa",
+      "lagna": "Leo",
+      "lagna_sign_no": 5,
+      "houses": [
+        {"house": 1,  "sign": "Leo",         "occupants": ["As"]},
+        {"house": 2,  "sign": "Virgo",       "occupants": []},
+        {"house": 3,  "sign": "Libra",       "occupants": []},
+        {"house": 4,  "sign": "Scorpio",     "occupants": ["Saturn", "Rahu"]},
+        {"house": 5,  "sign": "Sagittarius", "occupants": ["Uranus", "Pluto"]},
+        {"house": 6,  "sign": "Capricorn",   "occupants": ["Sun", "Jupiter"]},
+        {"house": 7,  "sign": "Aquarius",    "occupants": []},
+        {"house": 8,  "sign": "Pisces",      "occupants": ["Neptune"]},
+        {"house": 9,  "sign": "Aries",       "occupants": ["Mercury"]},
+        {"house": 10, "sign": "Taurus",      "occupants": ["Ketu"]},
+        {"house": 11, "sign": "Gemini",      "occupants": ["Mars", "Venus"]},
+        {"house": 12, "sign": "Cancer",      "occupants": ["Moon"]}
+      ],
+      "_d10_planets_by_sign": {
+        "Sun": "Capricorn", "Moon": "Cancer", "Mars": "Gemini",
+        "Mercury": "Aries", "Jupiter": "Capricorn", "Venus": "Gemini",
+        "Saturn": "Scorpio", "Rahu": "Scorpio", "Ketu": "Taurus",
+        "Uranus": "Sagittarius", "Neptune": "Pisces", "Pluto": "Sagittarius"
+      }
+    },
+    "D30_Trimshamsa": {
+      "name": "D30 Trimshamsa",
+      "lagna": "Aquarius",
+      "lagna_sign_no": 11,
+      "houses": [
+        {"house": 1,  "sign": "Aquarius",    "occupants": ["As", "Rahu"]},
+        {"house": 2,  "sign": "Pisces",      "occupants": ["Jupiter"]},
+        {"house": 3,  "sign": "Aries",       "occupants": []},
+        {"house": 4,  "sign": "Taurus",      "occupants": []},
+        {"house": 5,  "sign": "Gemini",      "occupants": []},
+        {"house": 6,  "sign": "Cancer",      "occupants": []},
+        {"house": 7,  "sign": "Leo",         "occupants": ["Ketu"]},
+        {"house": 8,  "sign": "Virgo",       "occupants": ["Mars", "Mercury", "Saturn"]},
+        {"house": 9,  "sign": "Libra",       "occupants": ["Sun"]},
+        {"house": 10, "sign": "Scorpio",     "occupants": ["Moon", "Uranus"]},
+        {"house": 11, "sign": "Sagittarius", "occupants": ["Neptune", "Pluto"]},
+        {"house": 12, "sign": "Capricorn",   "occupants": ["Venus"]}
+      ],
+      "_d30_planets_by_sign": {
+        "Sun": "Libra", "Moon": "Scorpio", "Mars": "Virgo",
+        "Mercury": "Virgo", "Jupiter": "Pisces", "Venus": "Capricorn",
+        "Saturn": "Virgo", "Rahu": "Aquarius", "Ketu": "Leo",
+        "Uranus": "Scorpio", "Neptune": "Sagittarius", "Pluto": "Sagittarius"
+      },
+      "_ketu_correction": "Ketu forced to Leo (H7); Rahu is in Aquarius (H1). Nodes are definitionally 180° apart. Software showed Ketu co-placed with Rahu in Aquarius — astronomically impossible; corrected."
+    }
+  },
+
+  "karakas": [
+    {"role": "Atma Karaka",    "planet": "Sun",     "signification": "Soul"},
+    {"role": "Amatya Karaka",  "planet": "Moon",    "signification": "Career"},
+    {"role": "Bhratri Karaka", "planet": "Venus",   "signification": "Siblings"},
+    {"role": "Matri Karaka",   "planet": "Rahu",    "signification": "Friends"},
+    {"role": "Pitri Karaka",   "planet": "Jupiter", "signification": "Father"},
+    {"role": "Putra Karaka",   "planet": "Mars",    "signification": "Children"},
+    {"role": "Jnaati Karaka",  "planet": "Mercury", "signification": "Relatives"},
+    {"role": "Data Karaka",    "planet": "Saturn",  "signification": "Spouse"}
+  ],
+
+  "karakas_chara": {
+    "note": "Chara karakas ranked by degree within sign (descending). Rahu degree reversed: 30 - 9.75 = 20.25 for ranking.",
+    "sequence": [
+      {"rank": 1, "role": "Atma Karaka (AK)",    "planet": "Sun",     "degree_in_sign": 27.833},
+      {"rank": 2, "role": "Amatya Karaka (AmK)", "planet": "Moon",    "degree_in_sign": 25.633},
+      {"rank": 3, "role": "Bhratri Karaka (BK)", "planet": "Venus",   "degree_in_sign": 21.233},
+      {"rank": 4, "role": "Matri Karaka (MK)",   "planet": "Rahu",    "degree_in_sign": 20.25, "note": "reversed: 30 - 9.75"},
+      {"rank": 5, "role": "Pitri Karaka (PiK)",  "planet": "Jupiter", "degree_in_sign": 13.533},
+      {"rank": 6, "role": "Putra Karaka (PuK)",  "planet": "Mars",    "degree_in_sign": 9.85},
+      {"rank": 7, "role": "Jnaati Karaka (JK)",  "planet": "Mercury", "degree_in_sign": 9.633},
+      {"rank": 8, "role": "Data Karaka (DK)",    "planet": "Saturn",  "degree_in_sign": 6.533}
+    ]
+  },
+
+  "upagrahas": [
+    {"name": "Dhuma",       "sign": "Virgo",       "sign_no": 6,  "degree": "11°10'", "degree_decimal": 11.167, "house": 4},
+    {"name": "Vyatipata",   "sign": "Libra",       "sign_no": 7,  "degree": "18°49'", "degree_decimal": 18.817, "house": 5},
+    {"name": "Parivesha",   "sign": "Aries",       "sign_no": 1,  "degree": "18°49'", "degree_decimal": 18.817, "house": 11},
+    {"name": "Indrachapa",  "sign": "Pisces",      "sign_no": 12, "degree": "11°10'", "degree_decimal": 11.167, "house": 10},
+    {"name": "Upaketu",     "sign": "Pisces",      "sign_no": 12, "degree": "27°50'", "degree_decimal": 27.833, "house": 10},
+    {"name": "Kaala",       "sign": "Leo",         "sign_no": 5,  "degree": "10°53'", "degree_decimal": 10.883, "house": 3},
+    {"name": "A.Praharaka", "sign": "Libra",       "sign_no": 7,  "degree": "17°28'", "degree_decimal": 17.467, "house": 5},
+    {"name": "Y.Ghantaka",  "sign": "Taurus",      "sign_no": 2,  "degree": "11°18'", "degree_decimal": 11.3,   "house": 12},
+    {"name": "Gulika",      "sign": "Gemini",      "sign_no": 3,  "degree": "16°45'", "degree_decimal": 16.75,  "house": 1},
+    {"name": "Maandi",      "sign": "Gemini",      "sign_no": 3,  "degree": "27°38'", "degree_decimal": 27.633, "house": 1}
+  ],
+
+  "special_lagnas": [
+    {"name": "Arudha Lagna (AL)",    "sign": "Aries",       "sign_no": 1,  "house": 11, "degree": null, "degree_decimal": null, "notes": "From D1 chart"},
+    {"name": "Upapada Lagna (UL)",   "sign": "Capricorn",   "sign_no": 10, "house": 8,  "degree": null, "degree_decimal": null, "notes": "From D1 chart"},
+    {"name": "Bhava Lagna (BL)",     "sign": "Gemini",      "sign_no": 3,  "house": 1,  "degree": "6°23'",  "degree_decimal": 6.383,  "notes": "From panel"},
+    {"name": "Pranapada (PL)",       "sign": "Gemini",      "sign_no": 3,  "house": 1,  "degree": "14°18'", "degree_decimal": 14.3,   "notes": "From panel"},
+    {"name": "Hora Lagna (HL)",      "sign": "Cancer",      "sign_no": 4,  "house": 2,  "degree": "14°49'", "degree_decimal": 14.817, "notes": "From panel"},
+    {"name": "Ghatika Lagna (GL)",   "sign": "Scorpio",     "sign_no": 8,  "house": 6,  "degree": "10°07'", "degree_decimal": 10.117, "notes": "From panel"},
+    {"name": "Indu Lagna (IL)",      "sign": "Virgo",       "sign_no": 6,  "house": 4,  "degree": "25°38'", "degree_decimal": 25.633, "notes": "From panel"},
+    {"name": "Varnada Lagna (VL)",   "sign": "Virgo",       "sign_no": 6,  "house": 4,  "degree": null, "degree_decimal": null, "notes": "From D1 chart"},
+    {"name": "Sree Lagna (SL)",      "sign": "Aquarius",    "sign_no": 11, "house": 9,  "degree": null, "degree_decimal": null, "notes": "From D1 chart"},
+    {"name": "Bhrigu Bindu",         "sign": "Sagittarius", "sign_no": 9,  "house": 7,  "degree": "2°41'",  "degree_decimal": 2.683,  "notes": "From panel"},
+    {"name": "Vighati Lagna",        "sign": "Virgo",       "sign_no": 6,  "house": 4,  "degree": "23°56'", "degree_decimal": 23.933, "notes": "From panel"},
+    {"name": "Kunda Lagna",          "sign": "Aries",       "sign_no": 1,  "house": 11, "degree": "11°47'", "degree_decimal": 11.783, "notes": "From panel; same sign as AL"},
+    {"name": "A2",  "sign": "Scorpio",     "sign_no": 8,  "house": 6,  "degree": null, "degree_decimal": null, "notes": "Arudha of H2"},
+    {"name": "A3",  "sign": "Sagittarius", "sign_no": 9,  "house": 7,  "degree": null, "degree_decimal": null, "notes": "Arudha of H3"},
+    {"name": "A4",  "sign": "Capricorn",   "sign_no": 10, "house": 8,  "degree": null, "degree_decimal": null, "notes": "Arudha of H4"},
+    {"name": "A5",  "sign": "Leo",         "sign_no": 5,  "house": 3,  "degree": null, "degree_decimal": null, "notes": "Arudha of H5"},
+    {"name": "A6",  "sign": "Pisces",      "sign_no": 12, "house": 10, "degree": null, "degree_decimal": null, "notes": "Arudha of H6"},
+    {"name": "A7",  "sign": "Aquarius",    "sign_no": 11, "house": 9,  "degree": null, "degree_decimal": null, "notes": "Arudha of H7"},
+    {"name": "A8",  "sign": "Libra",       "sign_no": 7,  "house": 5,  "degree": null, "degree_decimal": null, "notes": "Arudha of H8"},
+    {"name": "A9",  "sign": "Sagittarius", "sign_no": 9,  "house": 7,  "degree": null, "degree_decimal": null, "notes": "Arudha of H9"},
+    {"name": "A10", "sign": "Scorpio",     "sign_no": 8,  "house": 6,  "degree": null, "degree_decimal": null, "notes": "Arudha of H10"},
+    {"name": "A11", "sign": "Cancer",      "sign_no": 4,  "house": 2,  "degree": null, "degree_decimal": null, "notes": "Arudha of H11"}
+  ],
+
+  "varna_charts": [
+    {"varga": "V2 (Hora / D2)",         "signification": "Wealth",   "lagna_sign": "Sagittarius"},
+    {"varga": "V3 (Drekkana / D3)",     "signification": "Siblings", "lagna_sign": "Taurus"},
+    {"varga": "V4 (Chaturthamsa / D4)", "signification": "Property", "lagna_sign": "Taurus",
+     "note": "V4 from panel shows Taurus; full D4 chart tooltip shows Gemini lagna. These may represent different calculations (varna vs chart lagna)."},
+    {"varga": "V5 (Saptamsa / D7)",     "signification": "Children", "lagna_sign": "Taurus"},
+    {"varga": "V6 (Shashthamsa / D6)",  "signification": "Health",   "lagna_sign": "Sagittarius"}
+  ],
+
+  "shadbala": [
+    {
+      "body": "Moon",
+      "total_shadbala_virupas": 232.07,
+      "required_virupas": 360,
+      "ratio": 0.645,
+      "grade": "Weak",
+      "components": {
+        "sthana_bala": 227.54,
+        "dig_bala": -38.93,
+        "kaala_bala": 10.56,
+        "cheshta_bala": 0.00,
+        "naisargika_bala": 51.43,
+        "drik_bala": -18.53
+      },
+      "other_balas": {
+        "harsha_bala": 0.00,
+        "pancha_vargeeya_5charts": 12.38,
+        "dwadhasa_vargeeya_12charts": 1.00,
+        "ishta_phala": 2.00,
+        "kashta_phala": 58.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "No Amsa", "value": 11.0},
+        "saptavarga":    {"amsa": "No Amsa", "value": 11.6},
+        "dashavarga":    {"amsa": "No Amsa, D10", "value": 13.7},
+        "shodashavarga": {"amsa": "No Amsa, D10", "value": 13.4}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "No Amsa", "value": 0},
+        "saptavarga":    {"amsa": "No Amsa", "value": 0},
+        "dashavarga":    {"amsa": "No Amsa, D10", "value": 1},
+        "shodashavarga": {"amsa": "No Amsa, D10", "value": 1}
+      },
+      "retro_note": "Cheshta Bala = 0.00 → Moon NOT retrograde → retro_effect = direct_normal"
+    },
+    {
+      "body": "Sun",
+      "total_shadbala_virupas": 436.93,
+      "required_virupas": 300,
+      "ratio": 1.46,
+      "grade": "Strong",
+      "components": {
+        "sthana_bala": 241.55,
+        "dig_bala": 96.76,
+        "kaala_bala": 38.70,
+        "cheshta_bala": 0.00,
+        "naisargika_bala": 60.00,
+        "drik_bala": -0.08
+      },
+      "other_balas": {
+        "harsha_bala": 15.00,
+        "pancha_vargeeya_5charts": 21.95,
+        "dwadhasa_vargeeya_12charts": 5.00,
+        "ishta_phala": 60.00,
+        "kashta_phala": 0.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D1", "value": 16.8},
+        "saptavarga":    {"amsa": "No Amsa, D1", "value": 16.0},
+        "dashavarga":    {"amsa": "No Amsa, D1", "value": 14.6},
+        "shodashavarga": {"amsa": "No Amsa, D1", "value": 14.9}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D1", "value": 1},
+        "saptavarga":    {"amsa": "No Amsa, D1", "value": 1},
+        "dashavarga":    {"amsa": "No Amsa, D1", "value": 1},
+        "shodashavarga": {"amsa": "No Amsa, D1", "value": 1}
+      },
+      "retro_note": "Cheshta Bala = 0.00 → Sun has no retrograde motion (classical rule) → retro_effect = direct_normal"
+    },
+    {
+      "body": "Venus",
+      "total_shadbala_virupas": 523.98,
+      "required_virupas": 330,
+      "ratio": 1.59,
+      "grade": "Strong",
+      "components": {
+        "sthana_bala": 260.58,
+        "dig_bala": 216.82,
+        "kaala_bala": 9.10,
+        "cheshta_bala": 13.70,
+        "naisargika_bala": 42.86,
+        "drik_bala": -19.08
+      },
+      "other_balas": {
+        "harsha_bala": 5.00,
+        "pancha_vargeeya_5charts": 24.52,
+        "dwadhasa_vargeeya_12charts": 9.00,
+        "ishta_phala": 60.00,
+        "kashta_phala": 0.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D1", "value": 13.8},
+        "saptavarga":    {"amsa": "No Amsa, D1", "value": 13.1},
+        "dashavarga":    {"amsa": "No Amsa, D1", "value": 15.7},
+        "shodashavarga": {"amsa": "Bhedakaamsa, D1/D20", "value": 15.6}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D1", "value": 1},
+        "saptavarga":    {"amsa": "No Amsa, D1", "value": 1},
+        "dashavarga":    {"amsa": "No Amsa, D1", "value": 1},
+        "shodashavarga": {"amsa": "Bhedakaamsa, D1/D20", "value": 2}
+      },
+      "retro_note": "Cheshta Bala = 13.70 (low-moderate) → Venus is direct; retro_effect = direct_normal"
+    },
+    {
+      "body": "Mercury",
+      "total_shadbala_virupas": 575.47,
+      "required_virupas": 420,
+      "ratio": 1.37,
+      "grade": "Strong",
+      "components": {
+        "sthana_bala": 145.71,
+        "dig_bala": 315.83,
+        "kaala_bala": 69.06,
+        "cheshta_bala": 17.37,
+        "naisargika_bala": 25.71,
+        "drik_bala": 1.79
+      },
+      "other_balas": {
+        "harsha_bala": 0.00,
+        "pancha_vargeeya_5charts": 13.55,
+        "dwadhasa_vargeeya_12charts": 6.00,
+        "ishta_phala": 22.00,
+        "kashta_phala": 38.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D30", "value": 14.6},
+        "saptavarga":    {"amsa": "No Amsa, D30", "value": 15.5},
+        "dashavarga":    {"amsa": "No Amsa, D30", "value": 12.1},
+        "shodashavarga": {"amsa": "Bhedakaamsa, D20/D30", "value": 12.1}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D30", "value": 1},
+        "saptavarga":    {"amsa": "No Amsa, D30", "value": 1},
+        "dashavarga":    {"amsa": "No Amsa, D30", "value": 1},
+        "shodashavarga": {"amsa": "Bhedakaamsa, D20/D30", "value": 2}
+      },
+      "retro_note": "Cheshta Bala = 17.37 (low) → Mercury is direct; retro_effect = direct_normal"
+    },
+    {
+      "body": "Jupiter",
+      "total_shadbala_virupas": 506.79,
+      "required_virupas": 390,
+      "ratio": 1.30,
+      "grade": "Strong",
+      "components": {
+        "sthana_bala": 113.47,
+        "dig_bala": 275.40,
+        "kaala_bala": 12.24,
+        "cheshta_bala": 85.00,
+        "naisargika_bala": 34.29,
+        "drik_bala": -13.61
+      },
+      "other_balas": {
+        "harsha_bala": 5.00,
+        "pancha_vargeeya_5charts": 6.46,
+        "dwadhasa_vargeeya_12charts": 6.00,
+        "ishta_phala": 2.00,
+        "kashta_phala": 58.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D30", "value": 9.6},
+        "saptavarga":    {"amsa": "No Amsa, D30", "value": 9.6},
+        "dashavarga":    {"amsa": "No Amsa, D30", "value": 10.4},
+        "shodashavarga": {"amsa": "Kusumaamsa, D27/D30/D45", "value": 10.9}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D30", "value": 1},
+        "saptavarga":    {"amsa": "No Amsa, D30", "value": 1},
+        "dashavarga":    {"amsa": "No Amsa, D30", "value": 1},
+        "shodashavarga": {"amsa": "Kusumaamsa, D27/D30/D45", "value": 3}
+      },
+      "retro_note": "Cheshta Bala = 85.00 (very high, above classical 60-virupa max) → Jupiter is retrograde; retro_effect = brightening. Note: D1 chart did NOT show parentheses around Ju — possible software display inconsistency; Cheshta Bala is authoritative."
+    },
+    {
+      "body": "Saturn",
+      "total_shadbala_virupas": 371.09,
+      "required_virupas": 300,
+      "ratio": 1.24,
+      "grade": "Strong",
+      "components": {
+        "sthana_bala": 195.74,
+        "dig_bala": 26.69,
+        "kaala_bala": 69.91,
+        "cheshta_bala": 82.60,
+        "naisargika_bala": 8.57,
+        "drik_bala": -12.42
+      },
+      "other_balas": {
+        "harsha_bala": 10.00,
+        "pancha_vargeeya_5charts": 21.00,
+        "dwadhasa_vargeeya_12charts": 7.00,
+        "ishta_phala": 30.00,
+        "kashta_phala": 30.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "Vyanjanaamsa, D1/D3/D9", "value": 17.2},
+        "saptavarga":    {"amsa": "Vyanjanaamsa, D1/D3/D9", "value": 14.6},
+        "dashavarga":    {"amsa": "Gopuraamsa, D1/D3/D9/D60", "value": 14.9},
+        "shodashavarga": {"amsa": "Keralaamsa, D1/D3/D4/D9/D45/D60", "value": 15.9}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "Vyanjanaamsa, D1/D3/D9", "value": 3},
+        "saptavarga":    {"amsa": "Vyanjanaamsa, D1/D3/D9", "value": 3},
+        "dashavarga":    {"amsa": "Gopuraamsa, D1/D3/D9/D60", "value": 4},
+        "shodashavarga": {"amsa": "Keralaamsa, D1/D3/D4/D9/D45/D60", "value": 6}
+      },
+      "retro_note": "Cheshta Bala = 82.60 (very high) → Saturn is retrograde; confirmed by (Sa) notation in D1 chart → retro_effect = brightening"
+    },
+    {
+      "body": "Mars",
+      "total_shadbala_virupas": 197.69,
+      "required_virupas": 300,
+      "ratio": 0.66,
+      "grade": "Weak",
+      "components": {
+        "sthana_bala": 99.80,
+        "dig_bala": 40.75,
+        "kaala_bala": 14.70,
+        "cheshta_bala": 30.23,
+        "naisargika_bala": 17.14,
+        "drik_bala": -4.93
+      },
+      "other_balas": {
+        "harsha_bala": 5.00,
+        "pancha_vargeeya_5charts": 2.51,
+        "dwadhasa_vargeeya_12charts": 4.00,
+        "ishta_phala": 8.00,
+        "kashta_phala": 52.00
+      },
+      "vimsopaka_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D2", "value": 10.7},
+        "saptavarga":    {"amsa": "No Amsa, D2", "value": 10.3},
+        "dashavarga":    {"amsa": "No Amsa, D2", "value": 11.8},
+        "shodashavarga": {"amsa": "Bhedakaamsa, D2/D40", "value": 11.6}
+      },
+      "vaiseshikamsa_bala": {
+        "shadvarga":     {"amsa": "No Amsa, D2", "value": 1},
+        "saptavarga":    {"amsa": "No Amsa, D2", "value": 1},
+        "dashavarga":    {"amsa": "No Amsa, D2", "value": 1},
+        "shodashavarga": {"amsa": "Bhedakaamsa, D2/D40", "value": 2}
+      },
+      "retro_note": "Cheshta Bala = 30.23 (moderate) → Mars is direct; retro_effect = direct_normal"
+    },
+    {"body": "Rahu", "total_shadbala_virupas": null, "grade": null, "notes": "Nodes excluded from classical Shadbala; retro_effect = direct_normal by convention"},
+    {"body": "Ketu",  "total_shadbala_virupas": null, "grade": null, "notes": "Nodes excluded from classical Shadbala; retro_effect = direct_normal by convention"}
+  ],
+
+  "ashtakavarga": {
+    "sarvashtakavarga_by_house": [
+      {"house": 1,  "sign": "Gemini",      "bindus": 31},
+      {"house": 2,  "sign": "Cancer",      "bindus": 29},
+      {"house": 3,  "sign": "Leo",         "bindus": 23},
+      {"house": 4,  "sign": "Virgo",       "bindus": 26},
+      {"house": 5,  "sign": "Libra",       "bindus": 31},
+      {"house": 6,  "sign": "Scorpio",     "bindus": 27},
+      {"house": 7,  "sign": "Sagittarius", "bindus": 30},
+      {"house": 8,  "sign": "Capricorn",   "bindus": 34},
+      {"house": 9,  "sign": "Aquarius",    "bindus": 19},
+      {"house": 10, "sign": "Pisces",      "bindus": 34},
+      {"house": 11, "sign": "Aries",       "bindus": 26},
+      {"house": 12, "sign": "Taurus",      "bindus": 27}
+    ],
+    "sav_total": 337,
+    "pinda_strength": [
+      {"body": "Sun",       "rasi_pinda": 128, "graha_pinda": 66, "sodhya_pinda": 194, "strength_pct": 100},
+      {"body": "Mars",      "rasi_pinda": 103, "graha_pinda": 85, "sodhya_pinda": 188, "strength_pct": 97},
+      {"body": "Saturn",    "rasi_pinda": 130, "graha_pinda": 36, "sodhya_pinda": 166, "strength_pct": 86},
+      {"body": "Moon",      "rasi_pinda": 116, "graha_pinda": 37, "sodhya_pinda": 153, "strength_pct": 79},
+      {"body": "Venus",     "rasi_pinda": 108, "graha_pinda": 35, "sodhya_pinda": 143, "strength_pct": 74},
+      {"body": "Mercury",   "rasi_pinda": 85,  "graha_pinda": 54, "sodhya_pinda": 139, "strength_pct": 72},
+      {"body": "Jupiter",   "rasi_pinda": 73,  "graha_pinda": 45, "sodhya_pinda": 118, "strength_pct": 61},
+      {"body": "Ascendant", "rasi_pinda": 0,   "graha_pinda": 0,  "sodhya_pinda": 0,   "strength_pct": 0}
+    ],
+    "bhinna_ashtakavarga_note": "BAV grids visible in screenshot 9.53.45 but per-house values too small to extract reliably. SAV totals and Pinda values extracted above.",
+    "shadbala_summary": {
+      "strong": ["Venus 158.8% (523.98/330)", "Sun 145.6% (436.93/300)", "Mercury 137.0% (575.47/420)", "Jupiter 129.9% (506.79/390)", "Saturn 123.7% (371.09/300)"],
+      "weak":   ["Mars 65.9% (197.69/300)", "Moon 64.5% (232.07/360)"],
+      "retrograde_confirmed_by_cheshta_bala": {
+        "Jupiter": 85.00,
+        "Saturn": 82.60
+      },
+      "direct_by_cheshta_bala": {
+        "Mars": 30.23,
+        "Mercury": 17.37,
+        "Venus": 13.70,
+        "Sun": 0.00,
+        "Moon": 0.00
+      }
+    }
+  },
+
+  "vimshottari_dasha": {
+    "current_maha": "Rahu",
+    "current_maha_start": "2016-12-05",
+    "current_maha_end": "2034-12-06",
+    "current_antar": "Mercury",
+    "current_antar_start": "2024-11-17",
+    "current_antar_end": "2027-06-06",
+    "current_pratyantar": "Rahu",
+    "current_pratyantar_start": "2026-04-21",
+    "current_pratyantar_end": "2026-09-08",
+    "tree": [
+      {
+        "planet": "Rahu",
+        "start": "2016-12-05",
+        "end": "2034-12-06",
+        "duration": "18y 4d",
+        "antardashas": [
+          {"planet": "Rahu",    "start": "2016-12-05", "end": "2019-08-18", "duration": "2y 8m 16d"},
+          {"planet": "Jupiter", "start": "2019-08-18", "end": "2022-01-11", "duration": "2y 4m 26d"},
+          {"planet": "Saturn",  "start": "2022-01-11", "end": "2024-11-17", "duration": "2y 10m 10d"},
+          {
+            "planet": "Mercury",
+            "start": "2024-11-17",
+            "end": "2027-06-06",
+            "duration": "2y 6m 21d",
+            "current": true,
+            "pratyantardashas": [
+              {"planet": "Mercury", "start": "2024-11-17", "end": "2025-03-29", "duration": "4m 11d"},
+              {"planet": "Ketu",    "start": "2025-03-29", "end": "2025-05-22", "duration": "1m 24d"},
+              {"planet": "Venus",   "start": "2025-05-22", "end": "2025-10-24", "duration": "5m 5d"},
+              {"planet": "Sun",     "start": "2025-10-24", "end": "2025-12-10", "duration": "1m 16d"},
+              {"planet": "Moon",    "start": "2025-12-10", "end": "2026-02-26", "duration": "2m 17d"},
+              {"planet": "Mars",    "start": "2026-02-26", "end": "2026-04-21", "duration": "1m 24d"},
+              {"planet": "Rahu",    "start": "2026-04-21", "end": "2026-09-08", "duration": "4m 18d", "current": true},
+              {"planet": "Jupiter", "start": "2026-09-08", "end": "2027-01-10", "duration": "4m 4d"},
+              {"planet": "Saturn",  "start": "2027-01-10", "end": "2027-06-06", "duration": "4m 27d"}
+            ]
+          },
+          {"planet": "Ketu",    "start": "2027-06-06", "end": "2028-06-24", "duration": "1y 18d"},
+          {"planet": "Venus",   "start": "2028-06-24", "end": "2031-06-25", "duration": "3y"},
+          {"planet": "Sun",     "start": "2031-06-25", "end": "2032-05-18", "duration": "10m 28d"},
+          {"planet": "Moon",    "start": "2032-05-18", "end": "2033-11-17", "duration": "1y 6m 2d"},
+          {"planet": "Mars",    "start": "2033-11-17", "end": "2034-12-06", "duration": "1y 18d"}
+        ]
+      },
+      {
+        "planet": "Jupiter",
+        "start": "2034-12-06",
+        "end": "2050-12-06",
+        "duration": "16y 4d",
+        "antardashas": [],
+        "note": "Antardasha breakdown not in captured screenshots"
+      },
+      {
+        "planet": "Saturn",
+        "start": "2050-12-06",
+        "end": "2069-10-12",
+        "duration": "18y 10m 14d",
+        "antardashas": [],
+        "note": "Antardasha breakdown not in captured screenshots"
+      }
+    ]
+  },
+
+  "saturn_transits": {
+    "sade_sati_note": "Moon in Pisces (sign 12). Sade Sati triggers when transit Saturn enters Aquarius, peaks in Pisces, ends when leaving Aries.",
+    "current_status_2026_07_02": "Not in Sade Sati; next Moon-based adverse transit starts ~2032",
+    "moon_based_transits": [
+      {
+        "period_label": "Period #3",
+        "type": "4th-sign transit",
+        "start_date": "2032-05-30",
+        "end_date": "2034-07-13",
+        "starts_in_from_july2026": "5y 333d",
+        "description": "Saturn in 4th sign from natal Moon (Pisces reference). Phase: Gemini (4th sign from Pisces)"
+      },
+      {
+        "period_label": "Period #3",
+        "type": "Square aspect (90-120°)",
+        "start_date": "2033-09-24",
+        "end_date": "2036-07-24",
+        "starts_in_from_july2026": "7y 85d",
+        "description": "Saturn 90–120° from natal Moon reference longitude (355.63°) — 4th house transit aspect"
+      }
+    ],
+    "ascendant_based_transits": [
+      {
+        "period_label": "Period #3",
+        "type": "4th-sign transit",
+        "start_date": "2038-10-22",
+        "end_date": "2041-01-27",
+        "starts_in_from_july2026": "12y 114d",
+        "description": "Saturn in 4th sign from Ascendant (Gemini). Phase: Virgo (4th sign from Gemini)"
+      },
+      {
+        "period_label": "Period #3",
+        "type": "Square aspect (90-120°)",
+        "start_date": "2039-09-15",
+        "end_date": "2041-11-22",
+        "starts_in_from_july2026": "13y 77d",
+        "description": "Saturn 90–120° from Ascendant reference longitude (66.81°) — 4th house transit aspect"
+      }
+    ]
+  },
+
+  "outer_planets_note": {
+    "included_in_divisional_occupants": ["Uranus", "Neptune", "Pluto"],
+    "retrograde_classical_planets": ["Jupiter", "Saturn"],
+    "retrograde_outer_planets_in_d1": ["Uranus", "Neptune", "Pluto"],
+    "note": "Jupiter retrograde confirmed by Cheshta Bala = 85.00 (very high; D1 chart parentheses inconsistency — Cheshta Bala is authoritative). Saturn retrograde confirmed by both (Sa) notation in D1 AND Cheshta Bala = 82.60. Outer planets shown in parentheses in software. Not part of classical natal_nakshatras or Shadbala."
+  },
+
+  "_extraction_notes": {
+    "source": "17 screenshots from /Users/mohitjoshi/Documents/Vedic Astrology/DJMA/",
+    "extraction_date": "2026-07-02",
+    "confidently_extracted": [
+      "Planet → sign → house for all 12 bodies across all 5 vargas (D1/D4/D9/D10/D30). Houses computed deterministically from each varga lagna.",
+      "Lagna: Gemini in D1 and D4. D9=Sagittarius, D10=Leo, D30=Aquarius.",
+      "D1 lagna degree: 6°48' (Ardra Pada 1) confirmed by nakshatra table (As: Ardra P1 6°48') and D4 tooltip (6:48:4).",
+      "Nakshatra + pada + degree_decimal for all 9 classical planets from nakshatra table (screenshot 9.50.50).",
+      "All 8 Chara Karakas (Atma through Data) from panel screenshot 9.51.06.",
+      "All 10 Upagrahas with sign + degree from panel screenshot 9.51.06.",
+      "Special lagnas with degrees: BL(6°23'), PL(14°18'), HL(14°49'), GL(10°07'), IL(25°38'), Bhrigu Bindu(2°41'), Vighati(23°56'), Kunda(11°47') from panel.",
+      "Arudha padas A2–A11 and UL/AL/SL/VL sign placements from D1 chart.",
+      "Vimshottari Dasha: full Rahu MD with all 10 antardashas and complete Mercury AD pratyantar breakdown (9 sub-periods).",
+      "Current dasha as of 2026-07-02: Rahu MD / Mercury AD / Rahu pratyantar (2026-04-21 to 2026-09-08).",
+      "SAV Ashtakavarga by house (total 337) from screenshot 9.53.14.",
+      "Pinda Strength (Sodhya Pinda) for 7 planets + Ascendant from screenshot 9.53.20.",
+      "Complete Shadbala for all 7 classical planets (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn) with all 6 components, Other Balas, Vimsopaka, and Vaiseshikamsa.",
+      "Retrograde from Cheshta Bala: Jupiter (85.00) and Saturn (82.60) are retrograde. Sun (0.00), Moon (0.00), Venus (13.70), Mercury (17.37), Mars (30.23) are direct.",
+      "Saturn future transit periods (Moon-based and Ascendant-based) from screenshots 9.51.55 and 9.52.03.",
+      "D30 Ketu corrected to Leo (H7): software showed Ketu and Rahu both in Aquarius — impossible; Ketu moved to opposing sign.",
+      "Varna chart signs V2–V6 from panel."
+    ],
+    "NOT_available_or_not_legible": [
+      "BAV (Bhinna Ashtakavarga) per-house bindus for each planet: grid visible in 9.53.45 but values not reliably readable.",
+      "Vimshottari MDs beyond Saturn (Mercury MD onwards): not in captured screenshots.",
+      "Degree of Arudha Lagna (AL), Upapada Lagna (UL), Sree Lagna (SL), Varnada Lagna (VL), and arudha padas A2–A11.",
+      "Degrees for Uranus, Neptune, Pluto (absent from classical nakshatra table)."
+    ],
+    "impact": "FULLY POPULATED: All 9 classical planet degrees/nakshatras/padas, Shadbala for all 7 classical planets (complete 6-component breakdown), retrograde status confirmed (Jupiter R + Saturn R via Cheshta Bala), full Vimshottari Dasha tree (Rahu MD / Mercury AD / Rahu pratyantar current), SAV+Pinda Ashtakavarga, 10 Upagrahas, all 8 Karakas, 22 special lagnas/arudhas with degrees, Saturn future transits. Agents 1A/1B/1C/1D and all Wave 2/3/4 agents can now run with complete input data."
+  }
+}

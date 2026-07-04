@@ -1,0 +1,443 @@
+# VedicMojoAI — High Level Design (HLD)
+
+**Version:** 1.0
+**Last updated:** 2026-07-04
+**Status:** Draft
+
+---
+
+## 1. System Overview
+
+VedicMojoAI is a single-practitioner internal web application that wraps an 18-agent,
+4-wave Vedic astrology analysis pipeline. It accepts a pre-computed birth chart as
+JSON, orchestrates LLM agents in a structured pipeline, persists all outputs, and
+renders interactive HTML reports.
+
+The system is a single **Next.js 14 (TypeScript)** monorepo — UI, API routes,
+pipeline engine, and report renderer all in one project, one language, one deployment.
+
+---
+
+## 2. Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        BROWSER (UI)                             │
+│  Chart Submission │ Run Dashboard │ Report Viewer │ Dasha UI    │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ HTTP / SSE
+┌────────────────────────────▼────────────────────────────────────┐
+│                   NEXT.JS API LAYER  (/app/api)                 │
+│  POST /api/runs   GET /api/runs/:id/events   GET /api/charts    │
+│  GET /api/charts/:id/dasha   GET /api/reports/:id               │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ function calls (same process)
+┌────────────────────────────▼────────────────────────────────────┐
+│                      ENGINE  (/engine)                          │
+│                                                                 │
+│  ┌──────────────┐   ┌──────────────┐   ┌─────────────────────┐ │
+│  │ pre_analysis │   │   planner    │   │  computeVimshottari │ │
+│  │    .ts       │   │    .ts       │   │       .ts           │ │
+│  └──────┬───────┘   └──────┬───────┘   └──────────┬──────────┘ │
+│         │                  │                       │            │
+│  ┌──────▼───────────────────────────────────────────▼────────┐  │
+│  │              ORCHESTRATOR  (orchestrator.ts)              │  │
+│  │  - resolves agent execution plan from planner             │  │
+│  │  - manages parallel fan-out per wave                      │  │
+│  │  - writes WaveOutput to DB as each agent completes        │  │
+│  │  - emits SSE events to API layer                          │  │
+│  │  - CRITICAL ERROR HALT GATE between 4A and 4B (US-4.3)   │  │
+│  └──────┬──────────────────────────────────────────┬─────────┘  │
+│         │                                          │            │
+│  ┌──────▼──────┐                          ┌────────▼──────────┐ │
+│  │  LLM LAYER  │                          │  REPORT RENDERER  │ │
+│  │  (llm.ts)   │                          │  (renderer.ts)    │ │
+│  │  Vercel AI  │                          │  HTML + templates │ │
+│  │  SDK wrap   │                          └───────────────────┘ │
+│  └──────┬──────┘                                                │
+└─────────┼───────────────────────────────────────────────────────┘
+          │ HTTPS  (Claude / OpenAI / Gemini)
+    ┌─────▼──────┐
+    │  LLM APIs  │
+    └────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                     PERSISTENCE LAYER                           │
+│   PostgreSQL (via Prisma)          File System                  │
+│   - Chart                          - reports/{slug}.html        │
+│   - PipelineRun                    - prompts/agents/*.md        │
+│   - WaveOutput                     (prompt files read-only)     │
+│   - Wave1Cache                                                  │
+│   - RunMessage                                                  │
+│   - ModelConfig                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Component Descriptions
+
+### 3.1 UI Layer (`/app`)
+
+| Page | Route | Purpose |
+|---|---|---|
+| Chart List | `/` | Lists all submitted charts — client name, lagna, run count, last run |
+| Chart Detail | `/charts/[id]` | Chart summary, run history, "New Run" button, dasha timeline |
+| New Run | `/charts/[id]/run` | Query type selector, free-text field, agent preview, run button |
+| Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
+| Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
+| Dasha Timeline | `/charts/[id]/dasha` | Interactive lifetime dasha viewer (mahadasha → antardasha → pratyantar) |
+
+### 3.2 API Layer (`/app/api`)
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/charts` | GET, POST | List charts / submit new chart |
+| `/api/charts/[id]` | GET | Chart detail + run history |
+| `/api/charts/[id]/dasha` | GET | Computed dasha tree (current period derived at request time) |
+| `/api/runs` | POST | Start a new pipeline run (returns 202 + run_id) |
+| `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
+| `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
+| `/api/reports/[id]` | GET | Serve HTML report file |
+
+### 3.3 Engine Layer (`/engine`)
+
+```
+engine/
+├── constants.ts          # YEAR_DAYS=365.2425, nakshatra map, dasha years, domain→agent map
+├── pre_analysis.ts       # 11 deterministic rules → alerts[]
+├── computeVimshottari.ts # Moon longitude → full DashaTree (MD/AD/PD + dates)
+├── planner.ts            # query types[] → ordered agent execution plan
+├── orchestrator.ts       # fan-out execution, DB writes, SSE emission
+├── llm.ts                # Vercel AI SDK wrapper — provider/model swappable
+├── chartSummary.ts       # ChartInputV1 + DashaTree → compact ~2KB summary string
+├── renderer.ts           # synthesis JSON → HTML report file
+└── waves/
+    ├── wave1.ts           # parallel: 1A, 1B, 1C, 1D
+    ├── wave2.ts           # parallel, planner-selected: 2A–2G
+    ├── wave3.ts           # parallel, planner-selected: 3A–3D
+    └── wave4.ts           # sequential: 4X → 4A → 4B → 4C
+```
+
+### 3.4 Pre-Analysis Engine
+
+Deterministic, no LLM. Runs first, always, before any wave.
+
+**Outputs two artifacts:**
+1. `alerts[]` — 11-rule flag array consumed by every agent prompt
+2. `dasha_tree` — full Vimshottari computation via `computeVimshottari()`
+
+Both are stored in `Wave1Cache` and injected into agent contexts via `chart_summary`.
+
+### 3.5 Vimshottari Engine (`computeVimshottari.ts`)
+
+Pure TypeScript function. No LLM, no external dependencies.
+
+```
+Input:  moonLongitudeDeg: number   (0–360, sidereal)
+        birthDatetime: Date
+
+Output: DashaTree {
+  balance_years: number
+  mahadashas: MahaDasha[]          // 9 periods covering 120 years
+}
+
+MahaDasha {
+  lord: Planet
+  start: Date
+  end: Date
+  duration_days: number
+  antardashas: AnterDasha[]        // 9 sub-periods
+}
+
+AntarDasha {
+  lord: Planet
+  start: Date
+  end: Date
+  duration_days: number
+  pratyantardashas?: PratyanDasha[] // populated for current + next MD only
+}
+```
+
+Year constant: `YEAR_DAYS = 365.2425` defined once in `constants.ts`.
+
+Self-verification: sum of all MD duration_days must equal `120 × 365.2425 ± 1`.
+If check fails → `DashaIntegrityError` thrown before any LLM agent runs.
+
+### 3.6 Planner (`planner.ts`)
+
+Deterministic TypeScript map. No LLM by default.
+
+```typescript
+const DOMAIN_AGENTS: Record<QueryType, AgentId[]> = {
+  health:   ['2E', '3C'],
+  wealth:   ['2A', '2C', '3A', '3B'],
+  career:   ['2A', '2F', '3A', '3C'],
+  property: ['2A', '2D', '3A'],
+  marriage: ['2A', '2G', '3C'],
+  generic:  ['2A', '2B', '2C', '2E', '2F', '3A', '3C'],
+  full:     ['2A', '2B', '2C', '2D', '2E', '2F', '2G', '3A', '3B', '3C', '3D'],
+}
+
+const ALWAYS_RUN_FIRST_QUERY = ['1A', '1B', '1C', '1D', '2B', '4X', '4A', '4B', '4C']
+```
+
+Planner output (resolved agent list + rationale) is persisted to
+`pipeline_runs.planner_output` for auditability.
+
+### 3.7 LLM Layer (`llm.ts`)
+
+Thin wrapper around Vercel AI SDK.
+
+```typescript
+interface LLMCallOptions {
+  model:       string           // e.g. 'claude-opus-4-5', 'gpt-4o'
+  provider:    'anthropic' | 'openai' | 'google'
+  prompt:      string
+  temperature: number           // 0 for Wave 4, 0.3 for Wave 2
+  maxTokens:   number
+}
+
+async function callLLM(opts: LLMCallOptions): Promise<LLMResponse>
+// Returns: { content: string, tokenIn: number, tokenOut: number, costUsd: number }
+```
+
+Model and provider are read from `model_config` table (or env defaults).
+Swapping provider requires zero code changes.
+
+### 3.8 Context Assembly (token optimisation)
+
+Every agent receives a **compact context**, not raw accumulated output:
+
+| Agent group | Context injected |
+|---|---|
+| 1A–1D | `chart_summary` (~2KB) + `pre_analysis_alerts` |
+| 2A–2G | `chart_summary` + `wave1_delta_output` only |
+| 3A–3D | `chart_summary` + relevant Wave 2 delta outputs only |
+| 4X | `chart_summary` + all Wave 2/3 delta outputs (produces `fact_summary`) |
+| 4A–4B | `chart_summary` + `fact_summary` |
+| 4C (Opus) | `chart_summary` + `fact_summary` + `4A_output` + `4B_output` |
+
+`chart_summary` is pre-computed once from `ChartInputV1` + `dasha_tree` and stored
+in `Wave1Cache`. It is never re-derived by an LLM agent.
+
+---
+
+## 4. Agent Pipeline Flow
+
+```
+ChartInputV1 JSON
+       │
+       ▼
+[Pre-Analysis + Vimshottari Engine]  ← deterministic, no LLM
+       │ alerts[] + dasha_tree + chart_summary
+       ▼
+[PLANNER]  ← resolves agent list from query types
+       │ execution_plan[]
+       ▼
+┌──────────────────────────────────────────────────────┐
+│ WAVE 1 (parallel)                                    │
+│   1A: Chart Extraction                               │
+│   1B: Nakshatra Analysis                             │
+│   1C: Bala Deep Audit                                │
+│   1D: Relationship Geometry                          │
+└──────────────────┬───────────────────────────────────┘
+                   │ wave1_delta (stored in Wave1Cache)
+                   ▼
+┌──────────────────────────────────────────────────────┐
+│ WAVE 2 (parallel, planner-selected)                  │
+│   2A: Yoga Detection     2B: Ashtakavarga (always)   │
+│   2C: Wealth             2D: Property                │
+│   2E: Health             2F: Career (new)            │
+│   2G: Marriage (new)                                 │
+└──────────────────┬───────────────────────────────────┘
+                   │ wave2_deltas[]
+                   ▼
+┌──────────────────────────────────────────────────────┐
+│ WAVE 3 (parallel, planner-selected)                  │
+│   3A: Cashflow Timeline  3B: Financial Freedom       │
+│   3C: Cross-Channel      3D: Lagna Lord (conditional)│
+└──────────────────┬───────────────────────────────────┘
+                   │ wave3_deltas[]
+                   ▼
+┌──────────────────────────────────────────────────────┐
+│ WAVE 4 (sequential)                                  │
+│   4X: Fact Consolidation  →  fact_summary (~6KB)     │
+│   4A: Error Detection     →  corrections[]           │
+│   ┄┄┄┄┄ HALT GATE (US-4.3) ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  │
+│   │ critical_errors > 0 → HALT (status=halted)       │
+│   │ else → continue                                  │
+│   ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  │
+│   4B: Validation          →  confidence_matrix[]     │
+│   4C: Final Synthesis (Opus) → authoritative report  │
+└──────────────────┬───────────────────────────────────┘
+                   │ synthesis JSON
+                   ▼
+           [Report Renderer]
+                   │ HTML file
+                   ▼
+          reports/{slug}.html  +  DB report_path
+```
+
+---
+
+## 5. Token Optimisation Architecture
+
+The token budget is managed at three levels:
+
+**Level 1 — Pre-compute chart_summary once**
+All 18 agents share the same ~2KB chart_summary prefix.
+No agent ever sees the raw 30KB `ChartInputV1` JSON.
+
+**Level 2 — Delta-only wave outputs**
+Each agent outputs only net-new findings. Agents are explicitly instructed
+not to restate inputs. Wave outputs shrink ~40% vs. naïve re-echo.
+
+**Level 3 — 4X Fact Consolidation before Opus**
+Agent 4X (new, Wave 4, Sonnet model) reads all Wave 1–3 deltas and produces
+a ~6KB `fact_summary`. Agent 4C (Opus) receives only:
+`chart_summary + fact_summary + 4A + 4B` — estimated ~15K tokens vs ~100K without.
+
+**Estimated token savings:**
+| Scenario | Without optimisation | With optimisation |
+|---|---|---|
+| Full run — Wave 4C call | ~100K tokens | ~15K tokens |
+| Follow-up run | ~100K tokens | ~8K tokens (cached W1 + delta W2/3) |
+
+---
+
+## 6. Critical Error Halt Gate (US-4.3)
+
+Between agent 4A (error detection) and 4B (validation), the orchestrator applies a
+severity-based triage. This is a simple conditional — not a separate agent.
+
+### Three-tier response to 4A output
+
+| Severity | Pipeline action | UI behaviour |
+|---|---|---|
+| `minor` | Continue to 4B → 4C; 4C applies correction inline | Green badge: "corrections applied" |
+| `moderate` | Continue to 4B → 4C; 4C applies correction + flags it | Amber badge: "review flagged items" |
+| `critical` | **Halt before 4B**. No report generated. | Red "Run halted" state with action buttons |
+
+### Orchestrator pseudocode
+
+```typescript
+// engine/orchestrator.ts — after 4A completes
+
+const errorReport = await run4A(factSummary, chartSummary)
+await saveWaveOutput(runId, '4A', errorReport)
+
+if (errorReport.error_detection.critical_errors > 0) {
+  const criticalErrors = errorReport.error_detection.errors_found
+    .filter(e => e.severity === 'critical')
+
+  await db.pipelineRun.update({
+    where: { id: runId },
+    data: {
+      status: 'halted_for_review',
+      haltReason: criticalErrors,
+    }
+  })
+
+  emitSSE(runId, {
+    type: 'critical_error',
+    errors: criticalErrors,
+    actions: ['override_continue', 'rerun_from_wave', 'cancel']
+  })
+
+  return  // ← pipeline stops here. No 4B, no 4C, no report.
+}
+
+// Non-critical: continue normally
+const validationReport = await run4B(factSummary, errorReport)
+// ... 4C follows
+```
+
+### Resume after halt
+
+When the practitioner selects an action:
+
+| Action | API call | Behaviour |
+|---|---|---|
+| Override & Continue | `POST /api/runs/{id}/override` | Sets `override_applied = true`, resumes from 4B. Report carries permanent "override" watermark. |
+| Re-run from Wave X | `POST /api/runs/{id}/rerun?from_wave={n}` | Identifies the wave that produced the faulty output (from `affects_waves` in 4A corrections), re-executes from there using same run_id. |
+| Cancel | `POST /api/runs/{id}/cancel` | Sets status to `failed`, preserves completed wave outputs for debugging. |
+
+### What triggers a critical halt
+
+From the existing 4A checks:
+- **CHECK 1**: Yogakaraka classified as malefic or VRY lord
+- **CHECK 3**: 3D ran when it should not (or vice versa)
+- **CHECK 5**: Dasha dates fabricated (should not happen with deterministic engine, but kept as a safety net)
+- Any error where `pipeline_integrity = "critical_failure"`
+
+### DB changes
+
+`pipeline_runs` gains:
+- `status` enum value: `halted_for_review`
+- `halt_reason` (JSONB, nullable): array of critical error objects from 4A
+- `override_applied` (BOOLEAN, default false): true if practitioner forced continuation
+
+---
+
+## 7. Follow-up Query Flow
+
+```
+Follow-up query arrives for existing chart
+       │
+       ▼
+Load Wave1Cache (wave1_delta + chart_summary + dasha_tree)
+       │ skips pre-analysis and Wave 1 entirely
+       ▼
+Planner resolves domain agents from new query type
+       │
+       ▼
+Wave 2 domain agents run (with chart_summary + wave1_delta)
+       ▼
+Wave 3 synthesis agents run (domain-scoped)
+       ▼
+4X Consolidation (new deltas appended to prior fact_summary)
+       ▼
+Verification Agent (sees prior 4C synthesis + conversation history)
+       ▼
+4C Final Synthesis
+       ▼
+RunMessage stored (immutable thread — prior synthesis unchanged)
+```
+
+---
+
+## 8. Deployment Architecture
+
+**Local development:**
+```
+next dev → single process, SQLite via Prisma, reports/ on local disk
+```
+
+**Production (GCP):**
+```
+Cloud Run (Next.js container)
+    ├── Cloud SQL (PostgreSQL)
+    └── Cloud Storage bucket (or persistent disk) for reports/
+```
+
+Single `Dockerfile`, single deploy command. No Celery, no Redis, no queues.
+Next.js background route handlers are sufficient for ~10 reports/month.
+
+---
+
+## 9. Key Design Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Monorepo language | TypeScript only | One language, one deploy, no Python subprocess coupling |
+| LLM wrapper | Vercel AI SDK | Provider-agnostic, works with Claude/OpenAI/Gemini, maintained by Vercel |
+| DB ORM | Prisma | Type-safe, excellent Next.js integration, easy migrations |
+| Dasha computation | Deterministic TS function | Math is exact; LLM-assembled dasha dates are error-prone |
+| Dasha year constant | 365.2425 days | Gregorian mean year; defined once in constants.ts |
+| Wave execution | Parallel within wave, sequential across waves | Matches the dependency structure; parallel maximises speed |
+| 4C input reduction | 4X fact-consolidation (Phase 1) | Largest single cost driver; moved from Phase 2 to Phase 1 |
+| Error handling | Severity triage + halt gate between 4A→4B | Critical errors must not produce a report; minor/moderate are auto-corrected by 4C |
+| Correction approach | 4C self-corrects (no re-routing to upstream agents) | Errors are interpretive, not computational; re-routing would cascade through dependency graph |
+| Report storage | HTML files on disk, path in DB | Simple, portable, no blob-storage complexity |
+| Auth | None (Phase 1) | Single internal user |

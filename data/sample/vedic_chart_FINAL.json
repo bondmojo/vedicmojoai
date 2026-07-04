@@ -1,0 +1,594 @@
+{
+  "meta": {
+    "system": "Vedic (Jyotish) — Lahiri Ayanamsha",
+    "ascendant": "Taurus",
+    "lagna_sign": "Taurus",
+    "lagna_degree": 29.416
+  },
+  "natal_nakshatras": [
+    {
+      "body": "Sun",
+      "sign": "Taurus",
+      "sign_no": 2,
+      "house": 1,
+      "degree": "11°21'",
+      "degree_decimal": 11.35,
+      "nakshatra": "Rohini",
+      "pada": 3,
+      "notes": ""
+    },
+    {
+      "body": "Moon",
+      "sign": "Capricorn",
+      "sign_no": 10,
+      "house": 9,
+      "degree": "14°12'",
+      "degree_decimal": 14.2,
+      "nakshatra": "Shravana",
+      "pada": 1,
+      "notes": ""
+    },
+    {
+      "body": "Mars",
+      "sign": "Aquarius",
+      "sign_no": 11,
+      "house": 10,
+      "degree": "22°04'",
+      "degree_decimal": 22.06,
+      "nakshatra": "Purva Bhadrapada",
+      "pada": 4,
+      "notes": ""
+    },
+    {
+      "body": "Mercury",
+      "sign": "Aries",
+      "sign_no": 1,
+      "house": 12,
+      "degree": "25°36'",
+      "degree_decimal": 25.6,
+      "nakshatra": "Bharani",
+      "pada": 4,
+      "notes": "R"
+    },
+    {
+      "body": "Jupiter",
+      "sign": "Scorpio",
+      "sign_no": 8,
+      "house": 7,
+      "degree": "17°18'",
+      "degree_decimal": 17.3,
+      "nakshatra": "Jyeshtha",
+      "pada": 1,
+      "notes": ""
+    },
+    {
+      "body": "Venus",
+      "sign": "Taurus",
+      "sign_no": 2,
+      "house": 1,
+      "degree": "03°12'",
+      "degree_decimal": 3.2,
+      "nakshatra": "Krittika",
+      "pada": 2,
+      "notes": ""
+    },
+    {
+      "body": "Saturn",
+      "sign": "Capricorn",
+      "sign_no": 10,
+      "house": 9,
+      "degree": "08°54'",
+      "degree_decimal": 8.9,
+      "nakshatra": "Uttara Ashadha",
+      "pada": 3,
+      "notes": ""
+    },
+    {
+      "body": "Rahu",
+      "sign": "Taurus",
+      "sign_no": 2,
+      "house": 1,
+      "degree": "21°30'",
+      "degree_decimal": 21.5,
+      "nakshatra": "Rohini",
+      "pada": 4,
+      "notes": "always retrograde"
+    },
+    {
+      "body": "Ketu",
+      "sign": "Scorpio",
+      "sign_no": 8,
+      "house": 7,
+      "degree": "21°30'",
+      "degree_decimal": 21.5,
+      "nakshatra": "Jyeshtha",
+      "pada": 3,
+      "notes": "always retrograde"
+    }
+  ],
+  "divisional_charts": {
+    "D1_Rasi": {
+      "name": "D1 Rasi",
+      "houses": [
+        {"house": 1, "sign": "Taurus", "occupants": ["Sun", "Venus", "Rahu"]},
+        {"house": 2, "sign": "Gemini", "occupants": []},
+        {"house": 3, "sign": "Cancer", "occupants": []},
+        {"house": 4, "sign": "Leo", "occupants": []},
+        {"house": 5, "sign": "Virgo", "occupants": []},
+        {"house": 6, "sign": "Libra", "occupants": []},
+        {"house": 7, "sign": "Scorpio", "occupants": ["Jupiter", "Ketu"]},
+        {"house": 8, "sign": "Sagittarius", "occupants": []},
+        {"house": 9, "sign": "Capricorn", "occupants": ["Moon", "Saturn"]},
+        {"house": 10, "sign": "Aquarius", "occupants": ["Mars"]},
+        {"house": 11, "sign": "Pisces", "occupants": []},
+        {"house": 12, "sign": "Aries", "occupants": ["Mercury"]}
+      ]
+    },
+    "D4_Chaturthamsa": {
+      "name": "D4 Chaturthamsa",
+      "houses": [
+        {"house": 1, "sign": "Taurus", "occupants": ["Venus"]},
+        {"house": 2, "sign": "Gemini", "occupants": ["Mercury"]},
+        {"house": 3, "sign": "Cancer", "occupants": ["Moon"]},
+        {"house": 4, "sign": "Leo", "occupants": ["Sun"]},
+        {"house": 5, "sign": "Virgo", "occupants": []},
+        {"house": 6, "sign": "Libra", "occupants": ["Rahu"]},
+        {"house": 7, "sign": "Scorpio", "occupants": ["Ketu"]},
+        {"house": 8, "sign": "Sagittarius", "occupants": ["Jupiter"]},
+        {"house": 9, "sign": "Capricorn", "occupants": ["Saturn"]},
+        {"house": 10, "sign": "Aquarius", "occupants": ["Mars"]},
+        {"house": 11, "sign": "Pisces", "occupants": []},
+        {"house": 12, "sign": "Aries", "occupants": []}
+      ]
+    },
+    "D9_Navamsa": {
+      "name": "D9 Navamsa",
+      "houses": [
+        {"house": 1, "sign": "Capricorn", "occupants": ["Moon", "Saturn"]},
+        {"house": 2, "sign": "Aquarius", "occupants": []},
+        {"house": 3, "sign": "Pisces", "occupants": ["Jupiter"]},
+        {"house": 4, "sign": "Aries", "occupants": ["Sun"]},
+        {"house": 5, "sign": "Taurus", "occupants": ["Rahu"]},
+        {"house": 6, "sign": "Gemini", "occupants": ["Mercury"]},
+        {"house": 7, "sign": "Cancer", "occupants": ["Venus"]},
+        {"house": 8, "sign": "Leo", "occupants": []},
+        {"house": 9, "sign": "Virgo", "occupants": ["Mars"]},
+        {"house": 10, "sign": "Libra", "occupants": []},
+        {"house": 11, "sign": "Scorpio", "occupants": ["Ketu"]},
+        {"house": 12, "sign": "Sagittarius", "occupants": []}
+      ]
+    },
+    "D10_Dasamsa": {
+      "name": "D10 Dasamsa",
+      "houses": [
+        {"house": 1, "sign": "Aquarius", "occupants": ["Mars"]},
+        {"house": 2, "sign": "Pisces", "occupants": []},
+        {"house": 3, "sign": "Aries", "occupants": ["Mercury"]},
+        {"house": 4, "sign": "Taurus", "occupants": ["Sun", "Venus", "Rahu"]},
+        {"house": 5, "sign": "Gemini", "occupants": []},
+        {"house": 6, "sign": "Cancer", "occupants": []},
+        {"house": 7, "sign": "Leo", "occupants": []},
+        {"house": 8, "sign": "Virgo", "occupants": []},
+        {"house": 9, "sign": "Libra", "occupants": []},
+        {"house": 10, "sign": "Scorpio", "occupants": ["Jupiter", "Ketu"]},
+        {"house": 11, "sign": "Sagittarius", "occupants": []},
+        {"house": 12, "sign": "Capricorn", "occupants": ["Moon", "Saturn"]}
+      ]
+    },
+    "D30_Trimshamsa": {
+      "name": "D30 Trimshamsa",
+      "houses": [
+        {"house": 1, "sign": "Virgo", "occupants": []},
+        {"house": 2, "sign": "Libra", "occupants": ["Venus"]},
+        {"house": 3, "sign": "Scorpio", "occupants": ["Ketu"]},
+        {"house": 4, "sign": "Sagittarius", "occupants": ["Jupiter"]},
+        {"house": 5, "sign": "Capricorn", "occupants": ["Moon", "Saturn"]},
+        {"house": 6, "sign": "Aquarius", "occupants": ["Rahu"]},
+        {"house": 7, "sign": "Pisces", "occupants": []},
+        {"house": 8, "sign": "Aries", "occupants": ["Sun"]},
+        {"house": 9, "sign": "Taurus", "occupants": []},
+        {"house": 10, "sign": "Gemini", "occupants": ["Mercury"]},
+        {"house": 11, "sign": "Cancer", "occupants": ["Mars"]},
+        {"house": 12, "sign": "Leo", "occupants": []}
+      ]
+    }
+  },
+  "shadbala": [
+    {
+      "planet": "Sun",
+      "total": 452.30,
+      "required": 390,
+      "percent": "116.0%",
+      "six_balas": {
+        "sthana": 112.50,
+        "dig": 18.75,
+        "kala": 98.20,
+        "cheshta": 0.0,
+        "naisargika": 60.0,
+        "drig": 8.60
+      },
+      "ishta": 40,
+      "kashta": 20,
+      "pinda_strength": {"strength_pct": "78%"},
+      "vimsopaka": {"shadvarga": 13.2},
+      "vaiseshikamsa": {"shadvarga": 4}
+    },
+    {
+      "planet": "Moon",
+      "total": 390.15,
+      "required": 360,
+      "percent": "108.4%",
+      "six_balas": {
+        "sthana": 88.75,
+        "dig": 22.50,
+        "kala": 105.60,
+        "cheshta": 0.0,
+        "naisargika": 51.43,
+        "drig": -5.20
+      },
+      "ishta": 35,
+      "kashta": 25,
+      "pinda_strength": {"strength_pct": "71%"},
+      "vimsopaka": {"shadvarga": 11.8},
+      "vaiseshikamsa": {"shadvarga": 3}
+    },
+    {
+      "planet": "Mars",
+      "total": 418.60,
+      "required": 300,
+      "percent": "139.5%",
+      "six_balas": {
+        "sthana": 97.80,
+        "dig": 30.0,
+        "kala": 88.40,
+        "cheshta": 42.60,
+        "naisargika": 42.86,
+        "drig": 12.10
+      },
+      "ishta": 42,
+      "kashta": 18,
+      "pinda_strength": {"strength_pct": "82%"},
+      "vimsopaka": {"shadvarga": 14.6},
+      "vaiseshikamsa": {"shadvarga": 6}
+    },
+    {
+      "planet": "Mercury",
+      "total": 362.44,
+      "required": 420,
+      "percent": "86.3%",
+      "six_balas": {
+        "sthana": 75.20,
+        "dig": 15.60,
+        "kala": 92.30,
+        "cheshta": 38.80,
+        "naisargika": 34.29,
+        "drig": -10.50
+      },
+      "ishta": 28,
+      "kashta": 32,
+      "pinda_strength": {"strength_pct": "55%"},
+      "vimsopaka": {"shadvarga": 10.2},
+      "vaiseshikamsa": {"shadvarga": 2}
+    },
+    {
+      "planet": "Jupiter",
+      "total": 498.72,
+      "required": 390,
+      "percent": "127.9%",
+      "six_balas": {
+        "sthana": 105.30,
+        "dig": 26.25,
+        "kala": 110.80,
+        "cheshta": 0.0,
+        "naisargika": 25.71,
+        "drig": 15.40
+      },
+      "ishta": 45,
+      "kashta": 15,
+      "pinda_strength": {"strength_pct": "88%"},
+      "vimsopaka": {"shadvarga": 16.0},
+      "vaiseshikamsa": {"shadvarga": 7}
+    },
+    {
+      "planet": "Venus",
+      "total": 571.78,
+      "required": 330,
+      "percent": "173.3%",
+      "six_balas": {
+        "sthana": 180.0,
+        "dig": 52.50,
+        "kala": 118.40,
+        "cheshta": 2.01,
+        "naisargika": 17.14,
+        "drig": 6.80
+      },
+      "ishta": 30,
+      "kashta": 30,
+      "pinda_strength": {"strength_pct": "64%"},
+      "vimsopaka": {"shadvarga": 15.4},
+      "vaiseshikamsa": {"shadvarga": 5}
+    },
+    {
+      "planet": "Saturn",
+      "total": 440.22,
+      "required": 300,
+      "percent": "146.7%",
+      "six_balas": {
+        "sthana": 115.60,
+        "dig": 11.25,
+        "kala": 96.70,
+        "cheshta": 0.0,
+        "naisargika": 8.57,
+        "drig": 18.30
+      },
+      "ishta": 38,
+      "kashta": 22,
+      "pinda_strength": {"strength_pct": "75%"},
+      "vimsopaka": {"shadvarga": 14.0},
+      "vaiseshikamsa": {"shadvarga": 5}
+    }
+  ],
+  "ashtakavarga": {
+    "sarvashtakavarga": {
+      "total": 337,
+      "by_sign": [
+        {"sign_no": 1, "sign": "Aries", "points": 24},
+        {"sign_no": 2, "sign": "Taurus", "points": 31},
+        {"sign_no": 3, "sign": "Gemini", "points": 28},
+        {"sign_no": 4, "sign": "Cancer", "points": 26},
+        {"sign_no": 5, "sign": "Leo", "points": 22},
+        {"sign_no": 6, "sign": "Virgo", "points": 29},
+        {"sign_no": 7, "sign": "Libra", "points": 27},
+        {"sign_no": 8, "sign": "Scorpio", "points": 30},
+        {"sign_no": 9, "sign": "Sagittarius", "points": 25},
+        {"sign_no": 10, "sign": "Capricorn", "points": 34},
+        {"sign_no": 11, "sign": "Aquarius", "points": 33},
+        {"sign_no": 12, "sign": "Pisces", "points": 28}
+      ]
+    },
+    "individual_planet_av": [
+      {
+        "planet": "Sun",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 4},
+          {"sign_no": 2, "sign": "Taurus", "points": 5},
+          {"sign_no": 3, "sign": "Gemini", "points": 3},
+          {"sign_no": 4, "sign": "Cancer", "points": 4},
+          {"sign_no": 5, "sign": "Leo", "points": 3},
+          {"sign_no": 6, "sign": "Virgo", "points": 5},
+          {"sign_no": 7, "sign": "Libra", "points": 4},
+          {"sign_no": 8, "sign": "Scorpio", "points": 4},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 3},
+          {"sign_no": 10, "sign": "Capricorn", "points": 5},
+          {"sign_no": 11, "sign": "Aquarius", "points": 5},
+          {"sign_no": 12, "sign": "Pisces", "points": 3}
+        ]
+      },
+      {
+        "planet": "Moon",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 3},
+          {"sign_no": 2, "sign": "Taurus", "points": 5},
+          {"sign_no": 3, "sign": "Gemini", "points": 4},
+          {"sign_no": 4, "sign": "Cancer", "points": 4},
+          {"sign_no": 5, "sign": "Leo", "points": 3},
+          {"sign_no": 6, "sign": "Virgo", "points": 4},
+          {"sign_no": 7, "sign": "Libra", "points": 3},
+          {"sign_no": 8, "sign": "Scorpio", "points": 4},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 4},
+          {"sign_no": 10, "sign": "Capricorn", "points": 6},
+          {"sign_no": 11, "sign": "Aquarius", "points": 5},
+          {"sign_no": 12, "sign": "Pisces", "points": 4}
+        ]
+      },
+      {
+        "planet": "Mars",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 3},
+          {"sign_no": 2, "sign": "Taurus", "points": 4},
+          {"sign_no": 3, "sign": "Gemini", "points": 4},
+          {"sign_no": 4, "sign": "Cancer", "points": 3},
+          {"sign_no": 5, "sign": "Leo", "points": 3},
+          {"sign_no": 6, "sign": "Virgo", "points": 4},
+          {"sign_no": 7, "sign": "Libra", "points": 4},
+          {"sign_no": 8, "sign": "Scorpio", "points": 5},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 3},
+          {"sign_no": 10, "sign": "Capricorn", "points": 6},
+          {"sign_no": 11, "sign": "Aquarius", "points": 6},
+          {"sign_no": 12, "sign": "Pisces", "points": 4}
+        ]
+      },
+      {
+        "planet": "Mercury",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 4},
+          {"sign_no": 2, "sign": "Taurus", "points": 5},
+          {"sign_no": 3, "sign": "Gemini", "points": 5},
+          {"sign_no": 4, "sign": "Cancer", "points": 4},
+          {"sign_no": 5, "sign": "Leo", "points": 3},
+          {"sign_no": 6, "sign": "Virgo", "points": 5},
+          {"sign_no": 7, "sign": "Libra", "points": 4},
+          {"sign_no": 8, "sign": "Scorpio", "points": 5},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 4},
+          {"sign_no": 10, "sign": "Capricorn", "points": 5},
+          {"sign_no": 11, "sign": "Aquarius", "points": 6},
+          {"sign_no": 12, "sign": "Pisces", "points": 5}
+        ]
+      },
+      {
+        "planet": "Jupiter",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 4},
+          {"sign_no": 2, "sign": "Taurus", "points": 5},
+          {"sign_no": 3, "sign": "Gemini", "points": 4},
+          {"sign_no": 4, "sign": "Cancer", "points": 5},
+          {"sign_no": 5, "sign": "Leo", "points": 4},
+          {"sign_no": 6, "sign": "Virgo", "points": 4},
+          {"sign_no": 7, "sign": "Libra", "points": 5},
+          {"sign_no": 8, "sign": "Scorpio", "points": 5},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 5},
+          {"sign_no": 10, "sign": "Capricorn", "points": 4},
+          {"sign_no": 11, "sign": "Aquarius", "points": 4},
+          {"sign_no": 12, "sign": "Pisces", "points": 5}
+        ]
+      },
+      {
+        "planet": "Venus",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 3},
+          {"sign_no": 2, "sign": "Taurus", "points": 4},
+          {"sign_no": 3, "sign": "Gemini", "points": 5},
+          {"sign_no": 4, "sign": "Cancer", "points": 4},
+          {"sign_no": 5, "sign": "Leo", "points": 3},
+          {"sign_no": 6, "sign": "Virgo", "points": 4},
+          {"sign_no": 7, "sign": "Libra", "points": 4},
+          {"sign_no": 8, "sign": "Scorpio", "points": 4},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 3},
+          {"sign_no": 10, "sign": "Capricorn", "points": 5},
+          {"sign_no": 11, "sign": "Aquarius", "points": 4},
+          {"sign_no": 12, "sign": "Pisces", "points": 5}
+        ]
+      },
+      {
+        "planet": "Saturn",
+        "by_sign": [
+          {"sign_no": 1, "sign": "Aries", "points": 3},
+          {"sign_no": 2, "sign": "Taurus", "points": 3},
+          {"sign_no": 3, "sign": "Gemini", "points": 3},
+          {"sign_no": 4, "sign": "Cancer", "points": 2},
+          {"sign_no": 5, "sign": "Leo", "points": 3},
+          {"sign_no": 6, "sign": "Virgo", "points": 3},
+          {"sign_no": 7, "sign": "Libra", "points": 3},
+          {"sign_no": 8, "sign": "Scorpio", "points": 3},
+          {"sign_no": 9, "sign": "Sagittarius", "points": 3},
+          {"sign_no": 10, "sign": "Capricorn", "points": 3},
+          {"sign_no": 11, "sign": "Aquarius", "points": 3},
+          {"sign_no": 12, "sign": "Pisces", "points": 2}
+        ]
+      }
+    ]
+  },
+  "vimshottari_dasha": {
+    "current_maha": "Venus",
+    "current_antar": "Ketu",
+    "current_pratyantar": "Rahu",
+    "tree": {
+      "mahadasha": {
+        "planet": "Venus",
+        "start": "2007-01-03",
+        "end": "2027-01-03",
+        "duration_years": 20,
+        "antardashas": [
+          {
+            "planet": "Venus",
+            "start": "2007-01-03",
+            "end": "2010-05-03",
+            "duration_months": 40
+          },
+          {
+            "planet": "Sun",
+            "start": "2010-05-03",
+            "end": "2011-05-03",
+            "duration_months": 12
+          },
+          {
+            "planet": "Moon",
+            "start": "2011-05-03",
+            "end": "2012-11-03",
+            "duration_months": 20
+          },
+          {
+            "planet": "Mars",
+            "start": "2012-11-03",
+            "end": "2014-01-03",
+            "duration_months": 14
+          },
+          {
+            "planet": "Rahu",
+            "start": "2014-01-03",
+            "end": "2017-01-03",
+            "duration_months": 36
+          },
+          {
+            "planet": "Jupiter",
+            "start": "2017-01-03",
+            "end": "2019-09-03",
+            "duration_months": 32
+          },
+          {
+            "planet": "Saturn",
+            "start": "2019-09-03",
+            "end": "2022-11-03",
+            "duration_months": 38
+          },
+          {
+            "planet": "Mercury",
+            "start": "2022-11-03",
+            "end": "2025-09-03",
+            "duration_months": 34
+          },
+          {
+            "planet": "Ketu",
+            "start": "2025-09-03",
+            "end": "2027-01-03",
+            "duration_months": 16,
+            "pratyantardashas": [
+              {"planet": "Ketu", "start": "2025-09-03", "end": "2025-11-20"},
+              {"planet": "Venus", "start": "2025-11-20", "end": "2026-04-11"},
+              {"planet": "Sun", "start": "2026-04-11", "end": "2026-06-02"},
+              {"planet": "Moon", "start": "2026-06-02", "end": "2026-08-11"},
+              {"planet": "Mars", "start": "2026-08-11", "end": "2026-10-28"},
+              {"planet": "Rahu", "start": "2026-10-28", "end": "2027-01-03"},
+              {"planet": "Jupiter", "start": "2027-01-03", "end": "2027-01-03"}
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "special_lagnas": [
+    {
+      "name": "Sree Lagna",
+      "sign": "Gemini",
+      "house": 2,
+      "degree": "14°00'",
+      "degree_decimal": 14.0,
+      "notes": "Wealth significator lagna; Gemini H2 indicates eloquence and commercial intelligence around wealth accumulation."
+    }
+  ],
+  "karakas": [
+    {
+      "type": "Atma Karaka",
+      "planet": "Mars",
+      "degree": "22°06'",
+      "degree_decimal": 22.06,
+      "sign": "Aquarius",
+      "notes": "Highest degree planet (excluding Rahu/Ketu); soul signifier indicating drive, ambition, assertion, and dharmic purpose through action."
+    }
+  ],
+  "nakshatra_disha": [
+    {"body": "Sun", "nakshatra": "Rohini", "direction": "East"},
+    {"body": "Moon", "nakshatra": "Shravana", "direction": "North"},
+    {"body": "Mars", "nakshatra": "Purva Bhadrapada", "direction": "West"},
+    {"body": "Mercury", "nakshatra": "Bharani", "direction": "West"},
+    {"body": "Jupiter", "nakshatra": "Jyeshtha", "direction": "North"},
+    {"body": "Venus", "nakshatra": "Krittika", "direction": "East"},
+    {"body": "Saturn", "nakshatra": "Uttara Ashadha", "direction": "South"},
+    {"body": "Rahu", "nakshatra": "Rohini", "direction": "East"},
+    {"body": "Ketu", "nakshatra": "Jyeshtha", "direction": "North"}
+  ],
+  "saturn_transits": {
+    "sade_sati": {
+      "active": true,
+      "percent_complete": 57,
+      "start": "2022-04-29",
+      "end": "2029-08-08",
+      "current_phase": "peak — Saturn transiting natal Moon sign (Capricorn)",
+      "notes": "Sade Sati is the 7.5-year transit of Saturn through the 12th, 1st, and 2nd signs from natal Moon. Moon is in Capricorn; Saturn transiting Capricorn constitutes the peak phase."
+    },
+    "ashtama_shani": {
+      "active": false,
+      "notes": "Ashtama Shani is Saturn's transit through the 8th house from natal Moon. Currently not active as Saturn is in Capricorn (natal Moon sign), not in Leo (8th from Capricorn)."
+    }
+  }
+}

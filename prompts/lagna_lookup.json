@@ -1,0 +1,50 @@
+{
+  "Aries": {
+    "yogakaraka": null,
+    "notes": "No classic yogakaraka; Sun rules H5 (trikona) making it a strong functional benefic, but it does not also rule a kendra to qualify as yogakaraka."
+  },
+  "Taurus": {
+    "yogakaraka": "Saturn",
+    "notes": "Saturn rules H9 (Capricorn, trikona) and H10 (Aquarius, kendra), satisfying the dual lordship criterion for yogakaraka."
+  },
+  "Gemini": {
+    "yogakaraka": null,
+    "notes": "Mercury rules H1 (lagna/kendra) and H4 (Virgo, kendra); both are kendras with no trikona lordship, so the yogakaraka condition is not met."
+  },
+  "Cancer": {
+    "yogakaraka": "Mars",
+    "notes": "Mars rules H5 (Scorpio, trikona) and H10 (Aries, kendra), satisfying the dual lordship criterion for yogakaraka."
+  },
+  "Leo": {
+    "yogakaraka": "Mars",
+    "notes": "Mars rules H4 (Scorpio, kendra) and H9 (Aries, trikona), satisfying the dual lordship criterion for yogakaraka."
+  },
+  "Virgo": {
+    "yogakaraka": null,
+    "notes": "Mercury rules H1 (lagna/kendra) and H10 (Gemini, kendra); no trikona lordship, so the yogakaraka condition is not met."
+  },
+  "Libra": {
+    "yogakaraka": "Saturn",
+    "notes": "Saturn rules H4 (Capricorn, kendra) and H5 (Aquarius, trikona), satisfying the dual lordship criterion for yogakaraka."
+  },
+  "Scorpio": {
+    "yogakaraka": null,
+    "notes": "No planet cleanly rules both a kendra and a trikona for Scorpio lagna; Mars rules H1 (kendra) and H6 (maraka zone), Jupiter rules H2 and H5 — no clean yogakaraka emerges."
+  },
+  "Sagittarius": {
+    "yogakaraka": null,
+    "notes": "Jupiter rules H1 (lagna/kendra) and H4 (Pisces, kendra); both are kendras with no trikona lordship, so the yogakaraka condition is not met."
+  },
+  "Capricorn": {
+    "yogakaraka": "Venus",
+    "notes": "Venus rules H5 (Taurus, trikona) and H10 (Libra, kendra), satisfying the dual lordship criterion for yogakaraka."
+  },
+  "Aquarius": {
+    "yogakaraka": "Venus",
+    "notes": "Venus rules H4 (Taurus, kendra) and H9 (Libra, trikona), satisfying the dual lordship criterion for yogakaraka."
+  },
+  "Pisces": {
+    "yogakaraka": null,
+    "notes": "Jupiter rules H1 (lagna/kendra) and H10 (Sagittarius, kendra); both are kendras with no trikona lordship, so the yogakaraka condition is not met."
+  }
+}
