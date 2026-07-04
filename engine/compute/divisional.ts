@@ -183,6 +183,7 @@ export function computeDivisionalCharts(
         sign: getSignName(vargaSign),
         signNumber: vargaSign,
         house,
+        retrograde: planet.retrograde || undefined,
       }
     })
 
@@ -233,6 +234,7 @@ export function computeSingleDivisionalChart(
       sign: getSignName(vargaSign),
       signNumber: vargaSign,
       house,
+      retrograde: planet.retrograde || undefined,
     }
   })
 

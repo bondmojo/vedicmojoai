@@ -52,6 +52,7 @@ export interface DivisionalPlacement {
   sign: string
   signNumber: number
   house: number
+  retrograde?: boolean
 }
 
 /** An arudha pada as placed within a specific chart (for display). */
