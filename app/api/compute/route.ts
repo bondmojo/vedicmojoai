@@ -38,6 +38,10 @@ const ComputeInputSchema = z.object({
     .max(180)
     .describe('Geographic longitude'),
   name: z.string().optional(),
+  sunriseMode: z
+    .enum(['precise', 'jhora'])
+    .optional()
+    .describe('Sunrise convention for time-based lagnas (default: precise)'),
 })
 
 // ─── Route Handler ──────────────────────────────────────────────────
@@ -71,6 +75,7 @@ export async function POST(request: NextRequest) {
       latitude: input.latitude,
       longitude: input.longitude,
       name: input.name,
+      sunriseMode: input.sunriseMode ?? 'precise',
     })
 
     // Compute Vimshottari Dasha from Moon longitude

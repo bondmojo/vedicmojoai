@@ -212,6 +212,91 @@ export function computePlanetPositions(
 }
 
 /**
+ * Computes the sunrise reference point used by the time-based special lagnas
+ * (Bhava/Hora/Ghati Lagna, Varnada, Kunda, Pranapada).
+ *
+ * Two modes are supported:
+ *   "precise" — real astronomical sunrise via Swiss Ephemeris swe_rise_trans.
+ *               Correct for actual sky conditions; may not match JHora.
+ *   "jhora"   — fixed 6:00 AM local time, matching Jagannatha Hora's built-in
+ *               convention. Use this when cross-checking against JHora output.
+ *
+ * Returns the sunrise as a Julian Day (UT) and the Sun's sidereal longitude
+ * at that moment.
+ */
+export function computeSunrise(
+  julianDay: number,
+  latitude: number,
+  longitude: number,
+  timezoneHours: number = 0,
+  mode: 'precise' | 'jhora' = 'precise'
+): { sunriseJulianDay: number; sunLongitudeAtSunrise: number; sunriseFallback: boolean } {
+  ensureEphemerisPath()
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
+
+  let sunriseJD: number
+  let sunriseFallback = false
+
+  const sixAmJD = (): number => {
+    const birthLocal = swisseph.swe_revjul(
+      julianDay + timezoneHours / 24,
+      swisseph.SE_GREG_CAL
+    ) as { year: number; month: number; day: number }
+    const sixAmUT = 6 - timezoneHours
+    return swisseph.swe_julday(
+      birthLocal.year,
+      birthLocal.month,
+      birthLocal.day,
+      sixAmUT,
+      swisseph.SE_GREG_CAL
+    )
+  }
+
+  if (mode === 'jhora') {
+    sunriseJD = sixAmJD()
+  } else {
+    // Precise: real astronomical sunrise via Swiss Ephemeris.
+    const rsmi = (swisseph as { SE_CALC_RISE: number }).SE_CALC_RISE
+    sunriseJD = -1 // sentinel
+    try {
+      const r = swisseph.swe_rise_trans(
+        julianDay - 1,
+        swisseph.SE_SUN,
+        '',
+        swisseph.SEFLG_SWIEPH,
+        rsmi,
+        longitude,
+        latitude,
+        0,
+        0,
+        0
+      ) as { transitTime?: number }
+      if (r && typeof r.transitTime === 'number') {
+        sunriseJD = r.transitTime
+      }
+    } catch {
+      // fall through to fallback below
+    }
+    if (sunriseJD < 0) {
+      // swe_rise_trans failed or returned no transitTime — fall back to 6 AM
+      // and mark the fallback so callers can reflect it in the output.
+      sunriseJD = sixAmJD()
+      sunriseFallback = true
+    }
+  }
+
+  const sunRes = swisseph.swe_calc_ut(
+    sunriseJD,
+    swisseph.SE_SUN,
+    swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL
+  ) as { longitude?: number }
+  let sunLon = sunRes.longitude ?? 0
+  sunLon = ((sunLon % 360) + 360) % 360
+
+  return { sunriseJulianDay: sunriseJD, sunLongitudeAtSunrise: sunLon, sunriseFallback }
+}
+
+/**
  * Gets the ayanamsa value for a given Julian Day.
  */
 export function getAyanamsa(julianDay: number): number {

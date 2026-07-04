@@ -201,6 +201,17 @@ export function computeDivisionalCharts(
 }
 
 /**
+ * Returns the divisional-chart sign (1–12) for an arbitrary sidereal longitude.
+ * Used to project points that have a real longitude (special lagnas, upagrahas)
+ * into a given varga. Falls back to the D1 (rashi) sign for unknown divisions.
+ */
+export function vargaSignForLongitude(longitude: number, division: number): number {
+  const lon = ((longitude % 360) + 360) % 360
+  const varga = VARGA_DEFINITIONS.find((v) => v.division === division)
+  return varga ? varga.computeSign(lon) : Math.floor(lon / 30) + 1
+}
+
+/**
  * Computes a single divisional chart by division number.
  */
 export function computeSingleDivisionalChart(

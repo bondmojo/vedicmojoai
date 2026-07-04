@@ -3,37 +3,38 @@
  */
 
 export interface BirthInput {
-  /** Date of birth as ISO string or 'YYYY-MM-DD' */
   date: string
-  /** Time of birth as 'HH:MM:SS' (24h format) */
   time: string
-  /** Timezone offset in hours (e.g., +5.5 for IST) */
   timezone: number
-  /** Geographic latitude (positive = North, negative = South) */
   latitude: number
-  /** Geographic longitude (positive = East, negative = West) */
   longitude: number
-  /** Client name (optional) */
   name?: string
+  /**
+   * Controls the sunrise reference point used for time-based special lagnas
+   * (Bhava/Hora/Ghati Lagna, Varnada, Kunda, Pranapada):
+   *
+   *   "precise" — uses real astronomical sunrise via Swiss Ephemeris.
+   *               Astronomically accurate; may differ from software like
+   *               Jagannatha Hora that uses the simplified convention.
+   *
+   *   "jhora"   — uses a fixed 6:00 AM local time as sunrise, matching
+   *               the convention used by Jagannatha Hora (PVR Narasimha Rao).
+   *               Useful for cross-verification against JHora charts.
+   *
+   * Defaults to "precise".
+   */
+  sunriseMode?: 'precise' | 'jhora'
 }
 
 export interface PlanetPosition {
   planet: string
-  /** Sidereal longitude 0–360 */
   longitude: number
-  /** Latitude */
   latitude: number
-  /** Daily speed in longitude (negative = retrograde) */
   speed: number
-  /** Is retrograde */
   retrograde: boolean
-  /** Zodiac sign name */
   sign: string
-  /** Sign number (1=Aries ... 12=Pisces) */
   signNumber: number
-  /** Degree within sign (0–30) */
   degreeInSign: number
-  /** House number in D1 (whole sign from lagna) */
   house: number
 }
 
@@ -43,16 +44,27 @@ export interface NakshatraInfo {
   nakshatraIndex: number
   pada: number
   nakshatraLord: string
-  /** Degree within nakshatra (0–13.333) */
   degreeInNakshatra: number
 }
 
 export interface DivisionalPlacement {
   planet: string
-  /** Sign in the divisional chart */
   sign: string
   signNumber: number
-  /** House from divisional lagna */
+  house: number
+}
+
+/** An arudha pada as placed within a specific chart (for display). */
+export interface ChartArudhaMark {
+  abbr: string
+  signNumber: number
+  house_in_chart: number
+}
+
+/** A special lagna / upagraha as placed within a specific chart (for display). */
+export interface ChartPointMark {
+  abbr: string
+  signNumber: number
   house: number
 }
 
@@ -64,6 +76,12 @@ export interface DivisionalChart {
   lagnaSignNumber: number
   lagnaDegreee: number
   planets: DivisionalPlacement[]
+  /** Arudha padas computed within this varga (A1–A12). */
+  arudhaPadas?: ChartArudhaMark[]
+  /** Special lagnas projected into this varga. */
+  specialLagnas?: ChartPointMark[]
+  /** Upagrahas projected into this varga. */
+  upagrahas?: ChartPointMark[]
 }
 
 export interface CharaKaraka {
@@ -74,34 +92,134 @@ export interface CharaKaraka {
 }
 
 export interface AshtakavargaResult {
-  /** Bhinnashtakavarga: per-planet bindus for each sign (planet → 12 values) */
   bav: Record<string, number[]>
-  /** Sarvashtakavarga: total bindus per sign (12 values, index 0=Aries) */
   sav: number[]
-  /** Total SAV points */
   savTotal: number
 }
 
+// ─── New types ───────────────────────────────────────────────────────
+
+export interface Upagraha {
+  name: string
+  abbr: string
+  longitude: number
+  sign: string
+  signNumber: number
+  degreeInSign: number
+  house: number
+}
+
+export interface SpecialLagna {
+  name: string
+  abbr: string
+  longitude: number
+  sign: string
+  signNumber: number
+  degreeInSign: number
+  house: number
+}
+
+export interface ArudhaPada {
+  house: number
+  name: string
+  abbr: string
+  signNumber: number
+  sign: string
+  house_in_chart: number
+}
+
+export interface PindaStrengthEntry {
+  planet: string
+  uchcha_bala: number
+  sapta_varga_bala: number
+  ojha_yugma_bala: number
+  kendradi_bala: number
+  drekana_bala: number
+  total: number
+  pct: number
+  grade: string
+}
+
+export interface TransitPlanet {
+  planet: string
+  longitude: number
+  sign: string
+  signNumber: number
+  degreeInSign: number
+  retrograde: boolean
+  houseFromMoon: number
+  houseFromLagna: number
+}
+
+export interface SadeSatiPeriod {
+  phase: 'rising' | 'peak' | 'setting'
+  phaseSign: string
+  startApprox: string
+  endApprox: string
+  isCurrent: boolean
+}
+
+export interface SadeSatiInfo {
+  active: boolean
+  phase: 'rising' | 'peak' | 'setting' | null
+  saturnSignNumber: number
+  natalMoonSignNumber: number
+  description: string
+  allPeriods: SadeSatiPeriod[]
+}
+
+export interface MoonTransitPeriod {
+  signNumber: number
+  sign: string
+  entryDate: string
+  exitDate: string
+  isCurrent: boolean
+  houseFromMoon: number
+}
+
+export interface AscendantTransitPeriod {
+  signNumber: number
+  sign: string
+  entryDate: string
+  exitDate: string
+  isCurrent: boolean
+  houseFromLagna: number
+}
+
+export interface TransitAnalysis {
+  asOf: string
+  transits: TransitPlanet[]
+  sadeSati: SadeSatiInfo
+  ashtamaShani: boolean
+  kantakaShani: boolean
+  currentMoonSign: string
+  natalMoonSign: string
+  moonTransitSameAsNatal: boolean
+  moonTransits: MoonTransitPeriod[]
+  ascendantTransits: AscendantTransitPeriod[]
+}
+
+// ─── Full chart result ───────────────────────────────────────────────
+
 export interface ComputedChart {
-  /** Input data echoed back */
   input: BirthInput
-  /** Julian Day (UT) */
+  sunriseMode: 'precise' | 'jhora'
+  /** true when precise sunrise was requested but swe_rise_trans failed — 6 AM was used instead */
+  sunriseFallback: boolean
   julianDay: number
-  /** Ayanamsa value used (Lahiri) */
   ayanamsa: number
-  /** Ascendant (lagna) sign */
   lagna: string
   lagnaSignNumber: number
   lagnaLongitude: number
   lagnaDegreeInSign: number
-  /** Planet positions in D1 */
   planets: PlanetPosition[]
-  /** Nakshatra details for all planets */
   nakshatras: NakshatraInfo[]
-  /** Divisional charts */
   divisionalCharts: DivisionalChart[]
-  /** Chara Karakas */
   charaKarakas: CharaKaraka[]
-  /** Ashtakavarga */
   ashtakavarga: AshtakavargaResult
+  upagrahas: Upagraha[]
+  specialLagnas: SpecialLagna[]
+  arudhaPadas: ArudhaPada[]
+  pindaStrength: PindaStrengthEntry[]
+  transits: TransitAnalysis
 }
