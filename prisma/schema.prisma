@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Chart {
+  id            String        @id @default(uuid())
+  clientName    String
+  lagna         String
+  yogakaraka    String?
+  chartJson     Json
+  chartHash     String        @unique
+  moonLongitude Decimal       @db.Decimal(8, 4)
+  birthDatetime DateTime      @db.Timestamptz
+  createdAt     DateTime      @default(now()) @db.Timestamptz
+
+  runs          PipelineRun[]
+
+  @@map("chart")
+}
+
+model PipelineRun {
+  id              String        @id @default(uuid())
+  chartId         String
+  chart           Chart         @relation(fields: [chartId], references: [id])
+  runType         String
+  queryTypes      String[]
+  userQuery       String?
+  isFollowup      Boolean       @default(false)
+  parentRunId     String?
+  parentRun       PipelineRun?  @relation("FollowupChain", fields: [parentRunId], references: [id])
+  childRuns       PipelineRun[] @relation("FollowupChain")
+  plannerOutput   Json?
+  status          String        @default("queued")
+  reportPath      String?
+  totalTokenIn    Int           @default(0)
+  totalTokenOut   Int           @default(0)
+  totalCostUsd    Decimal       @default(0) @db.Decimal(10, 6)
+  haltReason      Json?
+  overrideApplied Boolean       @default(false)
+  createdAt       DateTime      @default(now()) @db.Timestamptz
+  completedAt     DateTime?     @db.Timestamptz
+
+  waveOutputs     WaveOutput[]
+  messages        RunMessage[]
+
+  @@index([chartId])
+  @@index([status])
+  @@map("pipeline_run")
+}
+
+model Wave1Cache {
+  id           String   @id @default(uuid())
+  chartHash    String   @unique
+  chartSummary String
+  wave1Delta   Json
+  dashaTree    Json
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  @@map("wave1_cache")
+}
+
+model WaveOutput {
+  id            String      @id @default(uuid())
+  runId         String
+  run           PipelineRun @relation(fields: [runId], references: [id])
+  agentId       String
+  waveNumber    Int
+  domain        String
+  outputJson    Json?
+  factSummary   String?
+  promptVersion String
+  modelId       String
+  provider      String
+  tokenIn       Int         @default(0)
+  tokenOut      Int         @default(0)
+  costUsd       Decimal     @default(0) @db.Decimal(10, 6)
+  status        String      @default("running")
+  errorMessage  String?
+  startedAt     DateTime    @db.Timestamptz
+  completedAt   DateTime?   @db.Timestamptz
+
+  @@unique([runId, agentId])
+  @@index([runId, domain])
+  @@index([runId, waveNumber])
+  @@map("wave_output")
+}
+
+model RunMessage {
+  id        String      @id @default(uuid())
+  runId     String
+  run       PipelineRun @relation(fields: [runId], references: [id])
+  role      String
+  content   String
+  agentId   String?
+  createdAt DateTime    @default(now()) @db.Timestamptz
+
+  @@index([runId])
+  @@map("run_message")
+}
+
+model ModelConfig {
+  id            String   @id @default(uuid())
+  waveId        String   @unique
+  modelId       String
+  provider      String
+  temperature   Decimal  @db.Decimal(3, 2)
+  maxTokens     Int
+  promptVersion String
+  updatedAt     DateTime @updatedAt @db.Timestamptz
+
+  @@map("model_config")
+}
