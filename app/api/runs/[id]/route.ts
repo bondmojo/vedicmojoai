@@ -19,6 +19,8 @@ export async function GET(
           agentId: true,
           waveNumber: true,
           domain: true,
+          outputJson: true,
+          factSummary: true,
           status: true,
           modelId: true,
           provider: true,
@@ -61,6 +63,17 @@ export async function GET(
     completedAt: run.completedAt,
     agents: run.waveOutputs.map((wo) => ({
       ...wo,
+      costUsd: Number(wo.costUsd),
+    })),
+    waveOutputs: run.waveOutputs.map((wo) => ({
+      agentId: wo.agentId,
+      waveNumber: wo.waveNumber,
+      domain: wo.domain,
+      outputJson: wo.outputJson,
+      factSummary: wo.factSummary,
+      status: wo.status,
+      tokenIn: wo.tokenIn,
+      tokenOut: wo.tokenOut,
       costUsd: Number(wo.costUsd),
     })),
   })

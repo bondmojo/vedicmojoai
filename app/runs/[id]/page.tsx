@@ -159,7 +159,7 @@ export default function RunProgressPage() {
               ))}
             </div>
           </div>
-          {run.status === 'done' && run.reportPath && (
+          {run.status === 'done' && (
             <Link
               href={`/runs/${run.id}/report`}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"

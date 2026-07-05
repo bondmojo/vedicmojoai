@@ -34,8 +34,23 @@ export async function GET(
     async start(controller) {
       const sendEvent = (data: Record<string, unknown>) => {
         if (closed) return
-        const payload = `data: ${JSON.stringify(data)}\n\n`
-        controller.enqueue(encoder.encode(payload))
+        try {
+          const payload = `data: ${JSON.stringify(data)}\n\n`
+          controller.enqueue(encoder.encode(payload))
+        } catch {
+          // Controller already closed — ignore
+          closed = true
+        }
+      }
+
+      const closeStream = () => {
+        if (closed) return
+        closed = true
+        try {
+          controller.close()
+        } catch {
+          // Already closed — ignore
+        }
       }
 
       // Track which agents we've already reported on
@@ -43,6 +58,11 @@ export async function GET(
 
       // Poll loop — check DB for updates every 2 seconds
       const pollInterval = setInterval(async () => {
+        if (closed) {
+          clearInterval(pollInterval)
+          return
+        }
+
         try {
           // Get current run status
           const currentRun = await prisma.pipelineRun.findUnique({
@@ -52,8 +72,7 @@ export async function GET(
 
           if (!currentRun) {
             clearInterval(pollInterval)
-            closed = true
-            controller.close()
+            closeStream()
             return
           }
 
@@ -117,16 +136,14 @@ export async function GET(
               timestamp: new Date().toISOString(),
             })
             clearInterval(pollInterval)
-            closed = true
-            controller.close()
+            closeStream()
           } else if (currentRun.status === 'failed') {
             sendEvent({
               type: 'run_failed',
               timestamp: new Date().toISOString(),
             })
             clearInterval(pollInterval)
-            closed = true
-            controller.close()
+            closeStream()
           } else if (currentRun.status === 'halted_for_review') {
             sendEvent({
               type: 'critical_error',
@@ -135,14 +152,12 @@ export async function GET(
               timestamp: new Date().toISOString(),
             })
             clearInterval(pollInterval)
-            closed = true
-            controller.close()
+            closeStream()
           }
         } catch (error) {
           console.error('SSE poll error:', error)
           clearInterval(pollInterval)
-          closed = true
-          controller.close()
+          closeStream()
         }
       }, 2000)
 
@@ -153,6 +168,11 @@ export async function GET(
         status: run.status,
         timestamp: new Date().toISOString(),
       })
+    },
+
+    cancel() {
+      // Client disconnected — stop polling
+      closed = true
     },
   })
 

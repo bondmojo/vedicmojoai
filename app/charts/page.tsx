@@ -6,6 +6,8 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ChartsPage() {
   const charts = await prisma.chart.findMany({
     orderBy: { createdAt: 'desc' },

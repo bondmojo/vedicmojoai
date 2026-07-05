@@ -91,11 +91,14 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
   const { model, provider, prompt, temperature, maxTokens } = opts
   const startTime = Date.now()
 
+  // OpenAI GPT-5.x, o1, o3 are reasoning models — temperature is not supported.
+  const isOpenAI = provider === 'openai'
+
   // Log request
   console.log(`\n┌─── LLM CALL ───────────────────────────────────────`)
   console.log(`│ Provider: ${provider}`)
   console.log(`│ Model:    ${model}`)
-  console.log(`│ Temp:     ${temperature}`)
+  console.log(`│ Temp:     ${isOpenAI ? 'N/A (OpenAI models do not support custom temperature)' : temperature}`)
   console.log(`│ MaxTok:   ${maxTokens}`)
   console.log(`│ Prompt:   ${prompt.length} chars (${Math.round(prompt.length / 4)} est. tokens)`)
   console.log(`└────────────────────────────────────────────────────`)
@@ -113,7 +116,8 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
     const result = await generateText({
       model: providerModel,
       prompt,
-      temperature,
+      // OpenAI models don't support custom temperature — omit it entirely.
+      ...(isOpenAI ? {} : { temperature }),
       // For newer OpenAI models, don't pass maxTokens (it maps to the deprecated param).
       // Instead pass via providerOptions below.
       ...(isNewOpenAI ? {} : { maxTokens }),

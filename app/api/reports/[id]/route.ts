@@ -1,12 +1,10 @@
 /**
  * API: /api/reports/[id]
- * GET — Serve the HTML report file for a run
+ * GET — Serve the report data for a run (from DB, not disk)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import fs from 'fs/promises'
-import path from 'path'
 
 export async function GET(
   _request: NextRequest,
@@ -15,35 +13,59 @@ export async function GET(
   // id here is the run ID
   const run = await prisma.pipelineRun.findUnique({
     where: { id: params.id },
-    select: { reportPath: true, status: true },
+    include: {
+      chart: { select: { clientName: true, lagna: true } },
+      waveOutputs: {
+        where: { status: 'done' },
+        orderBy: [{ waveNumber: 'asc' }, { agentId: 'asc' }],
+        select: {
+          agentId: true,
+          waveNumber: true,
+          domain: true,
+          outputJson: true,
+          factSummary: true,
+          status: true,
+          tokenIn: true,
+          tokenOut: true,
+          costUsd: true,
+        },
+      },
+    },
   })
 
   if (!run) {
     return NextResponse.json({ error: 'Run not found' }, { status: 404 })
   }
 
-  if (!run.reportPath) {
+  if (run.status !== 'done') {
     return NextResponse.json(
-      { error: 'No report generated for this run', status: run.status },
+      { error: 'Report not ready', status: run.status },
       { status: 404 }
     )
   }
 
-  // Read and serve the HTML file
-  const reportFullPath = path.join(process.cwd(), run.reportPath)
-
-  try {
-    const html = await fs.readFile(reportFullPath, 'utf-8')
-    return new Response(html, {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    })
-  } catch {
-    return NextResponse.json(
-      { error: 'Report file not found on disk' },
-      { status: 404 }
-    )
-  }
+  // Return structured report data from DB
+  return NextResponse.json({
+    id: run.id,
+    clientName: run.chart.clientName,
+    lagna: run.chart.lagna,
+    queryTypes: run.queryTypes,
+    status: run.status,
+    totalTokenIn: run.totalTokenIn,
+    totalTokenOut: run.totalTokenOut,
+    totalCostUsd: Number(run.totalCostUsd),
+    createdAt: run.createdAt,
+    completedAt: run.completedAt,
+    waveOutputs: run.waveOutputs.map((wo) => ({
+      agentId: wo.agentId,
+      waveNumber: wo.waveNumber,
+      domain: wo.domain,
+      outputJson: wo.outputJson,
+      factSummary: wo.factSummary,
+      status: wo.status,
+      tokenIn: wo.tokenIn,
+      tokenOut: wo.tokenOut,
+      costUsd: Number(wo.costUsd),
+    })),
+  })
 }
