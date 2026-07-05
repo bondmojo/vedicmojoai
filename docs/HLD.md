@@ -1,8 +1,38 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.0
-**Last updated:** 2026-07-04
+**Version:** 1.1
+**Last updated:** 2026-07-05
 **Status:** Draft
+
+> **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
+> engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
+> in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.1
+
+The system now organizes around three practitioner-facing features:
+
+1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
+   paths land in a single `UnifiedChart` store: `from-compute` (birth data) and
+   `from-paste` (`ChartInputV1` JSON).
+2. **AI Analysis** — the 4-wave LLM pipeline, now runnable directly against a
+   `UnifiedChart` via `/api/unified-charts/[id]/analyze`. Compute-path charts
+   **skip LLM Wave 1** because the foundation data is already computed
+   deterministically.
+3. **Reporting** — synthesis JSON rendered to an HTML report, served through the
+   report viewer.
+
+Additional structural changes:
+- **Deterministic Wave 1 substrate:** new `engine/compute/` modules — `shadbala.ts`
+  (1C), `relationships.ts` (1D), `jaimini.ts`, `bhavaBala.ts`,
+  `nakshatraRelationships.ts` — plus `D2`, `D3`, `D12` divisional charts.
+- **`UnifiedChart` table** with one JSONB column per domain (see ERD).
+- **`lib/chart-mapper.ts`** maps between `ComputedChart`, `ChartInputV1`, and
+  `UnifiedChart`.
+
+> An **AI report chat** feature (`.kiro/specs/report-ai-chat`) is specified but not
+> yet implemented (no routes or tables exist yet). It is intentionally omitted from
+> the diagrams below and should be added here when built.
 
 ---
 
@@ -89,6 +119,9 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
 | Dasha Timeline | `/charts/[id]/dasha` | Interactive lifetime dasha viewer (mahadasha → antardasha → pratyantar) |
 | Chart Compute | `/compute` | Real-time chart computation from birth data + Save/Load computed charts |
+| Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
+| Unified Chart Detail | `/unified-charts/[id]` | Full domain view of a unified chart + run history |
+| Unified Chart Analyze | `/unified-charts/[id]/analyze` | AI Analysis launcher — query-type + agent selection, model override, 202 redirect |
 
 ### 3.2 API Layer (`/app/api`)
 
@@ -101,7 +134,12 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/compute/save` | POST | Save a computed chart to the database (with dedup via input hash) |
 | `/api/compute/charts` | GET | List all saved computed charts (metadata only) |
 | `/api/compute/charts/[id]` | GET, DELETE | Load or delete a single saved computed chart |
-| `/api/runs` | POST | Start a new pipeline run (returns 202 + run_id) |
+| `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
+| `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` |
+| `/api/unified-charts/from-paste` | POST | **Generate Chart (Path B)** — validate + persist pasted `ChartInputV1` as `source="paste"` |
+| `/api/unified-charts/[id]` | GET, DELETE | Load full domain data / delete a unified chart (cascades runs) |
+| `/api/unified-charts/[id]/analyze` | POST | **AI Analysis** — start pipeline on a unified chart (202 + run_id); skips Wave 1 for compute source |
+| `/api/runs` | POST | Start a new pipeline run against a legacy `Chart` (returns 202 + run_id) |
 | `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
 | `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
 | `/api/reports/[id]` | GET | Serve HTML report file |
@@ -118,12 +156,37 @@ engine/
 ├── llm.ts                # Vercel AI SDK wrapper — provider/model swappable
 ├── chartSummary.ts       # ChartInputV1 + DashaTree → compact ~2KB summary string
 ├── renderer.ts           # synthesis JSON → HTML report file
+├── compute/              # deterministic Swiss Ephemeris engine (no LLM)
+│   ├── index.ts           # computeFullChart() — orchestrates all modules below
+│   ├── planets.ts         # planet longitudes, signs, houses
+│   ├── nakshatras.ts      # nakshatra, pada, sub-lord
+│   ├── divisional.ts      # divisional charts incl. D2, D3, D12 (new) + D4/D7/D9/D10/D30
+│   ├── ashtakavarga.ts    # BAV/SAV
+│   ├── karakas.ts         # Jaimini chara karakas
+│   ├── arudhaPadas.ts     # arudha padas
+│   ├── specialLagnas.ts   # HL, GL, SL, etc.
+│   ├── upagrahas.ts       # Gulika, Mandi + solar-derived upagrahas
+│   ├── pindaStrength.ts   # pinda strength
+│   ├── transits.ts        # transits + Sade Sati
+│   ├── shadbala.ts        # NEW — full 6-component Shadbala (deterministic 1C)
+│   ├── relationships.ts   # NEW — conjunctions, aspects, yuddha, parivartana… (deterministic 1D)
+│   ├── nakshatraRelationships.ts # NEW — sub-lords, depositor chains, parivartana, clusters
+│   ├── jaimini.ts         # NEW — argala, yogi/avayogi, special-lagna aspects
+│   └── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
 └── waves/
-    ├── wave1.ts           # parallel: 1A, 1B, 1C, 1D
+    ├── wave1.ts           # LLM path: 1A, 1B, 1C, 1D (compute path skips these)
     ├── wave2.ts           # parallel, planner-selected: 2A–2G
     ├── wave3.ts           # parallel, planner-selected: 3A–3D
     └── wave4.ts           # sequential: 4X → 4A → 4B → 4C
 ```
+
+**Deterministic Wave 1 (compute path):** For a `source="compute"` unified chart,
+the analyze route strips Wave 1 agents from the execution plan and builds
+`wave1_delta` directly from the chart's deterministic domain columns
+(`planets`, `nakshatras`, `shadbala`, `relationships`, `jaimini`, `bhavaBala`,
+`ashtakavarga`, …). Wave 2 then interprets structured data instead of re-deriving
+geometry via LLM. The legacy `Chart` / paste path still runs the LLM Wave 1 agents
+(1A–1D remain in `AGENT_CATALOGUE` and `ALWAYS_RUN_FIRST_QUERY` in `constants.ts`).
 
 ### 3.4 Pre-Analysis Engine
 
@@ -509,6 +572,67 @@ The **Compute flow** and the **Analysis Pipeline flow** are intentionally indepe
 - `/charts` (POST) → Submit pre-computed ChartInputV1 → `Chart` table → triggers AI pipeline
 
 Future enhancement: A saved computed chart could be exported as `ChartInputV1` format and submitted to the AI pipeline for analysis, bridging the two flows.
+
+---
+
+## 8.2 Unified Chart — Generate Chart + AI Analysis (NEW)
+
+`UnifiedChart` bridges the Compute flow and the Analysis pipeline that section 8.1
+described as separate. A single record holds all domain data (one JSONB column per
+domain) and can be analyzed directly, without re-submitting a `ChartInputV1`.
+
+### Generate Chart (two ingestion paths)
+
+```
+PRACTITIONER
+     │
+     ├── Path A: birth data ─────► POST /api/unified-charts/from-compute
+     │                                 │ computeFullChart() + computeVimshottari()
+     │                                 │ mapComputedToUnified()  (chart-mapper.ts)
+     │                                 ▼
+     │                            UnifiedChart(source="compute", all domain columns filled)
+     │
+     └── Path B: ChartInputV1 JSON ─► POST /api/unified-charts/from-paste
+                                       │ validateChartInput() + mapPastedToUnified()
+                                       ▼
+                                  UnifiedChart(source="paste", chartInputV1 filled, domains null)
+```
+
+Both paths deduplicate on `chartHash` and return `409` with the existing record on
+a duplicate.
+
+### AI Analysis (POST /api/unified-charts/[id]/analyze)
+
+```
+Load UnifiedChart(id)
+     │
+     ├── build ChartInputV1:
+     │     source="paste"   → use stored chartInputV1
+     │     source="compute" → buildChartInputV1FromUnified() (synthesize from domains)
+     │
+     ├── ensure legacy Chart row exists (by chartHash) for PipelineRun.chartId FK
+     │
+     ├── computeVimshottari() + runPreAnalysis() + buildChartSummary()
+     │
+     ├── resolvePlan(queryTypes, isFollowup, alerts)
+     │     source="compute" → strip all Wave 1 agents, mark wave 1 skipped
+     │
+     ├── wave1_delta:
+     │     source="compute" → assembled from domain columns (1A/1B/1C/1D shaped)
+     │     source="paste"   → from Wave1Cache if present, else Wave 1 runs
+     │
+     ├── optional per-tier modelOverride → upsert model_config rows
+     │
+     └── create PipelineRun(chartId, unifiedChartId, status="queued")
+           → executePipeline({ wave1Source: "compute"|"llm", … })  (fire-and-forget)
+           → 202 { runId, waveStrategy: "skip_wave1"|"full_pipeline", executionPlan }
+```
+
+Progress streams over the existing SSE endpoint (`/api/runs/[id]/events`), and the
+resulting report is served by the same Reporting flow (section 3.1 / `/api/reports`).
+
+Follow-up detection: if the unified chart already has a completed run
+(`status="done"`), the new run is flagged `isFollowup` and Wave 1 is not re-run.
 
 ---
 

@@ -1,5 +1,25 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
+**Version:** 1.1
+**Last updated:** 2026-07-05
+**Status:** Draft
+
+> **Maintenance rule:** Whenever the data model changes (new table, column, index,
+> relation, or ingestion path), update this ERD **and** the AI Skills, HLD, and DFD
+> in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.1
+
+- Added the **`UnifiedChart`** table — a single column-per-domain store that backs
+  the **Generate Chart** and **AI Analysis** features. It supersedes the split
+  `Chart` / `SavedChart` model for new work (both legacy tables remain for
+  backward compatibility).
+- `PipelineRun` now links to **both** `Chart` (legacy FK) and `UnifiedChart`
+  (`unifiedChartId`, nullable) so AI Analysis can run against either source.
+- New deterministic domain columns on `UnifiedChart`: `relationships` (1D),
+  `shadbala` (1C), `jaimini`, `bhavaBala` — produced by the compute engine so
+  the corresponding LLM Wave 1 agents can be skipped on the compute path.
+
 ## Complete ERD
 
 ```
@@ -80,6 +100,71 @@
 └──────────────────────┘                     Full ComputedChart
                                              JSON blob (see below)
 ```
+
+---
+
+## UnifiedChart (Generate Chart + AI Analysis backbone)
+
+`UnifiedChart` is the current canonical chart store. A single table holds all
+chart data regardless of how it was ingested, using **one JSONB column per
+domain**. This lets the AI pipeline read exactly the domain it needs and lets the
+compute path skip LLM Wave 1 entirely.
+
+```
+┌───────────────────────────────────────────────┐    1:N (nullable)   ┌──────────────────────┐
+│              UnifiedChart                      │────────────────────▶│     PipelineRun      │
+│  (column-per-domain chart store)              │  unifiedChartId FK  │  "UnifiedChartRuns"  │
+├───────────────────────────────────────────────┤                     └──────────────────────┘
+│ PK id                UUID                      │
+│    name              TEXT   (idx)              │
+│    source            TEXT   "compute"|"paste" (idx) │
+│    birthInput        JSONB? (BirthInput | ChartMeta)│
+│ ── scalar index fields ──                      │
+│    lagna             TEXT   (idx)              │
+│    lagnaLongitude    DEC                       │
+│    moonLongitude     DEC                       │
+│    ayanamsa          DEC                       │
+│    birthDatetime     TSTZ                      │
+│ ── domain JSONB columns (compute engine) ──    │
+│    planets           JSONB?  PlanetPosition[]  │
+│    nakshatras        JSONB?  NakshatraInfo[]   │
+│    divisionalCharts  JSONB?  DivisionalChart[] │
+│    karakas           JSONB?  CharaKaraka[]     │
+│    ashtakavarga      JSONB?  AshtakavargaResult│
+│    upagrahas         JSONB?  Upagraha[]        │
+│    specialLagnas     JSONB?  SpecialLagna[]    │
+│    arudhaPadas       JSONB?  ArudhaPada[]      │
+│    relationships     JSONB?  RelationshipGeometry (1D) │
+│    shadbala          JSONB?  ShadbalResult (1C)│
+│    jaimini           JSONB?  JaiminiGeometry   │
+│    bhavaBala         JSONB?  BhavaBalaResult   │
+│    transits          JSONB?  TransitAnalysis   │
+│    pindaStrength     JSONB?  PindaStrengthEntry[] │
+│    dashaTree         JSONB?  Serialized DashaTree │
+│ ── AI pipeline input ──                        │
+│    chartInputV1      JSONB?  ChartInputV1      │
+│ ── dedup & provenance ──                       │
+│    chartHash         TEXT (U) SHA-256          │
+│    sunriseMode       TEXT   default "precise"  │
+│    createdAt         TSTZ                      │
+│    updatedAt         TSTZ                      │
+└───────────────────────────────────────────────┘
+```
+
+### Two ingestion paths (the `source` column)
+
+| Source | Origin | Domain columns | `chartInputV1` | Wave 1 on AI Analysis |
+|---|---|---|---|---|
+| `compute` | Birth data → deterministic Swiss Ephemeris engine (Path A) | Fully populated | `null` (synthesized on demand) | **Skipped** — `wave1_delta` built from domain columns |
+| `paste` | Practitioner-supplied `ChartInputV1` JSON (Path B) | `null` | Full pasted input | **Full Wave 1–4** LLM pipeline |
+
+- Deduplication: `chartHash` is SHA-256 of the canonical input (birth params for
+  compute, full JSON for paste). Duplicate submissions return the existing record.
+- Format mapping lives in `lib/chart-mapper.ts`
+  (`mapComputedToUnified`, `mapPastedToUnified`, `buildChartInputV1FromUnified`).
+- `relationships`, `shadbala`, `jaimini`, `bhavaBala` are produced by the
+  deterministic engine modules and stand in for the LLM Wave 1 agents (1C/1D)
+  on the compute path.
 
 ---
 
@@ -252,6 +337,12 @@ ComputedChart (root)
 | PipelineRun → WaveOutput | 1:N | Each run produces outputs from multiple AI agents |
 | PipelineRun → RunMessage | 1:N | Each run has a conversation log |
 | PipelineRun → PipelineRun | 1:N (self) | Follow-up runs chain to parent |
-| SavedChart (standalone) | — | Independent computed chart storage |
+| UnifiedChart → PipelineRun | 1:N (nullable) | Each unified chart can back multiple AI analysis runs (`unifiedChartId`) |
+| SavedChart (standalone) | — | Legacy independent computed chart storage (superseded by UnifiedChart) |
 | Wave1Cache (standalone) | — | Caches expensive Wave 1 computations by chartHash |
 | ModelConfig (standalone) | — | AI model configuration per wave/agent |
+
+> **Note:** `PipelineRun` keeps its original required `chartId` FK to the legacy
+> `Chart` table for backward compatibility. When AI Analysis is triggered from a
+> `UnifiedChart`, the analyze route ensures a matching legacy `Chart` row exists
+> (by `chartHash`) and sets `unifiedChartId` on the run as well.

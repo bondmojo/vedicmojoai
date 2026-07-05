@@ -1,8 +1,20 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.0
-**Last updated:** 2026-07-04
+**Version:** 1.1
+**Last updated:** 2026-07-05
 **Status:** Draft
+
+> **Maintenance rule:** Update this DFD alongside any change to processes, data
+> stores, or flows — together with the AI Skills, ERD, and HLD. See
+> `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.1
+
+- Added **P9: Unified Chart Ingestion + Analyze** — the Generate Chart and AI
+  Analysis features backed by the `UnifiedChart` store (`D7`).
+- Added data store **`D7: UnifiedChart`** (column-per-domain).
+- Compute-path unified charts feed `wave1_delta` from deterministic domain columns
+  (no LLM Wave 1); paste-path charts run the full pipeline.
 
 ---
 
@@ -117,6 +129,7 @@ Data Stores:
   D4: WaveOutput     — per-agent delta output, domain tag, token counts
   D5: RunMessage     — conversation thread (role, content, run_id)
   D6: SavedChart     — persisted computed charts (birth data + full chartData JSONB + dashaTree)
+  D7: UnifiedChart   — canonical chart store, column-per-domain JSONB (source=compute|paste)
   FS: reports/       — HTML report files on disk
 ```
 
@@ -509,6 +522,79 @@ BirthInput
 
 ---
 
+## Level 2 — P9: Unified Chart Ingestion + Analyze (NEW)
+
+Backs the **Generate Chart** and **AI Analysis** features. Chart data lands in the
+`UnifiedChart` store (`D7`) via one of two ingestion paths, then AI Analysis runs
+directly against that record.
+
+```
+PRACTITIONER
+     │
+     ├── Path A: birth data (date/time/tz/lat/lon/sunriseMode)
+     │   POST /api/unified-charts/from-compute
+     │        │
+     │        ▼
+     │   ┌────────────────────────────┐
+     │   │ P9.1  COMPUTE + MAP         │
+     │   │ computeFullChart()          │  (Swiss Ephemeris — deterministic)
+     │   │ computeVimshottari()        │
+     │   │ mapComputedToUnified()      │  (lib/chart-mapper.ts)
+     │   └──────────────┬─────────────┘
+     │                  │ UnifiedChart(source="compute", all domain columns)
+     │                  ▼
+     │            D7: UnifiedChart
+     │
+     └── Path B: ChartInputV1 JSON
+         POST /api/unified-charts/from-paste
+              │
+              ▼
+         ┌────────────────────────────┐
+         │ P9.2  VALIDATE + MAP        │
+         │ validateChartInput()        │
+         │ mapPastedToUnified()        │
+         └──────────────┬─────────────┘
+                        │ UnifiedChart(source="paste", chartInputV1; domains null)
+                        ▼
+                  D7: UnifiedChart
+                        │
+                        │ (dedup on chartHash; 409 if exists)
+                        │
+                        │ POST /api/unified-charts/[id]/analyze
+                        ▼
+         ┌───────────────────────────────────────────────┐
+         │ P9.3  ANALYZE (AI pipeline launcher)           │
+         │                                               │
+         │ • build ChartInputV1:                         │
+         │     paste   → stored chartInputV1             │
+         │     compute → buildChartInputV1FromUnified()  │
+         │ • ensure legacy Chart row (by chartHash) ─────┼──► D1: Chart
+         │ • computeVimshottari + preAnalysis +          │
+         │   buildChartSummary                           │
+         │ • resolvePlan(); compute path → strip Wave 1  │
+         │ • wave1_delta:                                │
+         │     compute → from D7 domain columns          │
+         │     paste   → from D3 Wave1Cache (or run W1)  │
+         │ • optional modelOverride → upsert ────────────┼──► model_config
+         │ • create PipelineRun(chartId, unifiedChartId) ┼──► D2: PipelineRun
+         └──────────────┬────────────────────────────────┘
+                        │ 202 { runId, waveStrategy, executionPlan }
+                        ▼
+                  executePipeline()  ──►  P4: Pipeline Engine (Waves 2–4)
+                        │                  (Wave 1 only for paste path)
+                        ▼
+                  D4: WaveOutput → P5: Report Renderer → FS: reports/
+```
+
+**Wave strategy summary:**
+
+| `source` | Wave 1 | `wave1_delta` origin | `wave1Source` flag |
+|---|---|---|---|
+| `compute` | skipped (agents stripped from plan) | deterministic domain columns in `D7` | `"compute"` |
+| `paste` | full LLM Wave 1 (unless cached) | `D3: Wave1Cache` or fresh Wave 1 run | `"llm"` |
+
+---
+
 ## Data Dictionary
 
 | Data Item | Format | Size (approx) | Source | Consumers |
@@ -526,5 +612,7 @@ BirthInput
 | `synthesis_json` | JSON | ~15KB | Agent 4C | Report renderer, RunMessage |
 | `HTML report` | HTML file | ~50–150KB | renderer.ts | Browser, FS |
 | `conversation_history` | JSON array | ~2KB/turn | RunMessage table | Verification Agent |
-| `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, /compute UI |
-| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, /compute UI |
+| `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, UnifiedChart domains, /compute UI |
+| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
+| `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
+| `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
