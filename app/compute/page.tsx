@@ -4,6 +4,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import ChartGrid from './components/ChartGrid'
 import PlanetTable from './components/PlanetTable'
 import NakshatraTable from './components/NakshatraTable'
@@ -56,6 +57,7 @@ interface SavedChartSummary {
 }
 
 export default function ComputePage() {
+  const router = useRouter()
   const [form, setForm] = useState({
     name: 'Mojo',
     date: '1984-05-26',
@@ -73,6 +75,9 @@ export default function ComputePage() {
   // Save chart state
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+
+  // Run AI Analysis state
+  const [analyzeSaving, setAnalyzeSaving] = useState(false)
 
   // Saved charts list state
   const [savedCharts, setSavedCharts] = useState<SavedChartSummary[]>([])
@@ -162,6 +167,43 @@ export default function ComputePage() {
       setSaveMessage('Save failed: Network error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleRunAnalysis() {
+    if (!result) return
+    setAnalyzeSaving(true)
+    setSaveMessage(null)
+
+    try {
+      // Save to UnifiedChart via Path A (compute), then navigate to analyze
+      const res = await fetch('/api/unified-charts/from-compute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name || 'Unnamed Chart',
+          date: form.date,
+          time: form.time,
+          timezone: parseFloat(form.timezone),
+          latitude: parseFloat(form.latitude),
+          longitude: parseFloat(form.longitude),
+          sunriseMode: form.sunriseMode,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.status === 201 || res.status === 409) {
+        // Created or already exists — navigate to analyze page
+        const chartId = data.id
+        router.push(`/unified-charts/${chartId}/analyze`)
+      } else {
+        setSaveMessage(`Failed: ${data.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      setSaveMessage('Failed to save for analysis: Network error')
+    } finally {
+      setAnalyzeSaving(false)
     }
   }
 
@@ -355,6 +397,18 @@ export default function ComputePage() {
                 className="rounded-lg border border-emerald-600 bg-emerald-900/30 px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {saving ? 'Saving...' : 'Save Chart'}
+              </button>
+            )}
+
+            {/* Run AI Analysis Button */}
+            {result && (
+              <button
+                type="button"
+                onClick={handleRunAnalysis}
+                disabled={analyzeSaving}
+                className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {analyzeSaving ? 'Preparing...' : 'Run AI Analysis'}
               </button>
             )}
 
