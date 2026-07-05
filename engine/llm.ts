@@ -89,20 +89,58 @@ function estimateCost(model: string, tokenIn: number, tokenOut: number): number 
  */
 export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
   const { model, provider, prompt, temperature, maxTokens } = opts
+  const startTime = Date.now()
+
+  // Log request
+  console.log(`\n┌─── LLM CALL ───────────────────────────────────────`)
+  console.log(`│ Provider: ${provider}`)
+  console.log(`│ Model:    ${model}`)
+  console.log(`│ Temp:     ${temperature}`)
+  console.log(`│ MaxTok:   ${maxTokens}`)
+  console.log(`│ Prompt:   ${prompt.length} chars (${Math.round(prompt.length / 4)} est. tokens)`)
+  console.log(`└────────────────────────────────────────────────────`)
 
   try {
     const providerModel = getProviderModel(provider, model)
+
+    // OpenAI's newer models (gpt-5.x, o1, etc.) require 'max_completion_tokens'
+    // instead of 'max_tokens'. The Vercel AI SDK maps maxTokens → max_tokens,
+    // which these models reject. Use providerOptions to pass the correct param.
+    const isNewOpenAI = provider === 'openai' && (
+      model.startsWith('gpt-5') || model.startsWith('o1') || model.startsWith('o3')
+    )
 
     const result = await generateText({
       model: providerModel,
       prompt,
       temperature,
-      maxTokens,
+      // For newer OpenAI models, don't pass maxTokens (it maps to the deprecated param).
+      // Instead pass via providerOptions below.
+      ...(isNewOpenAI ? {} : { maxTokens }),
+      ...(isNewOpenAI ? {
+        providerOptions: {
+          openai: {
+            maxCompletionTokens: maxTokens,
+          },
+        },
+      } : {}),
     })
 
+    const elapsed = Date.now() - startTime
     const tokenIn = result.usage?.promptTokens ?? 0
     const tokenOut = result.usage?.completionTokens ?? 0
     const costUsd = estimateCost(model, tokenIn, tokenOut)
+
+    // Log response
+    console.log(`\n┌─── LLM RESPONSE ───────────────────────────────────`)
+    console.log(`│ Provider:  ${provider} / ${model}`)
+    console.log(`│ Status:    SUCCESS`)
+    console.log(`│ Time:      ${(elapsed / 1000).toFixed(2)}s`)
+    console.log(`│ Tokens In: ${tokenIn.toLocaleString()}`)
+    console.log(`│ Tokens Out:${tokenOut.toLocaleString()}`)
+    console.log(`│ Cost:      $${costUsd.toFixed(6)}`)
+    console.log(`│ Output:    ${result.text.length} chars`)
+    console.log(`└────────────────────────────────────────────────────`)
 
     return {
       content: result.text,
@@ -111,9 +149,18 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
       costUsd,
     }
   } catch (error) {
+    const elapsed = Date.now() - startTime
+    const message = error instanceof Error ? error.message : String(error)
+
+    // Log error
+    console.error(`\n┌─── LLM ERROR ──────────────────────────────────────`)
+    console.error(`│ Provider: ${provider} / ${model}`)
+    console.error(`│ Time:     ${(elapsed / 1000).toFixed(2)}s`)
+    console.error(`│ Error:    ${message}`)
+    console.error(`└────────────────────────────────────────────────────`)
+
     if (error instanceof LLMCallError) throw error
 
-    const message = error instanceof Error ? error.message : String(error)
     throw new LLMCallError(
       `LLM call failed: ${message}`,
       provider,
