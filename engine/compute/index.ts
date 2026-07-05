@@ -11,7 +11,7 @@ import {
   getAyanamsa,
 } from './planets'
 import { computeDivisionalCharts, vargaSignForLongitude } from './divisional'
-import { computeNakshatras } from './nakshatras'
+import { computeNakshatras, computeSubLord } from './nakshatras'
 import { computeCharaKarakas } from './karakas'
 import { computeAshtakavarga } from './ashtakavarga'
 import { computeUpagrahas } from './upagrahas'
@@ -20,6 +20,11 @@ import { computeArudhaPadas } from './arudhaPadas'
 import type { ArudhaPlanetInput } from './arudhaPadas'
 import { computePindaStrength } from './pindaStrength'
 import { computeTransits } from './transits'
+import { computeRelationshipGeometry } from './relationships'
+import { computeShadbala } from './shadbala'
+import { computeNakshatraRelationships } from './nakshatraRelationships'
+import { computeJaimini } from './jaimini'
+import { computeBhavaBala } from './bhavaBala'
 
 // Re-export all types
 export type { BirthInput, ComputedChart } from './types'
@@ -37,6 +42,11 @@ export type {
   TransitPlanet,
   TransitAnalysis,
   SadeSatiInfo,
+  RelationshipGeometry,
+  ShadbalResult,
+  NakshatraRelationships,
+  JaiminiGeometry,
+  BhavaBalaResult,
 } from './types'
 
 /**
@@ -189,6 +199,61 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     input.longitude
   )
 
+  // Step 14: Deterministic relationship / strength modules (replaces LLM agents).
+  const sunLon = planets.find((p) => p.planet === 'Sun')?.longitude ?? 0
+  const moonLon = planets.find((p) => p.planet === 'Moon')?.longitude ?? 0
+  const elongation = (((moonLon - sunLon) % 360) + 360) % 360
+  const waxingMoon = elongation < 180
+
+  // Local sunrise as seconds-from-midnight, derived from the sunrise Julian Day
+  // (UT) already computed for the special lagnas: shift by the timezone to get
+  // local JD, then take the day-fraction (+0.5 since JD days begin at noon).
+  const localSunriseJD = sunriseJulianDay + input.timezone / 24
+  const sunriseDayFraction = (((localSunriseJD + 0.5) % 1) + 1) % 1
+  const sunriseSeconds = Math.round(sunriseDayFraction * 86400)
+  // APPROX: half-day day-length assumption (sunset = sunrise + 12h).
+  const sunsetSeconds = sunriseSeconds + 43200
+
+  const relationships = computeRelationshipGeometry(
+    planets,
+    ascendant.signNumber,
+    divisionalCharts,
+    upagrahas
+  )
+
+  const shadbala = computeShadbala(
+    planets,
+    divisionalCharts,
+    birthDateLocal,
+    birthTimeSeconds,
+    sunriseSeconds,
+    sunsetSeconds,
+    ascendant.longitude,
+    ayanamsa,
+    relationships.combustion // FIX-F: single combustion source
+  )
+
+  const lagnaSubLord = computeSubLord(ascendant.longitude)
+  const computedNakshatra = computeNakshatraRelationships(nakshatras, lagnaSubLord)
+
+  const computedJaimini = computeJaimini(
+    planets,
+    ascendant.signNumber,
+    specialLagnas,
+    sunLon,
+    moonLon,
+    relationships.houseLords[1] ?? {}
+  )
+
+  const bhavaBala = computeBhavaBala(
+    shadbala,
+    relationships,
+    planets,
+    ascendant.signNumber,
+    waxingMoon,
+    relationships.combustion // FIX-F: same single combustion source
+  )
+
   return {
     input,
     sunriseMode: sunriseFallback ? 'jhora' : sunriseMode,
@@ -209,5 +274,10 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     arudhaPadas,
     pindaStrength,
     transits,
+    relationships,
+    shadbala,
+    computedNakshatra,
+    computedJaimini,
+    bhavaBala,
   }
 }

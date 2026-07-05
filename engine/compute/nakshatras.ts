@@ -46,6 +46,24 @@ const NAKSHATRA_DATA: { name: string; lord: string }[] = [
   { name: 'Revati', lord: 'Mercury' },
 ]
 
+/**
+ * Vimshottari dasha lords in sequence with their dasha-year allocations.
+ * Total = 120 years. Used to sub-divide each nakshatra span into sub-lords.
+ */
+const VIMSHOTTARI_SEQUENCE: { lord: string; years: number }[] = [
+  { lord: 'Ketu', years: 7 },
+  { lord: 'Venus', years: 20 },
+  { lord: 'Sun', years: 6 },
+  { lord: 'Moon', years: 10 },
+  { lord: 'Mars', years: 7 },
+  { lord: 'Rahu', years: 18 },
+  { lord: 'Jupiter', years: 16 },
+  { lord: 'Saturn', years: 19 },
+  { lord: 'Mercury', years: 17 },
+]
+
+const VIMSHOTTARI_TOTAL_YEARS = 120
+
 // ─── Computation Functions ──────────────────────────────────────────
 
 /**
@@ -63,6 +81,38 @@ export function getPada(longitude: number): number {
   const normalizedLong = ((longitude % 360) + 360) % 360
   const posInNakshatra = normalizedLong % NAKSHATRA_SPAN
   return Math.floor(posInNakshatra / (NAKSHATRA_SPAN / 4)) + 1
+}
+
+/**
+ * Computes the Vimshottari sub-lord for a given sidereal longitude.
+ *
+ * Within a nakshatra's 13°20' span, the nine dasha lords are laid out in
+ * Vimshottari sequence, each occupying a fraction of the span equal to its
+ * dasha years / 120. The sequence starts from the nakshatra's OWN lord (the
+ * lord that opens the nakshatra), then proceeds in the standard order. The
+ * sub-span containing the longitude yields the sub-lord.
+ */
+export function computeSubLord(longitude: number): string {
+  const normalizedLong = ((longitude % 360) + 360) % 360
+  const nakshatraIndex = Math.floor(normalizedLong / NAKSHATRA_SPAN)
+  const posInNakshatra = normalizedLong % NAKSHATRA_SPAN
+  const nakshatraLord = NAKSHATRA_DATA[nakshatraIndex].lord
+
+  // Rotate the sequence to start at the nakshatra's own lord.
+  const startIdx = VIMSHOTTARI_SEQUENCE.findIndex((s) => s.lord === nakshatraLord)
+
+  let cumulative = 0
+  for (let i = 0; i < VIMSHOTTARI_SEQUENCE.length; i++) {
+    const entry = VIMSHOTTARI_SEQUENCE[(startIdx + i) % VIMSHOTTARI_SEQUENCE.length]
+    const subSpan = (entry.years / VIMSHOTTARI_TOTAL_YEARS) * NAKSHATRA_SPAN
+    cumulative += subSpan
+    if (posInNakshatra < cumulative) {
+      return entry.lord
+    }
+  }
+
+  // Floating-point safety: return the last sub-lord in the sequence.
+  return VIMSHOTTARI_SEQUENCE[(startIdx + VIMSHOTTARI_SEQUENCE.length - 1) % VIMSHOTTARI_SEQUENCE.length].lord
 }
 
 /**
@@ -86,6 +136,7 @@ export function computeNakshatraForLongitude(
     pada,
     nakshatraLord: nakshatraData.lord,
     degreeInNakshatra: posInNakshatra,
+    subLord: computeSubLord(normalizedLong),
   }
 }
 

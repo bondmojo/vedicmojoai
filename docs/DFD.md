@@ -98,12 +98,25 @@ PRACTITIONER
 │                    │──── new message ───────────────────────────────► D5: RunMessage
 └────────────────────┘
 
+┌────────────────────┐                                                  │
+│  P8                │                                                  │
+│  CHART COMPUTE     │                                                  │
+│  + SAVE/LOAD       │                                                  │
+│                    │◄─── birth data (date/time/tz/lat/lon) ────── PRACTITIONER
+│  (deterministic    │                                                  │
+│   engine —         │──── ComputedChart + DashaTree ────────────────► PRACTITIONER
+│   no LLM)          │                                                  │
+│                    │──── savedChart (chartData JSONB) ─────────────► D6: SavedChart
+│                    │◄─── loadedChart ─────────────────────────────── D6: SavedChart
+└────────────────────┘
+
 Data Stores:
   D1: Chart          — immutable chart record (chart_id, lagna, chart_json, hash)
   D2: PipelineRun    — run record (status, planner_output, report_path, cost)
   D3: Wave1Cache     — chart_summary, wave1_delta, dasha_tree (keyed by chart_hash)
   D4: WaveOutput     — per-agent delta output, domain tag, token counts
   D5: RunMessage     — conversation thread (role, content, run_id)
+  D6: SavedChart     — persisted computed charts (birth data + full chartData JSONB + dashaTree)
   FS: reports/       — HTML report files on disk
 ```
 
@@ -384,6 +397,118 @@ BROWSER                    API LAYER                    ENGINE / DB
 
 ---
 
+---
+
+## Level 2 — P8: Chart Compute + Save/Load (NEW)
+
+This process is independent from the AI analysis pipeline. It handles real-time
+astronomical chart computation from birth data, and persists/retrieves computed
+charts for future reference.
+
+```
+PRACTITIONER
+     │
+     │ Birth data (date, time, timezone, latitude, longitude, sunriseMode)
+     │ POST /api/compute
+     ▼
+┌───────────────────────────────┐
+│  P8.1                         │
+│  CHART COMPUTATION ENGINE     │
+│  (engine/compute/index.ts)    │
+│                               │
+│  computeFullChart()           │
+│  • Swiss Ephemeris calls      │
+│  • Planetary positions (D1)   │
+│  • Divisional charts          │
+│    (D1, D4, D7, D9, D10, D30)│
+│  • Nakshatras                 │
+│  • Chara Karakas              │
+│  • Ashtakavarga               │
+│  • Upagrahas                  │
+│  • Special Lagnas             │
+│  • Arudha Padas               │
+│  • Pinda Strength             │
+│  • Transits + Sade Sati       │
+│                               │
+│  computeVimshottari()         │
+│  • Full dasha tree            │
+└──────────────┬────────────────┘
+               │ ComputedChart + DashaTree (JSON)
+               │
+               │─────────────────────────────────────► PRACTITIONER (/compute UI)
+               │
+               │ (User clicks "Save Chart")
+               │ POST /api/compute/save
+               ▼
+┌───────────────────────────────┐
+│  P8.2                         │
+│  SAVE CHART                   │
+│  • Generate inputHash         │
+│    (SHA-256 of birth params)  │
+│  • Check for duplicate        │
+│  • Upsert SavedChart record   │
+└──────────────┬────────────────┘
+               │
+               ▼
+         D6: SavedChart
+         ┌──────────────────┐
+         │ id, name         │
+         │ birthDate/Time   │
+         │ timezone, lat/lon│
+         │ lagna, ayanamsa  │
+         │ chartData (JSONB)│◀── Full ComputedChart
+         │ dashaTree (JSONB)│◀── Full DashaTree
+         │ inputHash (uniq) │
+         └────────┬─────────┘
+                  │
+                  │ (User clicks "Load")
+                  │ GET /api/compute/charts or /[id]
+                  ▼
+┌───────────────────────────────┐
+│  P8.3                         │
+│  LOAD CHART                   │
+│  • List: metadata only        │
+│  • Single: full chartData +   │
+│    dashaTree + birth params   │
+│  • Populates form + result    │
+│    in UI (no recomputation)   │
+└──────────────┬────────────────┘
+               │ SavedChart data
+               ▼
+         PRACTITIONER (/compute UI — chart displayed immediately)
+```
+
+### Data flows within Compute engine (P8.1):
+
+```
+BirthInput
+    │
+    ├─► Swiss Ephemeris (swisseph-v2) → Julian Day, Ayanamsa
+    │
+    ├─► computeAscendant()           → Lagna longitude, sign
+    │
+    ├─► computePlanetPositions()     → PlanetPosition[] (9 grahas)
+    │       │
+    │       ├─► computeNakshatras()  → NakshatraInfo[]
+    │       ├─► computeDivisionalCharts() → DivisionalChart[] (D1–D30)
+    │       │       └── Each varga gets:
+    │       │           • planet placements
+    │       │           • arudha padas (per-varga)
+    │       │           • special lagnas (projected)
+    │       │           • upagrahas (projected)
+    │       ├─► computeCharaKarakas() → CharaKaraka[]
+    │       ├─► computeAshtakavarga() → BAV/SAV
+    │       ├─► computeUpagrahas()   → Upagraha[]
+    │       ├─► computeSpecialLagnas() → SpecialLagna[]
+    │       ├─► computeArudhaPadas() → ArudhaPada[]
+    │       ├─► computePindaStrength() → PindaStrengthEntry[]
+    │       └─► computeTransits()    → TransitAnalysis
+    │
+    └─► computeVimshottari(moonLong, birthDate) → DashaTree
+```
+
+---
+
 ## Data Dictionary
 
 | Data Item | Format | Size (approx) | Source | Consumers |
@@ -401,3 +526,5 @@ BROWSER                    API LAYER                    ENGINE / DB
 | `synthesis_json` | JSON | ~15KB | Agent 4C | Report renderer, RunMessage |
 | `HTML report` | HTML file | ~50–150KB | renderer.ts | Browser, FS |
 | `conversation_history` | JSON array | ~2KB/turn | RunMessage table | Verification Agent |
+| `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, /compute UI |
+| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, /compute UI |

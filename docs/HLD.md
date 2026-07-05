@@ -70,6 +70,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 │   - Wave1Cache                                                  │
 │   - RunMessage                                                  │
 │   - ModelConfig                                                 │
+│   - SavedChart (computed charts)                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -87,6 +88,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
 | Dasha Timeline | `/charts/[id]/dasha` | Interactive lifetime dasha viewer (mahadasha → antardasha → pratyantar) |
+| Chart Compute | `/compute` | Real-time chart computation from birth data + Save/Load computed charts |
 
 ### 3.2 API Layer (`/app/api`)
 
@@ -95,6 +97,10 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/charts` | GET, POST | List charts / submit new chart |
 | `/api/charts/[id]` | GET | Chart detail + run history |
 | `/api/charts/[id]/dasha` | GET | Computed dasha tree (current period derived at request time) |
+| `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
+| `/api/compute/save` | POST | Save a computed chart to the database (with dedup via input hash) |
+| `/api/compute/charts` | GET | List all saved computed charts (metadata only) |
+| `/api/compute/charts/[id]` | GET, DELETE | Load or delete a single saved computed chart |
 | `/api/runs` | POST | Start a new pipeline run (returns 202 + run_id) |
 | `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
 | `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
@@ -423,6 +429,86 @@ Cloud Run (Next.js container)
 
 Single `Dockerfile`, single deploy command. No Celery, no Redis, no queues.
 Next.js background route handlers are sufficient for ~10 reports/month.
+
+---
+
+## 8.1 Chart Computation & Persistence Flow (NEW)
+
+Separate from the AI analysis pipeline, the system includes a **deterministic chart computation engine** (`/compute`) that calculates planetary positions, divisional charts, and dasha trees using Swiss Ephemeris. Computed charts can be saved to and loaded from the database.
+
+### Architecture
+
+```
+PRACTITIONER
+     │
+     │  Birth data (date, time, tz, lat/lon)
+     ▼
+┌────────────────────────┐
+│  /compute (UI)         │
+│  Client Component      │
+│  • Input form          │
+│  • Chart visualization │
+│  • Save / Load buttons │
+└──────────┬─────────────┘
+           │ POST /api/compute
+           ▼
+┌────────────────────────┐
+│  Compute Engine        │
+│  (stateless, no DB)    │
+│  computeFullChart()    │
+│  computeVimshottari()  │
+└──────────┬─────────────┘
+           │ ComputedChart + DashaTree
+           ▼
+┌────────────────────────┐
+│  UI displays results   │
+│  (tabs: divisional,    │
+│   planets, nakshatras, │
+│   karakas, ashtaka,    │
+│   dasha, transits,     │
+│   pinda)               │
+└──────────┬─────────────┘
+           │ User clicks "Save Chart"
+           │ POST /api/compute/save
+           ▼
+┌────────────────────────┐           ┌─────────────────────┐
+│  Save API              │─────────►│ D6: SavedChart       │
+│  • Validates input     │           │ (PostgreSQL)         │
+│  • SHA-256 dedup hash  │           │ • birth metadata     │
+│  • Upsert record       │           │ • chartData (JSONB)  │
+│                        │           │ • dashaTree (JSONB)  │
+└────────────────────────┘           └─────────────────────┘
+                                              ▲
+┌────────────────────────┐                    │
+│  Load APIs             │────────────────────┘
+│  GET /compute/charts   │ (list all)
+│  GET /compute/charts/  │ (load single)
+│      [id]              │
+└────────────────────────┘
+```
+
+### Data stored in `SavedChart`
+
+| Field | Type | Purpose |
+|---|---|---|
+| `name` | TEXT | Chart/person identifier |
+| `birthDate`, `birthTime` | TEXT | Original birth input |
+| `timezone`, `latitude`, `longitude` | DECIMAL | Geo-temporal coordinates |
+| `sunriseMode` | TEXT | "precise" or "jhora" |
+| `lagna` | TEXT | Computed ascendant sign (indexed) |
+| `lagnaLongitude`, `moonLongitude`, `ayanamsa` | DECIMAL | Key metadata for quick display |
+| `chartData` | JSONB | **Full `ComputedChart` object** — contains all divisional charts, planets, upagrahas, special lagnas, arudha padas, etc. |
+| `dashaTree` | JSONB | Full Vimshottari dasha tree |
+| `inputHash` | TEXT (unique) | SHA-256 of birth input for dedup |
+
+### Relationship to Analysis Pipeline
+
+The **Compute flow** and the **Analysis Pipeline flow** are intentionally independent:
+
+- `/compute` → Deterministic astronomical calculation → `SavedChart` table
+- `/charts` (POST) → Submit pre-computed ChartInputV1 → `Chart` table → triggers AI pipeline
+
+Future enhancement: A saved computed chart could be exported as `ChartInputV1` format and submitted to the AI pipeline for analysis, bridging the two flows.
 
 ---
 

@@ -3,7 +3,7 @@
  */
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ChartGrid from './components/ChartGrid'
 import PlanetTable from './components/PlanetTable'
 import NakshatraTable from './components/NakshatraTable'
@@ -38,6 +38,23 @@ const TIMEZONES = [
   ['11','UTC+11'],['12','UTC+12 (NZST)'],
 ]
 
+interface SavedChartSummary {
+  id: string
+  name: string
+  birthDate: string
+  birthTime: string
+  timezone: number
+  latitude: number
+  longitude: number
+  sunriseMode: string
+  lagna: string
+  lagnaLongitude: number
+  moonLongitude: number
+  ayanamsa: number
+  createdAt: string
+  updatedAt: string
+}
+
 export default function ComputePage() {
   const [form, setForm] = useState({
     name: 'Mojo',
@@ -53,10 +70,41 @@ export default function ComputePage() {
   const [result, setResult] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('charts')
 
+  // Save chart state
+  const [saving, setSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+
+  // Saved charts list state
+  const [savedCharts, setSavedCharts] = useState<SavedChartSummary[]>([])
+  const [loadingCharts, setLoadingCharts] = useState(false)
+  const [showSavedCharts, setShowSavedCharts] = useState(false)
+  const [loadingChart, setLoadingChart] = useState<string | null>(null)
+
+  // Load saved charts list
+  const fetchSavedCharts = useCallback(async () => {
+    setLoadingCharts(true)
+    try {
+      const res = await fetch('/api/compute/charts')
+      if (res.ok) {
+        const data = await res.json()
+        setSavedCharts(data)
+      }
+    } catch {
+      // Silently fail — list is non-critical
+    } finally {
+      setLoadingCharts(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSavedCharts()
+  }, [fetchSavedCharts])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setSaveMessage(null)
     try {
       const res = await fetch('/api/compute', {
         method: 'POST',
@@ -81,10 +129,157 @@ export default function ComputePage() {
     }
   }
 
+  async function handleSaveChart() {
+    if (!result) return
+    setSaving(true)
+    setSaveMessage(null)
+
+    try {
+      const res = await fetch('/api/compute/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name || 'Unnamed Chart',
+          birthDate: form.date,
+          birthTime: form.time,
+          timezone: parseFloat(form.timezone),
+          latitude: parseFloat(form.latitude),
+          longitude: parseFloat(form.longitude),
+          sunriseMode: form.sunriseMode,
+          chartData: result.chart,
+          dashaTree: result.dashaTree,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        setSaveMessage(data.isUpdate ? 'Chart updated successfully' : 'Chart saved successfully')
+        fetchSavedCharts() // Refresh the list
+      } else {
+        setSaveMessage(`Save failed: ${data.error}`)
+      }
+    } catch (err) {
+      setSaveMessage('Save failed: Network error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleLoadChart(chartId: string) {
+    setLoadingChart(chartId)
+    try {
+      const res = await fetch(`/api/compute/charts/${chartId}`)
+      if (!res.ok) {
+        setError('Failed to load chart')
+        return
+      }
+      const data = await res.json()
+
+      // Populate form with saved birth data
+      setForm({
+        name: data.name,
+        date: data.birthDate,
+        time: data.birthTime,
+        timezone: String(data.timezone),
+        latitude: String(data.latitude),
+        longitude: String(data.longitude),
+        sunriseMode: data.sunriseMode as 'precise' | 'jhora',
+      })
+
+      // Set the result directly (no need to recompute)
+      setResult({
+        success: true,
+        chart: data.chartData,
+        dashaTree: data.dashaTree,
+      })
+      setActiveTab('charts')
+      setShowSavedCharts(false)
+      setSaveMessage(null)
+      setError(null)
+    } catch (err) {
+      setError('Failed to load chart')
+    } finally {
+      setLoadingChart(null)
+    }
+  }
+
+  async function handleDeleteChart(chartId: string) {
+    if (!confirm('Delete this saved chart?')) return
+    try {
+      const res = await fetch(`/api/compute/charts/${chartId}`, { method: 'DELETE' })
+      if (res.ok) {
+        fetchSavedCharts()
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
   return (
     <main className="min-h-screen p-6 bg-gray-950 text-gray-100">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Chart Computation</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Chart Computation</h1>
+          <button
+            onClick={() => setShowSavedCharts(!showSavedCharts)}
+            className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:border-indigo-500 hover:text-white transition-colors"
+          >
+            {showSavedCharts ? 'Hide' : 'Load'} Saved Charts
+            {savedCharts.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-indigo-600/50 text-xs">
+                {savedCharts.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Saved Charts Panel */}
+        {showSavedCharts && (
+          <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+            <h2 className="text-lg font-semibold mb-3">Saved Charts</h2>
+            {loadingCharts ? (
+              <p className="text-gray-400 text-sm">Loading...</p>
+            ) : savedCharts.length === 0 ? (
+              <p className="text-gray-500 text-sm">No saved charts yet. Compute a chart and click Save.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {savedCharts.map((chart) => (
+                  <div
+                    key={chart.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-3 hover:border-indigo-500/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-white truncate">{chart.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">
+                          {chart.lagna}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {chart.birthDate} {chart.birthTime} | Lat: {chart.latitude.toFixed(4)}° Lon: {chart.longitude.toFixed(4)}°
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => handleLoadChart(chart.id)}
+                        disabled={loadingChart === chart.id}
+                        className="rounded px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                      >
+                        {loadingChart === chart.id ? 'Loading...' : 'Load'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteChart(chart.id)}
+                        className="rounded px-3 py-1.5 text-xs font-medium bg-red-900/50 text-red-400 hover:bg-red-900 border border-red-800 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="mb-8 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
@@ -150,6 +345,26 @@ export default function ComputePage() {
               className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               {loading ? 'Computing...' : 'Compute Chart'}
             </button>
+
+            {/* Save Chart Button */}
+            {result && (
+              <button
+                type="button"
+                onClick={handleSaveChart}
+                disabled={saving}
+                className="rounded-lg border border-emerald-600 bg-emerald-900/30 px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {saving ? 'Saving...' : 'Save Chart'}
+              </button>
+            )}
+
+            {/* Save feedback */}
+            {saveMessage && (
+              <span className={`text-sm ${saveMessage.includes('failed') ? 'text-red-400' : 'text-emerald-400'}`}>
+                {saveMessage}
+              </span>
+            )}
+
             {result && (
               <span className="text-sm text-gray-400">
                 Lagna: <strong className="text-white">{result.chart.lagna}</strong> ({result.chart.lagnaDegreeInSign.toFixed(2)}°)

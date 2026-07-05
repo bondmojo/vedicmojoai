@@ -116,3 +116,27 @@ model ModelConfig {
 
   @@map("model_config")
 }
+
+model SavedChart {
+  id            String   @id @default(uuid())
+  name          String
+  birthDate     String
+  birthTime     String
+  timezone      Decimal  @db.Decimal(4, 2)
+  latitude      Decimal  @db.Decimal(10, 7)
+  longitude     Decimal  @db.Decimal(10, 7)
+  sunriseMode   String   @default("precise")
+  lagna         String
+  lagnaLongitude Decimal @db.Decimal(8, 4)
+  moonLongitude Decimal  @db.Decimal(8, 4)
+  ayanamsa      Decimal  @db.Decimal(8, 4)
+  chartData     Json
+  dashaTree     Json?
+  inputHash     String   @unique
+  createdAt     DateTime @default(now()) @db.Timestamptz
+  updatedAt     DateTime @updatedAt @db.Timestamptz
+
+  @@index([name])
+  @@index([lagna])
+  @@map("saved_chart")
+}

@@ -45,6 +45,7 @@ export interface NakshatraInfo {
   pada: number
   nakshatraLord: string
   degreeInNakshatra: number
+  subLord: string
 }
 
 export interface DivisionalPlacement {
@@ -200,6 +201,257 @@ export interface TransitAnalysis {
   ascendantTransits: AscendantTransitPeriod[]
 }
 
+// ─── Shadbala (1C) ───────────────────────────────────────────────────
+
+export interface ShadbalComponent {
+  sthana: number
+  dig: number
+  kaala: number
+  cheshta: number
+  naisargika: number
+  drik: number
+  total: number
+}
+
+export interface ShadbalPlanet {
+  planet: string
+  components: ShadbalComponent
+
+  // Sthana sub-components
+  ucchaBala: number
+  saptaVargaBala: number
+  ojhaYugmaBala: number
+  kendradiBala: number
+  drekkanaBala: number
+
+  // Kaala sub-components
+  natonnata: number
+  pakshaBala: number
+  tribhagaBala: number
+  abdaBala: number
+  masaBala: number
+  varaBala: number
+  horaBala: number
+
+  cheshtaBala: number
+  naisargikaBala: number
+  drikBala: number
+
+  // Derived
+  totalVirupas: number
+  requiredRupas: number
+  totalRupas: number
+  strengthRatio: number
+  grade: 'Strong' | 'Average' | 'Weak'
+  gradePct: number
+
+  // Ishta/Kashta
+  ishtaPhala: number
+  kashtaPhala: number
+  beneficRatio: number
+
+  // Vimsopaka
+  vimsopakaScore: number
+
+  // Retro effect classification
+  retroEffect: 'brightening' | 'stationary' | 'internalised' | 'direct_normal' | 'near_combustion_exception'
+}
+
+export interface ShadbalResult {
+  planets: ShadbalPlanet[]
+  strengthRanking: { rank: number; planet: string; ratio: number }[]
+  computedAt: string
+}
+
+// ─── Relationship Geometry (1D) ──────────────────────────────────────
+
+export interface Conjunction {
+  planets: string[]
+  sign: string
+  signNumber: number
+  house: number
+  orb: number
+  isSandhi?: boolean
+  involvesUpagraha?: boolean
+  upagrahaAbbrs?: string[]
+  gulikaAffliction?: boolean
+}
+
+export interface AspectEdge {
+  from: string
+  fromHouse: number
+  toHouse: number
+  toSign: number
+  toPlanets: string[]
+  toUpagrahas: string[]
+  type: string
+  strength: number
+  school: 'parashari' | 'jaimini_optional'
+}
+
+export interface RashiAspectEdge {
+  fromSign: string
+  fromSignNumber: number
+  fromHouse: number
+  toSign: string
+  toSignNumber: number
+  toHouse: number
+  toPlanets: string[]
+  type: 'movable_to_fixed' | 'fixed_to_movable' | 'dual_to_dual'
+}
+
+export interface PlanetaryWar {
+  planet_a: string
+  planet_b: string
+  separation_deg: number
+  winner: string
+  loser: string
+  intense: boolean
+}
+
+export interface Parivartana {
+  planet_a: string
+  sign_a: string
+  house_a: number
+  planet_b: string
+  sign_b: string
+  house_b: number
+  exchange_type: 'maha' | 'dainya' | 'kahala' | 'simple'
+}
+
+export interface Stellium {
+  sign: string
+  signNumber: number
+  house: number
+  planets: string[]
+  count: number
+  isStrong: boolean
+}
+
+export interface CombustionResult {
+  planet: string
+  degreeFromSun: number
+  combust: boolean
+  cazimi: boolean
+  nearCombust: boolean
+  threshold: number
+  retrogradeThresholdApplied: boolean
+  moonStrictCombust?: boolean
+}
+
+export interface AvasthaResult {
+  planet: string
+  avastha: 'Bala' | 'Kumara' | 'Yuva' | 'Vriddha' | 'Mrita'
+  avasthaStrength: 'VeryWeak' | 'Weak' | 'Moderate' | 'Strong'
+}
+
+export interface GandantaResult {
+  planet: string
+  gandanta: boolean
+  junctionPoint?: string
+  degreesFromJunction?: number
+}
+
+export interface SandhiResult {
+  planet: string
+  sandhi: boolean
+  type?: 'ingress' | 'egress'
+  degreeInSign: number
+}
+
+export interface UpagrahaPlacement {
+  abbr: string
+  name: string
+  signNumber: number
+  house: number
+}
+
+export interface HouseLordships {
+  [division: number]: {
+    [house: number]: string
+  }
+}
+
+export interface RelationshipGeometry {
+  conjunctions: Conjunction[]
+  aspects: AspectEdge[]
+  rashiAspects: RashiAspectEdge[]
+  grahaYuddha: PlanetaryWar[]
+  mutualReception: Parivartana[]
+  stelliums: Stellium[]
+  combustion: CombustionResult[]
+  avastha: AvasthaResult[]
+  gandanta: GandantaResult[]
+  sandhi: SandhiResult[]
+  upagrahaPlacements: UpagrahaPlacement[]
+  houseLords: HouseLordships
+  computedAt: string
+}
+
+// ─── Nakshatra Relationships ─────────────────────────────────────────
+
+export interface NakshatraAxisEntry {
+  planet: string
+  nakshatra: string
+  pada: number
+  nakshatraLord: string
+  subLord: string
+}
+
+export interface NakshatraRelationships {
+  subLords: { planet: string; subLord: string }[]
+  depositorChains: { planet: string; chain: string[]; selfReinforcing: boolean }[]
+  nakshatraParivartana: { planet_a: string; planet_b: string }[]
+  clusters: { nakshatra: string; nakshatraLord: string; planets: string[]; count: number }[]
+  rahuKetuAxis: { rahu: NakshatraAxisEntry; ketu: NakshatraAxisEntry }
+  nakshatraLordGroups: Record<string, string[]>
+  computedAt: string
+}
+
+// ─── Jaimini Geometry ────────────────────────────────────────────────
+
+export interface ArgalaEntry {
+  targetSign: number
+  targetHouse: number
+  argalaFrom: number
+  argalaPlanets: string[]
+  type: 'primary' | 'secondary'
+  kind: 'argala'
+}
+
+export interface VirodhaArgalaEntry {
+  targetSign: number
+  counterFrom: number
+  counterPlanets: string[]
+  neutralizes: number
+}
+
+export interface JaiminiGeometry {
+  argala: ArgalaEntry[]
+  virodhaArgala: VirodhaArgalaEntry[]
+  yogiPoint: { longitude: number; signNumber: number; nakshatra: string; yogiPlanet: string }
+  avayogiPoint: { longitude: number; signNumber: number; nakshatra: string; avayogiPlanet: string }
+  specialLagnaAspects: { lagna: string; signNumber: number; aspectsHouses: number[] }[]
+  lordRelationshipMap: { lordA: string; houseA: number; lordB: string; houseB: number; relationship: 'kendra' | 'trikona' | 'kendra_trikona' | 'none' }[]
+  computedAt: string
+}
+
+// ─── Bhava Bala ──────────────────────────────────────────────────────
+
+export interface BhavaBalaHouse {
+  house: number
+  bhavadhipatiBala: number
+  bhavaDigBala: number
+  bhavaDrishtiBala: number
+  total: number
+  rupas: number
+}
+
+export interface BhavaBalaResult {
+  houses: BhavaBalaHouse[]
+  computedAt: string
+}
+
 // ─── Full chart result ───────────────────────────────────────────────
 
 export interface ComputedChart {
@@ -223,4 +475,10 @@ export interface ComputedChart {
   arudhaPadas: ArudhaPada[]
   pindaStrength: PindaStrengthEntry[]
   transits: TransitAnalysis
+  // ─── Batch 1 additions (always populated by computeFullChart) ───
+  relationships: RelationshipGeometry
+  shadbala: ShadbalResult
+  computedNakshatra: NakshatraRelationships
+  computedJaimini: JaiminiGeometry
+  bhavaBala: BhavaBalaResult
 }

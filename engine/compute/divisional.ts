@@ -141,14 +141,66 @@ function computeD30Sign(longitude: number): number {
   }
 }
 
+/**
+ * D2 — Hora (Wealth, Prosperity)
+ * Each sign divided into 2 parts of 15° each.
+ * For odd signs: 0–15° → Leo (5), 15–30° → Cancer (4).
+ * For even signs: 0–15° → Cancer (4), 15–30° → Leo (5).
+ */
+function computeD2Sign(longitude: number): number {
+  const signNumber = Math.floor(longitude / 30) + 1
+  const degreeInSign = longitude % 30
+  const isOdd = signNumber % 2 === 1
+  const firstHalf = degreeInSign < 15
+
+  if (isOdd) {
+    return firstHalf ? 5 : 4 // Leo then Cancer
+  } else {
+    return firstHalf ? 4 : 5 // Cancer then Leo
+  }
+}
+
+/**
+ * D3 — Drekkana (Siblings, Courage)
+ * Each sign divided into 3 parts of 10° each.
+ * 0–10° → same sign; 10–20° → 5th sign from it; 20–30° → 9th sign from it.
+ */
+function computeD3Sign(longitude: number): number {
+  const signNumber = Math.floor(longitude / 30) + 1
+  const degreeInSign = longitude % 30
+  const part = Math.floor(degreeInSign / 10) // 0–2
+
+  const offsets = [0, 4, 8] // same, 5th, 9th
+  const resultSign = ((signNumber - 1 + offsets[part]) % 12) + 1
+  return resultSign
+}
+
+/**
+ * D12 — Dwadasamsa (Parents, Ancestry)
+ * Each sign divided into 12 parts of 2°30' each.
+ * part = floor(degreeInSign / 2.5) (0–11).
+ * resultSign = ((signNumber - 1 + part) % 12) + 1
+ */
+function computeD12Sign(longitude: number): number {
+  const signNumber = Math.floor(longitude / 30) + 1
+  const degreeInSign = longitude % 30
+  const part = Math.floor(degreeInSign / 2.5) // 0–11
+
+  const resultSign = ((signNumber - 1 + part) % 12) + 1
+  return resultSign
+}
+
 // ─── Chart Registry ─────────────────────────────────────────────────
 
 const VARGA_DEFINITIONS: VargaDefinition[] = [
   { division: 1, name: 'Rashi', shortName: 'D1', computeSign: computeD1Sign },
+  { division: 2, name: 'Hora', shortName: 'D2', computeSign: computeD2Sign },
+  { division: 3, name: 'Drekkana', shortName: 'D3', computeSign: computeD3Sign },
   { division: 4, name: 'Chaturthamsa', shortName: 'D4', computeSign: computeD4Sign },
   { division: 7, name: 'Saptamsa', shortName: 'D7', computeSign: computeD7Sign },
   { division: 9, name: 'Navamsa', shortName: 'D9', computeSign: computeD9Sign },
   { division: 10, name: 'Dashamsa', shortName: 'D10', computeSign: computeD10Sign },
+  { division: 12, name: 'Dwadasamsa', shortName: 'D12', computeSign: computeD12Sign },
   { division: 30, name: 'Trimshamsa', shortName: 'D30', computeSign: computeD30Sign },
 ]
 

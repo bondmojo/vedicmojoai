@@ -216,3 +216,63 @@ Load Wave1Cache → Planner (follow-up mode) → Wave 2 (domain subset)
 → Wave 3 (domain subset) → 4X (incremental) → Verification Agent
 → 4A → HALT GATE → 4B → 4C
 ```
+
+---
+
+## AI Skills (Kiro IDE)
+
+The project includes two Kiro AI skills (`.kiro/skills/`) that guide AI-assisted development across the frontend and backend. These skills encode project-specific conventions, patterns, and architectural decisions so that AI tooling produces code consistent with this pipeline.
+
+### Skill: AI Frontend (`ai-frontend.md`)
+
+Covers the Next.js/React layer that consumes pipeline output:
+
+| Area | What It Covers |
+|---|---|
+| SSE Consumption | `EventSource` pattern for real-time run progress, event type handling, cleanup |
+| Run Progress UI | Wave-grouped agent status, token/cost display, halt state with override actions |
+| Report Viewer | Server Component iframe rendering, toolbar with metadata |
+| Chart Visualization | 10 compute components (North/South Indian, Dasha, Ashtakavarga, etc.) |
+| Form Patterns | Query type selection, agent preview, 202 redirect flow |
+| State Management | Local state + SSE-driven updates, no global store |
+| Accessibility | Semantic HTML, non-color-only status indicators, disabled states |
+
+**When to reference:** Building or modifying any UI page, adding new chart visualizations, changing the run progress experience, or connecting to new SSE events.
+
+### Skill: AI Backend (`ai-backend.md`)
+
+Covers the LLM pipeline engine and all supporting infrastructure:
+
+| Area | What It Covers |
+|---|---|
+| LLM Layer | Single gateway (`callLLM`), Vercel AI SDK, provider factory, cost estimation |
+| Orchestrator | Parallel fan-out, sequential waves, context accumulation, DB writes, halt gate |
+| Planner | Deterministic agent resolution, domain→agent map, conditional logic (3D) |
+| Context Assembly | Per-wave token-optimized context injection strategy |
+| Prompt Engineering | Rules for structured JSON output, temperature tiers, anti-hallucination constraints |
+| Model Management | Runtime model swap via `model_config` table, tier assignments |
+| Halt Gate | Critical error detection (4A), halt/resume/override flow |
+| Compute Engine | Swiss Ephemeris calculations, pure function rules |
+| Adding Agents | 7-step checklist for introducing new pipeline agents |
+
+**When to reference:** Adding new agents, modifying prompt files, changing orchestrator behavior, updating model assignments, or debugging pipeline execution.
+
+### Relationship to Agent Catalogue
+
+The agent catalogue (this document) defines **what** the pipeline does — the 18 agents, their inputs/outputs, routing, and execution order. The AI skills define **how** to implement changes:
+
+- **Agents.md** = architecture reference (read-only at runtime)
+- **ai-backend.md** = implementation guide for engine/pipeline code
+- **ai-frontend.md** = implementation guide for UI/UX code
+
+### All Kiro Skills
+
+| Skill File | Scope |
+|---|---|
+| `coding-standards.md` | TypeScript style, naming, error types, git conventions |
+| `nextjs-project-structure.md` | Directory layout, key conventions, dependency direction |
+| `engine-pipeline.md` | Pipeline execution rules, dasha computation, model tiers |
+| `database-prisma.md` | Schema, constraints, Prisma usage, indexes |
+| `docker-deployment.md` | Docker/Cloud Run setup, env vars, health checks |
+| `ai-frontend.md` | AI-assisted frontend development patterns |
+| `ai-backend.md` | AI-assisted backend/pipeline development patterns |
