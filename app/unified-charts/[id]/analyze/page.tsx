@@ -20,6 +20,35 @@ const QUERY_TYPES = [
   { id: 'full', label: 'Full Analysis', description: 'All agents — comprehensive report' },
 ] as const
 
+// ─── Model / Provider Options ───────────────────────────────────────
+
+const PROVIDERS = [
+  { id: 'anthropic', label: 'Anthropic' },
+  { id: 'openai', label: 'OpenAI' },
+] as const
+
+const MODELS_BY_PROVIDER: Record<string, { id: string; label: string; tier: string; cost: string }[]> = {
+  anthropic: [
+    { id: 'claude-opus-4-5', label: 'Claude Opus 4.5', tier: 'Final Synthesis (4C)', cost: '$15/$75 per 1M' },
+    { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', tier: 'Specialists & QA (2–4)', cost: '$3/$15 per 1M' },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', tier: 'Foundation (Wave 1)', cost: '$0.8/$4 per 1M' },
+  ],
+  openai: [
+    { id: 'gpt-5.5', label: 'GPT-5.5', tier: 'Premium', cost: '$5/$20 per 1M' },
+    { id: 'gpt-5.4', label: 'GPT-5.4', tier: 'General purpose', cost: '$2.5/$10 per 1M' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', tier: 'Fast/cheap', cost: '$0.15/$0.6 per 1M' },
+  ],
+}
+
+type ModelPreset = 'default' | 'budget' | 'premium' | 'custom'
+
+const MODEL_PRESETS: { id: ModelPreset; label: string; description: string }[] = [
+  { id: 'default', label: 'Default (Recommended)', description: 'Haiku for Wave 1, Sonnet for 2–4, Opus for final synthesis' },
+  { id: 'budget', label: 'Budget', description: 'Haiku for all waves — fast and cheap, lower quality' },
+  { id: 'premium', label: 'Premium', description: 'Sonnet for all waves, Opus for final — highest quality' },
+  { id: 'custom', label: 'Custom', description: 'Choose provider and model per wave tier' },
+]
+
 interface ChartMeta {
   id: string
   name: string
@@ -39,6 +68,13 @@ export default function AnalyzePage() {
   const [forceRerunWave1, setForceRerunWave1] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Model selection state
+  const [modelPreset, setModelPreset] = useState<ModelPreset>('default')
+  const [customProvider, setCustomProvider] = useState('anthropic')
+  const [customFoundationModel, setCustomFoundationModel] = useState('claude-haiku-4-5')
+  const [customSpecialistModel, setCustomSpecialistModel] = useState('claude-sonnet-4-5')
+  const [customSynthesisModel, setCustomSynthesisModel] = useState('claude-opus-4-5')
 
   useEffect(() => {
     fetch(`/api/unified-charts/${chartId}`)
@@ -65,6 +101,28 @@ export default function AnalyzePage() {
     setError(null)
     setLoading(true)
 
+    // Build model override config based on preset
+    let modelOverride: Record<string, { provider: string; model: string }> | undefined
+    if (modelPreset === 'budget') {
+      modelOverride = {
+        foundation: { provider: 'anthropic', model: 'claude-haiku-4-5' },
+        specialist: { provider: 'anthropic', model: 'claude-haiku-4-5' },
+        synthesis: { provider: 'anthropic', model: 'claude-haiku-4-5' },
+      }
+    } else if (modelPreset === 'premium') {
+      modelOverride = {
+        foundation: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+        specialist: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+        synthesis: { provider: 'anthropic', model: 'claude-opus-4-5' },
+      }
+    } else if (modelPreset === 'custom') {
+      modelOverride = {
+        foundation: { provider: customProvider, model: customFoundationModel },
+        specialist: { provider: customProvider, model: customSpecialistModel },
+        synthesis: { provider: customProvider, model: customSynthesisModel },
+      }
+    }
+
     try {
       const res = await fetch(`/api/unified-charts/${chartId}/analyze`, {
         method: 'POST',
@@ -73,6 +131,7 @@ export default function AnalyzePage() {
           queryTypes: selectedTypes.length > 0 ? selectedTypes : ['generic'],
           userQuery: userQuery || undefined,
           forceRerunWave1,
+          modelOverride,
         }),
       })
 
@@ -165,6 +224,117 @@ export default function AnalyzePage() {
               className="w-full rounded-lg bg-gray-900 border border-gray-700 p-3 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               placeholder="e.g., When is the best period for career growth in the next 5 years?"
             />
+          </section>
+
+          {/* Model / LLM Selection */}
+          <section>
+            <h2 className="text-lg font-medium mb-3">Model & LLM</h2>
+
+            {/* Presets */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {MODEL_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setModelPreset(preset.id)}
+                  className={`rounded-lg border p-3 text-left transition-all ${
+                    modelPreset === preset.id
+                      ? 'border-indigo-500 bg-indigo-900/20'
+                      : 'border-gray-700 hover:border-gray-500'
+                  }`}
+                >
+                  <span className="font-medium text-sm">{preset.label}</span>
+                  <p className="text-xs text-gray-500 mt-1">{preset.description}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Custom model selection */}
+            {modelPreset === 'custom' && (
+              <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Provider</label>
+                  <select
+                    value={customProvider}
+                    onChange={(e) => {
+                      setCustomProvider(e.target.value)
+                      // Reset models to first available for new provider
+                      const models = MODELS_BY_PROVIDER[e.target.value]
+                      if (models) {
+                        setCustomFoundationModel(models[models.length - 1].id)
+                        setCustomSpecialistModel(models[Math.min(1, models.length - 1)].id)
+                        setCustomSynthesisModel(models[0].id)
+                      }
+                    }}
+                    className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  >
+                    {PROVIDERS.map((p) => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Foundation (Wave 1)
+                    </label>
+                    <select
+                      value={customFoundationModel}
+                      onChange={(e) => setCustomFoundationModel(e.target.value)}
+                      className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    >
+                      {MODELS_BY_PROVIDER[customProvider]?.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-600 mt-1">Agents 1A–1D</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Specialists (Wave 2–3)
+                    </label>
+                    <select
+                      value={customSpecialistModel}
+                      onChange={(e) => setCustomSpecialistModel(e.target.value)}
+                      className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    >
+                      {MODELS_BY_PROVIDER[customProvider]?.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-600 mt-1">Agents 2A–3D, 4X, 4A, 4B</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Final Synthesis (4C)
+                    </label>
+                    <select
+                      value={customSynthesisModel}
+                      onChange={(e) => setCustomSynthesisModel(e.target.value)}
+                      className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    >
+                      {MODELS_BY_PROVIDER[customProvider]?.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-600 mt-1">Agent 4C (report)</p>
+                  </div>
+                </div>
+
+                {/* Cost indicator */}
+                <div className="text-xs text-gray-500 border-t border-gray-700 pt-3">
+                  <span className="font-medium text-gray-400">Estimated cost per model:</span>
+                  <div className="flex flex-wrap gap-3 mt-1">
+                    {MODELS_BY_PROVIDER[customProvider]?.map((m) => (
+                      <span key={m.id}>{m.label}: {m.cost}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Options (paste-path only) */}

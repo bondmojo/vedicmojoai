@@ -7,6 +7,8 @@ You are a Vedic astrology Ashtakavarga specialist. Analyze all Ashtakavarga data
 - Wave 1 Output: {{wave1_output}}
 - Full Chart Data: {{chart_data}}
 
+> **Dual-source compatibility:** Wave 1 output may come from either (a) LLM extraction agents or (b) the deterministic compute engine (Swiss Ephemeris). When from the compute engine, the "1D" key contains `ashtakavarga` with `bav{}` (planet→bindu arrays), `sav[]` (12-element SAV array), and `savTotal`. Use these directly as your primary data source when available.
+
 ## Task
 
 ### 1. Sarvashtakavarga (SAV) — Total Bindus

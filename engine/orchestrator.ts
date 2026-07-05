@@ -23,6 +23,38 @@ import type {
 } from '@/lib/types'
 import { AGENT_CATALOGUE } from './constants'
 import { callLLM, readPromptFile } from './llm'
+
+// ─── Compute Engine Preamble ────────────────────────────────────────
+// Injected before wave1Delta when data comes from the deterministic compute engine
+// rather than LLM Wave 1 agents. Instructs Wave 2+ agents on how to read the format.
+
+const COMPUTE_ENGINE_PREAMBLE = `
+NOTE: This Wave 1 data comes from the DETERMINISTIC COMPUTE ENGINE (Swiss Ephemeris),
+not from LLM extraction agents. The data is structured differently but is MORE ACCURATE
+than LLM-extracted output. Here is how to read it:
+
+- "1A" contains: planets[] (PlanetPosition with longitude, sign, signNumber, house, degreeInSign, retrograde, speed),
+  nakshatras[] (NakshatraInfo with planet, nakshatra, pada, nakshatraLord, subLord),
+  divisionalCharts[] (DivisionalChart with division, lagna, lagnaSignNumber, planets[], arudhaPadas[], specialLagnas[]),
+  karakas[] (CharaKaraka with planet, karaka, karakaAbbr, degreeInSign),
+  specialLagnas[], upagrahas[], arudhaPadas[].
+
+- "1B" contains: nakshatras[] — same NakshatraInfo array with nakshatra, pada, nakshatraLord, subLord per planet.
+
+- "1C" contains: shadbala (ShadbalResult with planets[] containing totalVirupas, requiredRupas, strengthRatio, grade,
+  ishtaPhala, kashtaPhala, components {sthana, dig, kaala, cheshta, naisargika, drik}),
+  bhavaBala (BhavaBalaResult with houses[]), pindaStrength[].
+
+- "1D" contains: relationships (RelationshipGeometry with conjunctions[], aspects[], rashiAspects[],
+  grahaYuddha[], mutualReception[], stelliums[], combustion[], avastha[], gandanta[], sandhi[],
+  upagrahaPlacements[], houseLords{}),
+  jaimini (JaiminiGeometry with argala[], virodhaArgala[], yogiPoint, avayogiPoint),
+  ashtakavarga (AshtakavargaResult with bav{}, sav[], savTotal).
+
+USE THESE FIELDS DIRECTLY. Do NOT re-derive conjunctions, aspects, or exchanges — the "1D" relationships
+object is the single source of truth. Planet positions in "1A" use numeric degrees (longitude 0–360,
+degreeInSign 0–30) — convert as needed for your analysis.
+`.trim()
 import { getRelevantWave2ForWave3 } from './waves/wave2'
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -36,6 +68,8 @@ export interface OrchestratorInput {
   dashaTree: DashaTree
   executionPlan: ExecutionPlan
   wave1Delta: Record<string, unknown> | null
+  /** Whether wave1Delta came from the compute engine or LLM agents. */
+  wave1Source?: 'compute' | 'llm'
   /** Callback for SSE event emission. */
   emitEvent: (event: SSEEvent) => void
 }
@@ -44,6 +78,8 @@ interface AgentContext {
   chartSummary: string
   alerts: PreAnalysisAlert[]
   wave1Delta: Record<string, unknown> | null
+  /** Whether wave1Delta came from the compute engine ("compute") or LLM agents ("llm"). */
+  wave1Source: 'compute' | 'llm'
   wave2Deltas: Record<string, unknown>
   wave3Deltas: Record<string, unknown>
   factSummary: string | null
@@ -72,6 +108,7 @@ export async function executePipeline(input: OrchestratorInput): Promise<void> {
     chartSummary: input.chartSummary,
     alerts: input.alerts,
     wave1Delta: input.wave1Delta,
+    wave1Source: input.wave1Source ?? 'llm',
     wave2Deltas: {},
     wave3Deltas: {},
     factSummary: null,
@@ -426,14 +463,24 @@ function assemblePrompt(
   } else if (agentId.startsWith('2')) {
     // Wave 2: + wave1_delta
     if (context.wave1Delta) {
-      parts.push('--- WAVE 1 FOUNDATION OUTPUT ---')
+      if (context.wave1Source === 'compute') {
+        parts.push('--- WAVE 1 FOUNDATION OUTPUT (from Compute Engine) ---')
+        parts.push(COMPUTE_ENGINE_PREAMBLE)
+      } else {
+        parts.push('--- WAVE 1 FOUNDATION OUTPUT ---')
+      }
       parts.push(JSON.stringify(context.wave1Delta, null, 1))
       parts.push('')
     }
   } else if (agentId.startsWith('3')) {
     // Wave 3: + wave1_delta + relevant wave2 deltas (domain-scoped)
     if (context.wave1Delta) {
-      parts.push('--- WAVE 1 FOUNDATION OUTPUT ---')
+      if (context.wave1Source === 'compute') {
+        parts.push('--- WAVE 1 FOUNDATION OUTPUT (from Compute Engine) ---')
+        parts.push(COMPUTE_ENGINE_PREAMBLE)
+      } else {
+        parts.push('--- WAVE 1 FOUNDATION OUTPUT ---')
+      }
       parts.push(JSON.stringify(context.wave1Delta, null, 1))
       parts.push('')
     }
@@ -585,6 +632,7 @@ export async function resumeFromHalt(
     chartSummary: cache?.chartSummary ?? '',
     alerts: [],
     wave1Delta: cache?.wave1Delta as Record<string, unknown> | null,
+    wave1Source: 'llm',
     wave2Deltas: {},
     wave3Deltas: {},
     factSummary: null,

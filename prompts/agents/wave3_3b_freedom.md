@@ -9,6 +9,8 @@ You are a Vedic astrology financial independence specialist. Assess the native's
 - Full Chart Data: {{chart_data}}
 - Pre-Analysis Alerts: {{pre_analysis_alerts}}
 
+> **Dual-source compatibility:** Wave 1 output may come from the deterministic compute engine (Swiss Ephemeris) with raw structured arrays (planets[], relationships{}, shadbala{}, divisionalCharts[]). When present, use numeric positions and pre-computed geometry from "1D".relationships directly.
+
 ## Context
 - Lagna (Ascendant): {{lagna}}
 - Yogakaraka: {{yogakaraka}}

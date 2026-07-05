@@ -50,8 +50,9 @@ const COST_PER_MILLION: Record<string, { input: number; output: number }> = {
   'claude-opus-4-5': { input: 15, output: 75 },
   'claude-sonnet-4-5': { input: 3, output: 15 },
   'claude-haiku-4-5': { input: 0.8, output: 4 },
-  'gpt-4o': { input: 2.5, output: 10 },
-  'gpt-4o-mini': { input: 0.15, output: 0.6 },
+  'gpt-5.5': { input: 5, output: 20 },
+  'gpt-5.4': { input: 2.5, output: 10 },
+  'gpt-5.4-mini': { input: 0.15, output: 0.6 },
 }
 
 function estimateCost(model: string, tokenIn: number, tokenOut: number): number {

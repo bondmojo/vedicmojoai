@@ -28,12 +28,28 @@ import type { ChartInputV1, QueryType, SSEEvent } from '@/lib/types'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
+const ModelOverrideSchema = z.object({
+  foundation: z.object({
+    provider: z.enum(['anthropic', 'openai']),
+    model: z.string(),
+  }),
+  specialist: z.object({
+    provider: z.enum(['anthropic', 'openai']),
+    model: z.string(),
+  }),
+  synthesis: z.object({
+    provider: z.enum(['anthropic', 'openai']),
+    model: z.string(),
+  }),
+}).optional()
+
 const AnalyzeInputSchema = z.object({
   queryTypes: z
     .array(z.enum(['generic', 'health', 'wealth', 'career', 'property', 'marriage', 'full']))
     .min(1, 'At least one query type is required'),
   userQuery: z.string().optional(),
   forceRerunWave1: z.boolean().optional().default(false),
+  modelOverride: ModelOverrideSchema,
 })
 
 // ─── Route Handler ──────────────────────────────────────────────────
@@ -58,7 +74,7 @@ export async function POST(
     )
   }
 
-  const { queryTypes, userQuery, forceRerunWave1 } = parsed.data
+  const { queryTypes, userQuery, forceRerunWave1, modelOverride } = parsed.data
 
   // Load the unified chart
   const unifiedChart = await prisma.unifiedChart.findUnique({
@@ -167,19 +183,65 @@ export async function POST(
     forceRerunWave1: isComputePath ? false : forceRerunWave1,
   })
 
-  // For compute path, check/populate Wave1Cache so orchestrator skips Wave 1
+  // For compute-path: always strip Wave 1 agents from the plan and
+  // build wave1Delta from the UnifiedChart's stored domain columns.
+  if (isComputePath) {
+    executionPlan.agents = executionPlan.agents.filter(
+      (a) => !a.startsWith('1')
+    ) as typeof executionPlan.agents
+    if (!executionPlan.skipped_waves.includes(1)) {
+      executionPlan.skipped_waves.push(1)
+    }
+  }
+
+  // For compute path, read chart data from DB to build wave1Delta
   let wave1Delta: Record<string, unknown> | null = null
 
-  if (isComputePath && !forceRerunWave1) {
-    // Compute-path charts already have deterministic foundation data.
-    // Check if Wave1Cache exists; if not, the orchestrator will still
-    // skip Wave 1 agents since data is already in the unified chart.
-    const cache = await getWave1Cache(chartHash)
-    if (cache) {
-      wave1Delta = cache.wave1Delta as Record<string, unknown> | null
+  if (isComputePath) {
+    // Build wave1Delta from the UnifiedChart's deterministic domain columns.
+    // This provides the same context Wave 2+ agents would get from LLM Wave 1.
+    wave1Delta = {
+      '1A': {
+        agent_id: '1A',
+        domain: 'foundation',
+        version: 'deterministic',
+        source: 'compute_engine',
+        planets: unifiedChart.planets,
+        nakshatras: unifiedChart.nakshatras,
+        divisionalCharts: unifiedChart.divisionalCharts,
+        karakas: unifiedChart.karakas,
+        specialLagnas: unifiedChart.specialLagnas,
+        upagrahas: unifiedChart.upagrahas,
+        arudhaPadas: unifiedChart.arudhaPadas,
+      },
+      '1B': {
+        agent_id: '1B',
+        domain: 'foundation',
+        version: 'deterministic',
+        source: 'compute_engine',
+        nakshatras: unifiedChart.nakshatras,
+      },
+      '1C': {
+        agent_id: '1C',
+        domain: 'foundation',
+        version: 'deterministic',
+        source: 'compute_engine',
+        shadbala: unifiedChart.shadbala,
+        bhavaBala: unifiedChart.bhavaBala,
+        pindaStrength: unifiedChart.pindaStrength,
+      },
+      '1D': {
+        agent_id: '1D',
+        domain: 'foundation',
+        version: 'deterministic',
+        source: 'compute_engine',
+        relationships: unifiedChart.relationships,
+        jaimini: unifiedChart.jaimini,
+        ashtakavarga: unifiedChart.ashtakavarga,
+      },
     }
   } else {
-    // Paste path: check cache normally
+    // Paste path: check Wave1Cache normally
     const skipWave1 = await shouldSkipWave1(chartHash, forceRerunWave1)
     if (skipWave1) {
       const cache = await getWave1Cache(chartHash)
@@ -213,6 +275,46 @@ export async function POST(
     })
   }
 
+  // ─── Apply model overrides (if provided) ────────────────────────
+
+  if (modelOverride) {
+    // Map wave tier → agent IDs
+    const foundationAgents = ['1A', '1B', '1C', '1D']
+    const specialistAgents = ['2A', '2B', '2C', '2D', '2E', '2F', '2G', '3A', '3B', '3C', '3D', '4X', '4A', '4B', 'verification']
+    const synthesisAgents = ['4C']
+
+    const overrides: { waveId: string; provider: string; modelId: string }[] = []
+
+    for (const agentId of foundationAgents) {
+      overrides.push({ waveId: agentId, provider: modelOverride.foundation.provider, modelId: modelOverride.foundation.model })
+    }
+    for (const agentId of specialistAgents) {
+      overrides.push({ waveId: agentId, provider: modelOverride.specialist.provider, modelId: modelOverride.specialist.model })
+    }
+    for (const agentId of synthesisAgents) {
+      overrides.push({ waveId: agentId, provider: modelOverride.synthesis.provider, modelId: modelOverride.synthesis.model })
+    }
+
+    // Upsert ModelConfig entries for this run's agents
+    for (const override of overrides) {
+      await prisma.modelConfig.upsert({
+        where: { waveId: override.waveId },
+        update: {
+          modelId: override.modelId,
+          provider: override.provider,
+        },
+        create: {
+          waveId: override.waveId,
+          modelId: override.modelId,
+          provider: override.provider,
+          temperature: override.waveId === '4C' ? 0 : override.waveId.startsWith('4') ? 0 : 0.3,
+          maxTokens: override.waveId === '4C' ? 16384 : 8192,
+          promptVersion: 'v1.0',
+        },
+      })
+    }
+  }
+
   // ─── Execute pipeline (fire and forget) ─────────────────────────
 
   const noopEmit = (_event: SSEEvent) => {
@@ -228,6 +330,7 @@ export async function POST(
     dashaTree,
     executionPlan,
     wave1Delta,
+    wave1Source: isComputePath ? 'compute' : 'llm',
     emitEvent: noopEmit,
   }).catch(async (error) => {
     console.error(`Pipeline run ${run.id} failed:`, error)
