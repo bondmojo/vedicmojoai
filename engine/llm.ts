@@ -72,7 +72,7 @@ function estimateCost(model: string, tokenIn: number, tokenOut: number): number 
  * This is the ONLY function in the codebase that talks to LLM APIs.
  * All 18 agents route through here.
  *
- * @param opts - Call options (model, provider, prompt, temperature, maxTokens).
+ * @param opts - Call options (model, provider, prompt, temperature, maxTokens/maxOutputTokens).
  * @returns LLM response with content, token counts, and estimated cost.
  * @throws {LLMCallError} On provider errors, timeouts, or invalid responses.
  *
@@ -91,14 +91,19 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
   const { model, provider, prompt, temperature, maxTokens } = opts
   const startTime = Date.now()
 
-  // OpenAI GPT-5.x, o1, o3 are reasoning models — temperature is not supported.
-  const isOpenAI = provider === 'openai'
+  // OpenAI: all models — temperature not supported (reasoning models require default=1).
+  // Anthropic Claude 4.x+: models only accept temperature=1 (the API default); passing
+  //   any other value (including 0) returns "Unsupported value: temperature does not
+  //   support 0 with this model. Only the default (1) value is supported."
+  const skipTemperature =
+    provider === 'openai' ||
+    (provider === 'anthropic' && /claude-(opus|sonnet|haiku)-[4-9]/.test(model))
 
   // Log request
   console.log(`\n┌─── LLM CALL ───────────────────────────────────────`)
   console.log(`│ Provider: ${provider}`)
   console.log(`│ Model:    ${model}`)
-  console.log(`│ Temp:     ${isOpenAI ? 'N/A (OpenAI models do not support custom temperature)' : temperature}`)
+  console.log(`│ Temp:     ${skipTemperature ? 'N/A (model uses default temperature)' : temperature}`)
   console.log(`│ MaxTok:   ${maxTokens}`)
   console.log(`│ Prompt:   ${prompt.length} chars (${Math.round(prompt.length / 4)} est. tokens)`)
   console.log(`└────────────────────────────────────────────────────`)
@@ -106,33 +111,21 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
   try {
     const providerModel = getProviderModel(provider, model)
 
-    // OpenAI's newer models (gpt-5.x, o1, etc.) require 'max_completion_tokens'
-    // instead of 'max_tokens'. The Vercel AI SDK maps maxTokens → max_tokens,
-    // which these models reject. Use providerOptions to pass the correct param.
-    const isNewOpenAI = provider === 'openai' && (
-      model.startsWith('gpt-5') || model.startsWith('o1') || model.startsWith('o3')
-    )
-
+    // v7 SDK: maxTokens → maxOutputTokens. temperature=1 is explicit for models that
+    // reject other values (OpenAI reasoning, Anthropic Claude 4.x+).
     const result = await generateText({
       model: providerModel,
       prompt,
-      // OpenAI models don't support custom temperature — omit it entirely.
-      ...(isOpenAI ? {} : { temperature }),
-      // For newer OpenAI models, don't pass maxTokens (it maps to the deprecated param).
-      // Instead pass via providerOptions below.
-      ...(isNewOpenAI ? {} : { maxTokens }),
-      ...(isNewOpenAI ? {
-        providerOptions: {
-          openai: {
-            maxCompletionTokens: maxTokens,
-          },
-        },
-      } : {}),
+      // Models that only accept the default temperature: explicitly pass 1 rather than
+      // omitting it — the SDK defaults to 0 when omitted, which these APIs reject.
+      ...(skipTemperature ? { temperature: 1 } : { temperature }),
+      maxOutputTokens: maxTokens,
     })
 
     const elapsed = Date.now() - startTime
-    const tokenIn = result.usage?.promptTokens ?? 0
-    const tokenOut = result.usage?.completionTokens ?? 0
+    // v7: usage fields renamed promptTokens→inputTokens, completionTokens→outputTokens
+    const tokenIn = result.usage?.inputTokens ?? 0
+    const tokenOut = result.usage?.outputTokens ?? 0
     const costUsd = estimateCost(model, tokenIn, tokenOut)
 
     // Log response

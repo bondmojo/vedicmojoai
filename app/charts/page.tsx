@@ -27,7 +27,7 @@ export default async function ChartsPage() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Charts</h1>
           <Link
-            href="/charts/new"
+            href="/compute"
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
           >
             + New Chart

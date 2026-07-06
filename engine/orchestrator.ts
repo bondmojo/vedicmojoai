@@ -23,6 +23,7 @@ import type {
 } from '@/lib/types'
 import { AGENT_CATALOGUE } from './constants'
 import { callLLM, readPromptFile } from './llm'
+import { renderReport, renderMarkdownReport } from './renderer'
 
 // ─── Compute Engine Preamble ────────────────────────────────────────
 // Injected before wave1Delta when data comes from the deterministic compute engine
@@ -70,6 +71,8 @@ export interface OrchestratorInput {
   wave1Delta: Record<string, unknown> | null
   /** Whether wave1Delta came from the compute engine or LLM agents. */
   wave1Source?: 'compute' | 'llm'
+  /** Output format for the generated report file. */
+  outputFormat?: 'html' | 'markdown'
   /** Callback for SSE event emission. */
   emitEvent: (event: SSEEvent) => void
 }
@@ -214,6 +217,34 @@ export async function executePipeline(input: OrchestratorInput): Promise<void> {
       if (agentId === '4B') {
         const output = await getLatestOutput(runId, '4B')
         context.agent4BOutput = output?.outputJson as Record<string, unknown> | null
+      }
+
+      // After 4C: render report file to disk
+      if (agentId === '4C') {
+        const output4C = await getLatestOutput(runId, '4C')
+        const synthesisJson = (output4C?.outputJson ?? {}) as Record<string, unknown>
+        const runRecord = await prisma.pipelineRun.findUniqueOrThrow({
+          where: { id: runId },
+          include: { chart: true },
+        })
+        const renderInput = {
+          runId,
+          chartId: runRecord.chartId,
+          clientName: runRecord.chart.clientName,
+          queryTypes: runRecord.queryTypes,
+          synthesisJson,
+          overrideApplied: runRecord.overrideApplied,
+        }
+        try {
+          if ((input.outputFormat ?? 'html') === 'markdown') {
+            await renderMarkdownReport(renderInput)
+          } else {
+            await renderReport(renderInput)
+          }
+        } catch (renderError) {
+          // Report render failure should not fail the pipeline run
+          console.error(`[orchestrator] Report render failed for run ${runId}:`, renderError)
+        }
       }
     }
 
@@ -659,6 +690,30 @@ export async function resumeFromHalt(
   context.agent4BOutput = output4B?.outputJson as Record<string, unknown> | null
 
   await executeAgent('4C', context, runId, emitEvent)
+
+  // Render report file after 4C on resume
+  const output4C = await getLatestOutput(runId, '4C')
+  const synthesisJson = (output4C?.outputJson ?? {}) as Record<string, unknown>
+  // Infer output format from existing reportPath extension if available, else default to html
+  const existingReportPath = run.reportPath
+  const outputFormat = existingReportPath?.endsWith('.md') ? 'markdown' : 'html'
+  const renderInput = {
+    runId,
+    chartId: run.chartId,
+    clientName: run.chart.clientName,
+    queryTypes: run.queryTypes,
+    synthesisJson,
+    overrideApplied: true, // override was applied to get here
+  }
+  try {
+    if (outputFormat === 'markdown') {
+      await renderMarkdownReport(renderInput)
+    } else {
+      await renderReport(renderInput)
+    }
+  } catch (renderError) {
+    console.error(`[orchestrator] Report render failed for run ${runId} (resume):`, renderError)
+  }
 
   // Update run totals
   const totals = await prisma.waveOutput.aggregate({

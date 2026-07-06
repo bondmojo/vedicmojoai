@@ -35,6 +35,16 @@ export async function GET(
       chart: {
         select: { clientName: true, lagna: true },
       },
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          role: true,
+          content: true,
+          agentId: true,
+          createdAt: true,
+        },
+      },
     },
   })
 
@@ -76,5 +86,6 @@ export async function GET(
       tokenOut: wo.tokenOut,
       costUsd: Number(wo.costUsd),
     })),
+    messages: run.messages,
   })
 }

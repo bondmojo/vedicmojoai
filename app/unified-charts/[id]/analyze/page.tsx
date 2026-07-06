@@ -68,6 +68,7 @@ export default function AnalyzePage() {
   const [forceRerunWave1, setForceRerunWave1] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [outputFormat, setOutputFormat] = useState<'html' | 'markdown'>('html')
 
   // Model selection state
   const [modelPreset, setModelPreset] = useState<ModelPreset>('default')
@@ -131,6 +132,7 @@ export default function AnalyzePage() {
           queryTypes: selectedTypes.length > 0 ? selectedTypes : ['generic'],
           userQuery: userQuery || undefined,
           forceRerunWave1,
+          outputFormat,
           modelOverride,
         }),
       })
@@ -224,6 +226,39 @@ export default function AnalyzePage() {
               className="w-full rounded-lg bg-gray-900 border border-gray-700 p-3 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               placeholder="e.g., When is the best period for career growth in the next 5 years?"
             />
+          </section>
+
+          {/* Output Format */}
+          <section>
+            <h2 className="text-lg font-medium mb-3">Output Format</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                {
+                  id: 'html' as const,
+                  label: 'HTML Report',
+                  description: 'Interactive tabbed report — open in browser, best for sharing',
+                },
+                {
+                  id: 'markdown' as const,
+                  label: 'Markdown (.md)',
+                  description: 'Plain .md file — displayed inline, downloadable for notes',
+                },
+              ]).map((fmt) => (
+                <button
+                  key={fmt.id}
+                  type="button"
+                  onClick={() => setOutputFormat(fmt.id)}
+                  className={`rounded-lg border p-3 text-left transition-all ${
+                    outputFormat === fmt.id
+                      ? 'border-indigo-500 bg-indigo-900/20'
+                      : 'border-gray-700 hover:border-gray-500'
+                  }`}
+                >
+                  <span className="font-medium text-sm">{fmt.label}</span>
+                  <p className="text-xs text-gray-500 mt-1">{fmt.description}</p>
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* Model / LLM Selection */}

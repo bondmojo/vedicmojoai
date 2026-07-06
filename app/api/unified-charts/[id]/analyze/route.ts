@@ -49,6 +49,7 @@ const AnalyzeInputSchema = z.object({
     .min(1, 'At least one query type is required'),
   userQuery: z.string().optional(),
   forceRerunWave1: z.boolean().optional().default(false),
+  outputFormat: z.enum(['html', 'markdown']).optional().default('html'),
   modelOverride: ModelOverrideSchema,
 })
 
@@ -74,7 +75,7 @@ export async function POST(
     )
   }
 
-  const { queryTypes, userQuery, forceRerunWave1, modelOverride } = parsed.data
+  const { queryTypes, userQuery, forceRerunWave1, outputFormat, modelOverride } = parsed.data
 
   // Load the unified chart
   const unifiedChart = await prisma.unifiedChart.findUnique({
@@ -331,6 +332,7 @@ export async function POST(
     executionPlan,
     wave1Delta,
     wave1Source: isComputePath ? 'compute' : 'llm',
+    outputFormat,
     emitEvent: noopEmit,
   }).catch(async (error) => {
     console.error(`Pipeline run ${run.id} failed:`, error)
@@ -344,6 +346,7 @@ export async function POST(
       unifiedChartId: unifiedChart.id,
       status: 'queued',
       source: unifiedChart.source,
+      outputFormat,
       waveStrategy: isComputePath ? 'skip_wave1' : 'full_pipeline',
       executionPlan: {
         agents: executionPlan.agents,

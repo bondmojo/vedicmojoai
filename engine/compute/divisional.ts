@@ -144,20 +144,56 @@ function computeD30Sign(longitude: number): number {
 /**
  * D2 — Hora (Wealth, Prosperity)
  * Each sign divided into 2 parts of 15° each.
- * For odd signs: 0–15° → Leo (5), 15–30° → Cancer (4).
- * For even signs: 0–15° → Cancer (4), 15–30° → Leo (5).
+ *
+ * Uses the PVR Uma-Shambhu (Parivritti Even-Reverse) method — the default in
+ * Jagannatha Hora (JHora) software. The 24 horas cycle sequentially through
+ * all 12 signs twice starting from Aries, with even-indexed signs counting
+ * forward and odd-indexed signs counting in reverse within each pair.
+ *
+ * Mapping (derived from parivritti_even_reverse(2) in PyJHora):
+ *   Aries      0–15° → Aries       | 15–30° → Taurus
+ *   Taurus     0–15° → Cancer      | 15–30° → Gemini
+ *   Gemini     0–15° → Leo         | 15–30° → Virgo
+ *   Cancer     0–15° → Scorpio     | 15–30° → Libra
+ *   Leo        0–15° → Sagittarius | 15–30° → Capricorn
+ *   Virgo      0–15° → Pisces      | 15–30° → Aquarius
+ *   (repeats for Libra–Pisces)
+ *
+ * The Traditional Parasara method (Cancer/Leo only, BPHS strict reading) is:
+ *   Odd signs:  0–15° → Leo (5),    15–30° → Cancer (4)
+ *   Even signs: 0–15° → Cancer (4), 15–30° → Leo (5)
+ * That method is NOT used here because it does not match JHora output.
+ *
+ * Source: PyJHora charts.py `_hora_chart_by_pvr_method` / `__parivritti_even_reverse(2)`;
+ *         PVR Narasimha Rao, "Parasara's Hora Chart Decoded" (Uma-Shambhu Hora).
  */
-function computeD2Sign(longitude: number): number {
-  const signNumber = Math.floor(longitude / 30) + 1
-  const degreeInSign = longitude % 30
-  const isOdd = signNumber % 2 === 1
-  const firstHalf = degreeInSign < 15
 
-  if (isOdd) {
-    return firstHalf ? 5 : 4 // Leo then Cancer
-  } else {
-    return firstHalf ? 4 : 5 // Cancer then Leo
-  }
+/**
+ * Pre-computed PVR D2 lookup table.
+ * Index: signIndex (0–11). Value: [firstHalfSign, secondHalfSign] (both 1-indexed).
+ * Pattern repeats every 6 signs (Libra–Pisces mirrors Aries–Virgo).
+ */
+const PVR_D2_MAP: readonly [number, number][] = [
+  [1,  2],  // Aries:       0–15→Aries,        15–30→Taurus
+  [4,  3],  // Taurus:      0–15→Cancer,        15–30→Gemini
+  [5,  6],  // Gemini:      0–15→Leo,           15–30→Virgo
+  [8,  7],  // Cancer:      0–15→Scorpio,       15–30→Libra
+  [9,  10], // Leo:         0–15→Sagittarius,   15–30→Capricorn
+  [12, 11], // Virgo:       0–15→Pisces,        15–30→Aquarius
+  [1,  2],  // Libra:       0–15→Aries,         15–30→Taurus
+  [4,  3],  // Scorpio:     0–15→Cancer,        15–30→Gemini
+  [5,  6],  // Sagittarius: 0–15→Leo,           15–30→Virgo
+  [8,  7],  // Capricorn:   0–15→Scorpio,       15–30→Libra
+  [9,  10], // Aquarius:    0–15→Sagittarius,   15–30→Capricorn
+  [12, 11], // Pisces:      0–15→Pisces,        15–30→Aquarius
+]
+
+function computeD2Sign(longitude: number): number {
+  const lon = ((longitude % 360) + 360) % 360
+  const signIndex = Math.floor(lon / 30)        // 0–11
+  const degreeInSign = lon % 30
+  const hora = degreeInSign < 15 ? 0 : 1        // 0 = first half, 1 = second half
+  return PVR_D2_MAP[signIndex][hora]
 }
 
 /**

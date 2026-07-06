@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import ChartGrid from './components/ChartGrid'
 import PlanetTable from './components/PlanetTable'
 import NakshatraTable from './components/NakshatraTable'
@@ -13,6 +14,7 @@ import AshtakavargaView from './components/AshtakavargaView'
 import DashaTimeline from './components/DashaTimeline'
 import TransitsView from './components/TransitsView'
 import PindaStrengthView from './components/PindaStrengthView'
+import CopyForAIPanel from './components/CopyForAIPanel'
 
 type Tab = 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'transits' | 'pinda'
 
@@ -78,6 +80,9 @@ export default function ComputePage() {
 
   // Run AI Analysis state
   const [analyzeSaving, setAnalyzeSaving] = useState(false)
+
+  // Copy for AI panel
+  const [showCopyPanel, setShowCopyPanel] = useState(false)
 
   // Saved charts list state
   const [savedCharts, setSavedCharts] = useState<SavedChartSummary[]>([])
@@ -262,17 +267,25 @@ export default function ComputePage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Chart Computation</h1>
-          <button
-            onClick={() => setShowSavedCharts(!showSavedCharts)}
-            className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:border-indigo-500 hover:text-white transition-colors"
-          >
-            {showSavedCharts ? 'Hide' : 'Load'} Saved Charts
-            {savedCharts.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 rounded bg-indigo-600/50 text-xs">
-                {savedCharts.length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/charts/newjson"
+              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-amber-500 hover:text-amber-300 transition-colors"
+            >
+              Insert JSON
+            </Link>
+            <button
+              onClick={() => setShowSavedCharts(!showSavedCharts)}
+              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:border-indigo-500 hover:text-white transition-colors"
+            >
+              {showSavedCharts ? 'Hide' : 'Load'} Saved Charts
+              {savedCharts.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-indigo-600/50 text-xs">
+                  {savedCharts.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Saved Charts Panel */}
@@ -412,6 +425,17 @@ export default function ComputePage() {
               </button>
             )}
 
+            {/* Copy for AI Button */}
+            {result && (
+              <button
+                type="button"
+                onClick={() => setShowCopyPanel(true)}
+                className="rounded-lg border border-violet-600 bg-violet-900/30 px-5 py-2.5 text-sm font-semibold text-violet-300 hover:bg-violet-900/60 transition-colors"
+              >
+                Copy for AI
+              </button>
+            )}
+
             {/* Save feedback */}
             {saveMessage && (
               <span className={`text-sm ${saveMessage.includes('failed') ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -488,6 +512,16 @@ export default function ComputePage() {
           </div>
         )}
       </div>
+
+      {/* Copy for AI Panel */}
+      {showCopyPanel && result && (
+        <CopyForAIPanel
+          chart={result.chart}
+          dashaTree={result.dashaTree}
+          form={form}
+          onClose={() => setShowCopyPanel(false)}
+        />
+      )}
     </main>
   )
 }

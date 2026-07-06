@@ -8,7 +8,7 @@
 
 A divisional chart is obtained by dividing each 30° zodiac sign into N equal (or in one case unequal) parts and mapping each part to a specific sign. The resulting chart shows a more specific area of life: D9 for marriage and inner strength, D10 for career, etc.
 
-Our system computes: **D1, D4, D7, D9, D10, D30**.
+Our system computes: **D1, D2, D3, D4, D7, D9, D10, D12, D30**.
 
 All use **Lahiri (Chitrapaksha) ayanamsa** and **sidereal longitudes** from Swiss Ephemeris.
 
@@ -22,28 +22,63 @@ No computation needed beyond identifying the sign from the planet's sidereal lon
 
 ---
 
-## D4 — Chaturthamsa
+## D2 — Hora (Wealth, Prosperity)
 
-**Life area:** Property, fixed assets, fortune.
+**Life area:** Wealth, financial prosperity, assets.
 
-Each sign is divided into **4 equal parts of 7°30'** each.
+Each sign is divided into **2 equal parts of 15°** each.
 
-**Mapping rule (all signs, no odd/even distinction):**
+**Mapping rule — PVR Uma-Shambhu method (JHora default):**
 
-| Part (0–3) | Signs advanced from natal sign |
-|---|---|
-| Part 1 (0°–7°30') | 0 — same sign |
-| Part 2 (7°30'–15°) | +3 (4th from natal) |
-| Part 3 (15°–22°30') | +6 (7th from natal) |
-| Part 4 (22°30'–30°) | +9 (10th from natal) |
+The 24 horas cycle sequentially through all 12 signs twice, starting from Aries. Even-indexed signs in each pair count forward; odd-indexed signs count in reverse. This produces a full 12-sign distribution (planets are not limited to Cancer/Leo).
 
-**Source:** Parashari Chaturthamsa, BPHS.
+| D1 Sign | 0°–15° (hora 1) | 15°–30° (hora 2) |
+|---|---|---|
+| Aries | Aries | Taurus |
+| Taurus | Cancer | Gemini |
+| Gemini | Leo | Virgo |
+| Cancer | Scorpio | Libra |
+| Leo | Sagittarius | Capricorn |
+| Virgo | Pisces | Aquarius |
+| Libra | Aries | Taurus |
+| Scorpio | Cancer | Gemini |
+| Sagittarius | Leo | Virgo |
+| Capricorn | Scorpio | Libra |
+| Aquarius | Sagittarius | Capricorn |
+| Pisces | Pisces | Aquarius |
 
-**❓ Validation request:** Some sources apply an odd/even rule to D4 (different starting sign for odd vs. even natal signs). Our rule uses the kendra-progression (0, +3, +6, +9) uniformly for all signs. Please confirm which method your school follows.
+The pattern repeats every 6 signs (Libra–Pisces mirrors Aries–Virgo).
+
+**Source:** PVR Narasimha Rao, *Parasara's Hora Chart Decoded* (Uma-Shambhu Hora); PyJHora `parivritti_even_reverse(2)`.
+
+**Alternative — Traditional Parasara method (NOT used):**
+
+Some schools (and a strict reading of BPHS Ch. 6 v. 5–6) use only Cancer and Leo:
+- Odd signs: 0–15° → Leo, 15–30° → Cancer
+- Even signs: 0–15° → Cancer, 15–30° → Leo
+
+This method does not match JHora output and is therefore not implemented. The PVR method is used instead.
+
+**❓ Validation request:** Confirm that PVR Uma-Shambhu D2 is the correct method for your tradition, or specify Traditional Parasara / Raman / Kashinatha.
 
 ---
 
-## D7 — Saptamsa
+## D3 — Drekkana (Siblings, Courage)
+
+**Life area:** Siblings, courage, co-borns.
+
+Each sign is divided into **3 equal parts of 10°** each.
+
+**Mapping rule:**
+- Part 0 (0°–10°): same sign as natal
+- Part 1 (10°–20°): 5th sign from natal
+- Part 2 (20°–30°): 9th sign from natal
+
+**Source:** BPHS (Parashari Drekkana).
+
+---
+
+## D4 — Chaturthamsa
 
 **Life area:** Children, progeny.
 
@@ -91,6 +126,22 @@ Each sign is divided into **10 equal parts of 3°** each.
 - If the natal sign is **odd**: counting starts from the natal sign itself.
 - If the natal sign is **even**: counting starts from the **9th sign** from the natal sign.
 - Count forward by part number (0 through 9).
+
+**Source:** BPHS.
+
+---
+
+## D12 — Dwadasamsa (Parents, Ancestry)
+
+**Life area:** Parents, ancestry, lineage.
+
+Each sign is divided into **12 equal parts of 2°30'** each.
+
+**Mapping rule:**
+- Part index = floor(degreeInSign / 2.5) → 0–11
+- D12 sign = natal sign + part index (mod 12, 1-indexed)
+
+Counting starts from the natal sign itself and advances one sign per part.
 
 **Source:** BPHS.
 
@@ -150,8 +201,9 @@ Special Lagnas (HL, GL, BL, SL, VL, IL, BBL, PL) have real ecliptic longitudes. 
 
 | # | Point | Question |
 |---|---|---|
-| 1 | D4 rule | Kendra-progression (uniform) vs. odd/even starting sign? |
-| 2 | D30 even signs | Are the boundary degrees and sign assignments correct? |
-| 3 | D30 alternate systems | Which D30 system does your school follow? |
-| 4 | Special lagnas in vargas | Is showing HL, GL etc. in D9/D10 a valid practice? |
-| 5 | Karakamsa in non-D9 | Should KS be shown in D4, D7, D10, D30? |
+| 1 | D2 method | PVR Uma-Shambhu (JHora default, all 12 signs) vs. Traditional Parasara (Cancer/Leo only)? |
+| 2 | D4 rule | Kendra-progression (uniform) vs. odd/even starting sign? |
+| 3 | D30 even signs | Are the boundary degrees and sign assignments correct? |
+| 4 | D30 alternate systems | Which D30 system does your school follow? |
+| 5 | Special lagnas in vargas | Is showing HL, GL etc. in D9/D10 a valid practice? |
+| 6 | Karakamsa in non-D9 | Should KS be shown in D4, D7, D10, D30? |

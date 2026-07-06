@@ -8,6 +8,7 @@ node_modules/
 .next/
 out/
 
+data/reports/
 # Environment
 .env
 .env.local
