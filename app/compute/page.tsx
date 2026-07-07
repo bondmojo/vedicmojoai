@@ -61,12 +61,12 @@ interface SavedChartSummary {
 export default function ComputePage() {
   const router = useRouter()
   const [form, setForm] = useState({
-    name: 'Mojo',
-    date: '1984-05-26',
-    time: '07:00:00',
+    name: '',
+    date: '',
+    time: '',
     timezone: '5.5',
-    latitude: '24.9386518',
-    longitude: '74.6270884',
+    latitude: '',
+    longitude: '',
     sunriseMode: 'precise' as 'precise' | 'jhora',
   })
   const [loading, setLoading] = useState(false)
