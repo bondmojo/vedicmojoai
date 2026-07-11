@@ -1,7 +1,7 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.1
-**Last updated:** 2026-07-05
+**Version:** 1.3
+**Last updated:** 2026-07-11
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
@@ -10,11 +10,30 @@
 
 ## What changed in v1.1
 
-- Added **P9: Unified Chart Ingestion + Analyze** — the Generate Chart and AI
-  Analysis features backed by the `UnifiedChart` store (`D7`).
-- Added data store **`D7: UnifiedChart`** (column-per-domain).
-- Compute-path unified charts feed `wave1_delta` from deterministic domain columns
-  (no LLM Wave 1); paste-path charts run the full pipeline.
+- Added P9: Unified Chart Ingestion + Analyze and D7: UnifiedChart.
+
+## What changed in v1.2
+
+- Added **P10: Duration Analysis** process and data stores **D8: DurationAnalysis** and **D9: DurationMessage**.
+- Added D8/D9 to the Level 1 data store list.
+- Extended the Data Dictionary with Duration Analysis data items.
+
+## What changed in v1.3
+
+- P10.4 is now a **registry-resolved per-domain agent** (DA1-HEALTH … DA1-CASHFLOW)
+  with **batched** DA-1 calls (≤25 periods/call, merged via `mergeDA1Outputs()`)
+  and lenient JSON parsing with one retry (`callAgentJson`).
+- Added the **cashflow** category ("Money Agent" — liquidity, distinct from wealth).
+- P10.2 slicer **fails fast on an empty period slice** (hint: `npm run db:backfill-pd`).
+- **Stale-run reaper**: queued/running rows with no heartbeat (updatedAt) for 10 min are
+  marked failed on every read path (GET [id], SSE poll, list). DA-1 batches persist
+  totals per batch as the heartbeat.
+- **Cancel**: `POST /[id]/cancel` → `status=cancelled`; the pipeline checks the flag
+  between steps and unwinds without overwriting it. SSE emits `run_cancelled`.
+- **History**: `GET /api/duration-analysis` lists the newest 50 runs (chart name,
+  category, status, cost) for the launcher page's Recent analyses section.
+- **Prompt caching**: DA-1 batches and DA-3 chat follow-ups send their stable
+  chart-data prefix via `callLLM({ cachedPrefix })` (Anthropic cache_control).
 
 ---
 
@@ -130,6 +149,8 @@ Data Stores:
   D5: RunMessage     — conversation thread (role, content, run_id)
   D6: SavedChart     — persisted computed charts (birth data + full chartData JSONB + dashaTree)
   D7: UnifiedChart   — canonical chart store, column-per-domain JSONB (source=compute|paste)
+  D8: DurationAnalysis — duration analysis runs (periodSlice, transitOverlay, da1-3 outputs, errorMessage)
+  D9: DurationMessage  — duration analysis conversation thread (role, content, analysisId)
   FS: reports/       — HTML report files on disk
 ```
 
@@ -595,6 +616,113 @@ PRACTITIONER
 
 ---
 
+## Level 2 — P10: Duration Analysis (NEW in v1.2)
+
+Focused 3-agent sequential pipeline for date-range / domain-specific analysis.
+Completely independent from the 18-agent wave pipeline.
+
+Categories: health | career | wealth | marriage | property | cashflow.
+The domain step (P10.4) is registry-driven: `DOMAIN_AGENT_REGISTRY`
+(engine/durationAnalysis/registry.ts) resolves the category's agent id
+(DA1-HEALTH … DA1-CASHFLOW), prompt file, model_config row, divisional charts,
+and extra chart columns before the pipeline runs.
+
+```
+PRACTITIONER
+     │ POST /api/duration-analysis
+     │ { unifiedChartId, dateFrom, dateTo, category, symptoms?, userQuestion? }
+     ▼
+┌───────────────────────────┐
+│ P10.1  API ROUTE           │──► create DurationAnalysis (status=queued) ──► D8
+│  • validate (10yr cap,    │
+│    dashaTree not null)    │──► create DurationMessage if userQuestion ───► D9
+│  • fire pipeline (no await)│
+└───────────────┬───────────┘
+                │ 202 { analysisId }
+                ▼ (fire-and-forget)
+┌───────────────────────────┐
+│ P10.2  STEP 0a — SLICER   │◄─── dashaTree, planets, nakshatras ────── D7: UnifiedChart
+│  sliceDashaTree() pure TS │
+│  • MD/AD/PD overlap filter│
+│  • Lord annotations        │──► DashaSlice[] (with lordAnnotations,
+│    (nakshatra, combustion, │      activatedYogas, ownsHouses, ...)
+│    yogas, ownsHouses)     │
+│  • Truncate to 200        │──► periodSlice + truncated flag
+│  • empty → FAIL FAST      │      (no LLM call; hint: db:backfill-pd)
+└───────────────┬───────────┘
+                │
+                ▼
+┌───────────────────────────┐
+│ P10.3  STEP 0b — TRANSIT  │◄─── transits, ashtakavarga ─────────── D7: UnifiedChart
+│  buildTransitOverlay()    │
+│  • Per unique AD boundary │──► calls computeTransits() [Swiss Eph]
+│  • Saturn/Jup/Rahu/Ketu   │
+│  • BAV scores from bav[]  │──► TransitOverlay[] → stored ──────────► D8
+│  • Sade Sati from stored  │
+│    allPeriods             │
+│  • ashtamaShani, kantaka  │
+└───────────────┬───────────┘
+                │ periodSlice + transitOverlay persisted ──────────────► D8
+                ▼
+┌───────────────────────────┐
+│ P10.4  DA-1 DOMAIN AGENT  │◄─── category-scoped chart data ──────── D7
+│  (DA1-<DOMAIN>, registry- │      (registry: divisions + extra columns;
+│   resolved prompt/model)  │       dashaTree stripped from prompt)
+│  [Claude Sonnet, temp 0.3]│──► read DA1-<DOMAIN> model config ─── model_config
+│  • BATCHED: ≤25 periods + │
+│    matching overlays/call │──► callAgentJson(per-batch prompt)
+│    (lenient JSON + 1 retry)│
+│  • mergeDA1Outputs()      │
+│  • Post-LLM: merge        │
+│    transitContext +       │──► da1Output (merged, enriched) ────────► D8
+│    lordAnnotations back   │
+└───────────────┬───────────┘
+                │
+                ├── symptoms present? ───────► P10.5
+                │
+                └── no symptoms ─────────────► P10.6
+                ▼
+┌───────────────────────────┐
+│ P10.5  DA-2 SYMPTOM       │◄─── da1Output ──────────────────────── D8
+│  VALIDATOR (CONDITIONAL)  │
+│  [Claude Sonnet, temp 0.0]│──► callLLM(DA-2 prompt)
+│                           │──► da2Output ──────────────────────────► D8
+│  GATE: found===false?     │
+│    YES → status=           │
+│      symptom_unmatched    │──────────────────────────────────────────► D8
+│      SSE symptom_gate     │──────────────────────────────────────────► PRACTITIONER
+│      STOP (overridable)   │
+│    NO  → continue to DA-3 │
+└───────────────┬───────────┘
+                │
+                ▼
+┌───────────────────────────┐
+│ P10.6  DA-3 FUTURE        │◄─── da1Output, da2Output, messages ─── D8, D9
+│  ANALYSER                 │
+│  [Claude Sonnet, temp 0.3]│──► callLLM(DA-3 prompt)
+│                           │──► da3Output ──────────────────────────► D8
+│  contextSummary generated │──► contextSummary (deterministic) ──────► D8
+│  (no LLM, ~500 tokens)    │
+│  status = done            │──────────────────────────────────────────► D8
+│                           │──► assistant DurationMessage ──────────► D9
+│  SSE run_complete ────────┼──────────────────────────────────────────► PRACTITIONER
+└───────────────────────────┘
+
+Override path (POST /api/duration-analysis/[id]/override):
+  status=symptom_unmatched → set overrideApplied=true → resume P10.6 with mismatch note in prompt
+
+Cancel path (POST /api/duration-analysis/[id]/cancel):
+  status in queued|running|symptom_unmatched → status=cancelled ──► D8
+  pipeline checks the flag between steps (per DA-1 batch, before DA-2/DA-3) and unwinds
+  SSE run_cancelled ──► PRACTITIONER
+
+Follow-up chat (POST /api/duration-analysis/[id]/chat):
+  Load D8 (da1/da2/da3 outputs) + D9 (messages) → build DA-3 prompt →
+  use contextSummary when history depth > 2 → callLLM → D9 message + D8 totals updated
+```
+
+---
+
 ## Data Dictionary
 
 | Data Item | Format | Size (approx) | Source | Consumers |
@@ -616,3 +744,9 @@ PRACTITIONER
 | `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
 | `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
 | `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
+| `DashaSlice[]` (with annotations) | JSON (JSONB) | ~30–80KB (200 entries) | slicer.ts | DurationAnalysis.periodSlice; DA-1 prompt |
+| `TransitOverlay[]` | JSON (JSONB) | ~5–15KB (one entry per AD boundary) | transitOverlay.ts | DurationAnalysis.transitOverlay; DA-1 prompt |
+| `DA1Output` | JSON (JSONB) | ~20–50KB | DA-1 agent + post-merge | DurationAnalysis.da1Output; DA-2/DA-3 prompts |
+| `DA2Output` | JSON (JSONB) | ~2–5KB | DA-2 agent | DurationAnalysis.da2Output; symptom gate |
+| `DA3Output` | JSON (JSONB) | ~10–30KB | DA-3 agent | DurationAnalysis.da3Output; report UI |
+| `contextSummary` | TEXT | ~500 tokens (~2KB) | index.ts (deterministic) | DurationAnalysis.contextSummary; DA-3 chat follow-up prompts |

@@ -1,7 +1,7 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
-**Version:** 1.1
-**Last updated:** 2026-07-05
+**Version:** 1.2
+**Last updated:** 2026-07-07
 **Status:** Draft
 
 > **Maintenance rule:** Whenever the data model changes (new table, column, index,
@@ -10,15 +10,16 @@
 
 ## What changed in v1.1
 
-- Added the **`UnifiedChart`** table — a single column-per-domain store that backs
-  the **Generate Chart** and **AI Analysis** features. It supersedes the split
-  `Chart` / `SavedChart` model for new work (both legacy tables remain for
-  backward compatibility).
-- `PipelineRun` now links to **both** `Chart` (legacy FK) and `UnifiedChart`
-  (`unifiedChartId`, nullable) so AI Analysis can run against either source.
-- New deterministic domain columns on `UnifiedChart`: `relationships` (1D),
-  `shadbala` (1C), `jaimini`, `bhavaBala` — produced by the compute engine so
-  the corresponding LLM Wave 1 agents can be skipped on the compute path.
+- Added the **`UnifiedChart`** table.
+- `PipelineRun` links to both `Chart` and `UnifiedChart`.
+- New deterministic domain columns on `UnifiedChart`.
+
+## What changed in v1.2
+
+- Added **`DurationAnalysis`** and **`DurationMessage`** tables — the new Duration Analysis feature's own 3-agent pipeline, separate from the 18-agent wave pipeline.
+- `DurationAnalysis` links to `UnifiedChart` (foreign key) and has its own agent output columns (JSONB), error tracking (`errorMessage`), and override flag.
+- `UnifiedChart` gains a `durationAnalyses` reverse relation.
+- Vimshottari dasha tree now stores **all 729 PD entries** (9 MD × 9 AD × 9 PD) instead of only current + next MD. `AntarDasha.pratyantardashas` is now a required field (non-optional array).
 
 ## Complete ERD
 
@@ -329,6 +330,58 @@ ComputedChart (root)
 
 ---
 
+## Duration Analysis Tables (v1.2)
+
+Two new tables back the **Duration Analysis** feature — a focused 3-agent pipeline
+separate from the 18-agent wave pipeline.
+
+```
+┌───────────────────────────────────────────────────────────┐       ┌──────────────────────┐
+│              DurationAnalysis                              │  1:N  │   DurationMessage    │
+│  (3-agent sequential pipeline run)                        │──────►│  (conversation log)  │
+├───────────────────────────────────────────────────────────┤       ├──────────────────────┤
+│ PK id              UUID                                    │       │ PK id       UUID     │
+│ FK unifiedChartId  UUID  → unified_chart                  │       │ FK analysisId  UUID  │
+│    dateFrom        TSTZ                                    │       │    role     TEXT      │
+│    dateTo          TSTZ                                    │       │    content  TEXT      │
+│    category        TEXT  health|career|wealth|marriage|    │       │    agentId  TEXT?     │
+│                          property|cashflow                │       │    focusPeriod TEXT?  │
+│    userQuestion    TEXT?                                   │       │    tokenIn  INT       │
+│    symptoms        TEXT?                                   │       │    tokenOut INT       │
+│    status          TEXT  queued|running|symptom_unmatched  │       │    createdAt TSTZ     │
+│                          |done|failed|cancelled           │       └──────────────────────┘
+│    periodSlice     JSONB? DashaSlice[] — Step 0a output   │
+│    transitOverlay  JSONB? TransitOverlay[] — Step 0b output│
+│    contextSummary  TEXT?  ~500-token follow-up summary    │
+│    errorMessage    TEXT?  failure reason (when failed)    │
+│    overrideApplied BOOL   true if symptom gate bypassed   │
+│    da1Output       JSONB? DA1Output (Domain Analyser)     │
+│    da2Output       JSONB? DA2Output (Symptom Validator)   │
+│    da3Output       JSONB? DA3Output (Future Analyser)     │
+│    totalTokenIn    INT                                     │
+│    totalTokenOut   INT                                     │
+│    totalCostUsd    DEC(10,6)                               │
+│    createdAt       TSTZ                                    │
+│    updatedAt       TSTZ                                    │
+│                                                            │
+│ IDX: unifiedChartId, status                               │
+│ MAP: duration_analysis                                     │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Key design decisions:**
+- `periodSlice` stores the output of the deterministic `sliceDashaTree()` with full
+  lord annotations and yoga activations baked in — computed before any LLM call.
+- `transitOverlay` stores Saturn/Jupiter/Rahu/Ketu positions at each AD boundary in
+  the requested window, plus BAV scores, Sade Sati phase, and ashtamaShani flags.
+- `da1Output` is enriched post-LLM with `transitContext` and `lordAnnotations` merged
+  back onto each `period_analysis` entry (pipeline-side join, not LLM responsibility).
+- `errorMessage` enables the SSE route to surface the real failure reason without
+  the client having to infer it from status alone.
+- `ModelConfig` entries `DA-1`, `DA-2`, `DA-3` control model/temperature per agent.
+
+---
+
 ## Table Relationships Summary
 
 | Relationship | Type | Description |
@@ -338,9 +391,11 @@ ComputedChart (root)
 | PipelineRun → RunMessage | 1:N | Each run has a conversation log |
 | PipelineRun → PipelineRun | 1:N (self) | Follow-up runs chain to parent |
 | UnifiedChart → PipelineRun | 1:N (nullable) | Each unified chart can back multiple AI analysis runs (`unifiedChartId`) |
+| UnifiedChart → DurationAnalysis | 1:N | Each unified chart can have multiple Duration Analysis runs |
+| DurationAnalysis → DurationMessage | 1:N | Each analysis has a conversation log |
 | SavedChart (standalone) | — | Legacy independent computed chart storage (superseded by UnifiedChart) |
 | Wave1Cache (standalone) | — | Caches expensive Wave 1 computations by chartHash |
-| ModelConfig (standalone) | — | AI model configuration per wave/agent |
+| ModelConfig (standalone) | — | AI model configuration per wave/agent — including DA-1, DA-2, DA-3 |
 
 > **Note:** `PipelineRun` keeps its original required `chartId` FK to the legacy
 > `Chart` table for backward compatibility. When AI Analysis is triggered from a

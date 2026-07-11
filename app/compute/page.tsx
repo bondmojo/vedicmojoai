@@ -274,6 +274,12 @@ export default function ComputePage() {
             >
               Insert JSON
             </Link>
+            <Link
+              href="/duration-analysis"
+              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-violet-500 hover:text-violet-300 transition-colors"
+            >
+              Duration Analysis
+            </Link>
             <button
               onClick={() => setShowSavedCharts(!showSavedCharts)}
               className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:border-indigo-500 hover:text-white transition-colors"

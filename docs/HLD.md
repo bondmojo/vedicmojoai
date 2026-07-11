@@ -1,7 +1,7 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.1
-**Last updated:** 2026-07-05
+**Version:** 1.2
+**Last updated:** 2026-07-07
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
@@ -10,7 +10,47 @@
 
 ## What changed in v1.1
 
-The system now organizes around three practitioner-facing features:
+The system now organizes around three practitioner-facing features.
+(See full details in v1.1 below.)
+
+## What changed in v1.2
+
+- Added **Duration Analysis** — a fourth practitioner-facing feature: a focused
+  3-agent sequential pipeline (DA-1 → DA-2 (conditional) → DA-3) that answers
+  period-specific questions over a user-selected date range and life domain. Completely
+  separate from the 18-agent wave pipeline.
+- New engine directory: `engine/durationAnalysis/` (slicer, transitOverlay, registry,
+  extractor, agentJson, index/orchestrator).
+- New API routes: `POST + GET /api/duration-analysis` (create + history list),
+  `GET /api/duration-analysis/[id]`, `GET /api/duration-analysis/[id]/events`,
+  `POST /api/duration-analysis/[id]/chat`, `POST /api/duration-analysis/[id]/override`,
+  `POST /api/duration-analysis/[id]/cancel`.
+- New UI pages: `/duration-analysis` (form + run history) and `/duration-analysis/[id]`
+  (results + live SSE + follow-up chat).
+- **Durability:** stale-run reaper (`engine/durationAnalysis/reaper.ts`) marks
+  queued/running rows with no heartbeat for 10 min as failed on every read path;
+  the DA-1 batch loop persists totals per batch as the heartbeat. Cancellation is
+  cooperative: `/cancel` sets `status=cancelled` and the pipeline unwinds at its
+  next checkpoint.
+- **Prompt caching:** `callLLM({ cachedPrefix })` marks a stable prefix with
+  Anthropic `cache_control` — used by DA-1 batches (shared chart data) and DA-3
+  chat follow-ups (chart data + DA-1 + DA-2 sections).
+- New DB tables: `duration_analysis`, `duration_message` (see ERD v1.2).
+- **Full PD storage:** `computeVimshottari` now computes Pratyantardashas for all 9
+  Mahadashas (729 entries). `AntarDasha.pratyantardashas` is now a required field.
+- New prompt files: per-domain `duration_da1_<category>.md` (composed from
+  `prompts/domains/<category>.md` fragments + the `duration_da1_domain_analyser.md`
+  core via `{{include:}}`), `duration_da2_symptom_validator.md`,
+  `duration_da3_future_analyser.md`. The `prompts/domains/` fragments are the
+  canonical domain knowledge, also included by the Wave 2 domain agents (2C–2G).
+- Categories: health, career, wealth, marriage, property, cashflow ("Money Agent" —
+  liquidity, distinct from wealth/accumulation).
+- New `ModelConfig` rows: `DA-1` (legacy), `DA1-HEALTH` … `DA1-CASHFLOW` (one per
+  domain agent), `DA-2`, `DA-3`.
+- DA-1 runs batched (≤25 periods per call, merged deterministically); all DA LLM
+  calls use lenient JSON parsing with one retry.
+- Backfill: `npm run db:backfill-pd` fills missing Pratyantardashas into charts
+  computed before full-PD storage (`scripts/backfill-pratyantardashas.ts`).
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in a single `UnifiedChart` store: `from-compute` (birth data) and
@@ -122,6 +162,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
 | Unified Chart Detail | `/unified-charts/[id]` | Full domain view of a unified chart + run history |
 | Unified Chart Analyze | `/unified-charts/[id]/analyze` | AI Analysis launcher — query-type + agent selection, model override, 202 redirect |
+| Duration Analysis Form | `/duration-analysis` | Date range + category + optional symptoms + question → launches 3-agent pipeline |
+| Duration Analysis Results | `/duration-analysis/[id]` | Live SSE progress, period table (DA-1), symptom gate, DA-3 forecast, follow-up chat |
 
 ### 3.2 API Layer (`/app/api`)
 
@@ -139,8 +181,12 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/unified-charts/from-paste` | POST | **Generate Chart (Path B)** — validate + persist pasted `ChartInputV1` as `source="paste"` |
 | `/api/unified-charts/[id]` | GET, DELETE | Load full domain data / delete a unified chart (cascades runs) |
 | `/api/unified-charts/[id]/analyze` | POST | **AI Analysis** — start pipeline on a unified chart (202 + run_id); skips Wave 1 for compute source |
-| `/api/runs` | POST | Start a new pipeline run against a legacy `Chart` (returns 202 + run_id) |
-| `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
+| `/api/duration-analysis` | POST | **Duration Analysis** — create run for date range + category (202 + analysisId) |
+| `/api/duration-analysis/[id]` | GET | Full Duration Analysis record with all agent outputs and messages |
+| `/api/duration-analysis/[id]/events` | GET | SSE stream for DA pipeline progress |
+| `/api/duration-analysis/[id]/chat` | POST | Follow-up question to DA-3 with conversation history |
+| `/api/duration-analysis/[id]/override` | POST | Override symptom gate and resume to DA-3 |
+| `/api/runs` | POST | Start a new pipeline run against a legacy `Chart` (returns 202 + run_id) || `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
 | `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
 | `/api/reports/[id]` | GET | Serve HTML report file |
 
@@ -178,6 +224,18 @@ engine/
     ├── wave2.ts           # parallel, planner-selected: 2A–2G
     ├── wave3.ts           # parallel, planner-selected: 3A–3D
     └── wave4.ts           # sequential: 4X → 4A → 4B → 4C
+```
+
+**Duration Analysis engine** (separate from the wave pipeline):
+
+```
+engine/durationAnalysis/
+├── index.ts           # executeDurationPipeline + resumeDurationPipeline orchestrator
+├── slicer.ts          # sliceDashaTree() — pure TS, overlap filter, lord annotation, yoga activation
+├── transitOverlay.ts  # buildTransitOverlay() — per-AD transit snapshots + BAV scores
+├── registry.ts        # DOMAIN_AGENT_REGISTRY — per-category prompt/model/divisions/columns
+├── agentJson.ts       # callAgentJson() — lenient JSON extraction + one retry per agent call
+└── extractor.ts       # extractCategoryData() — registry-driven chart data extraction
 ```
 
 **Deterministic Wave 1 (compute path):** For a `source="compute"` unified chart,
@@ -633,6 +691,86 @@ resulting report is served by the same Reporting flow (section 3.1 / `/api/repor
 
 Follow-up detection: if the unified chart already has a completed run
 (`status="done"`), the new run is flagged `isFollowup` and Wave 1 is not re-run.
+
+---
+
+## 8.3 Duration Analysis — Focused 3-Agent Pipeline (NEW in v1.2)
+
+Duration Analysis is a fourth practitioner-facing feature. Unlike the 18-agent wave
+pipeline that produces a broad holistic report, Duration Analysis answers focused
+questions about a specific date range and life domain using a lightweight 3-agent
+sequential pipeline backed by its own DB tables.
+
+### Architecture
+
+```
+PRACTITIONER
+     │  POST /api/duration-analysis
+     │  { unifiedChartId, dateFrom, dateTo, category, symptoms?, userQuestion? }
+     ▼
+┌────────────────────────────┐
+│  API Route                 │
+│  • Validate (10-year cap,  │
+│    dashaTree present)      │
+│  • Create DurationAnalysis │
+│    (status="queued")       │
+│  • Fire executeDuration-   │
+│    Pipeline (no await)     │
+└──────────────┬─────────────┘
+               │ 202 { analysisId }
+               │
+               ▼ (fire-and-forget background execution)
+┌──────────────────────────────────────────────────────────┐
+│  executeDurationPipeline (engine/durationAnalysis/index.ts)│
+│                                                          │
+│  Step 0a — sliceDashaTree()   [pure TS, ~1ms]            │
+│    • Overlap filter (PD intervals vs date range)         │
+│    • Lord annotations (nakshatra, combustion, yoga)      │
+│    • Yoga activation (parivartana, Raja, Dhana, Neechabhanga)│
+│    • Truncate to 200 periods (flag if truncated)         │
+│                                                          │
+│  Step 0b — buildTransitOverlay()  [calls computeTransits]│
+│    • Saturn/Jupiter/Rahu/Ketu per unique AD boundary     │
+│    • BAV scores (bav['Saturn'][signNumber-1])            │
+│    • Sade Sati phase from stored allPeriods              │
+│    • ashtamaShani / kantakaShani flags                   │
+│                                                          │
+│  Step 1 — DA-1 Domain Analyser  [Claude Sonnet]          │
+│    • Category-scoped chart data + period table + overlay │
+│    • Per-period: analysis, key_factors, transit_factors, │
+│      activated_yogas, intensity, favorable, bahiranga,   │
+│      antaranga                                           │
+│    • Post-LLM merge: transitContext + lordAnnotations    │
+│      joined back deterministically by ad.start           │
+│                                                          │
+│  Step 2 — DA-2 Symptom Validator  [Sonnet, CONDITIONAL]  │
+│    • Only runs when symptoms provided                    │
+│    • Returns: { found, confidence, factors[], analysis } │
+│    • Gate: if found=false → status=symptom_unmatched,    │
+│      emit symptom_gate SSE, STOP (overridable via /override)│
+│                                                          │
+│  Step 3 — DA-3 Future Analyser  [Claude Sonnet]          │
+│    • Per-AD forecast: bahiranga, antaranga, why,         │
+│      transit_why, recommendations                        │
+│    • contextSummary generated post-DA-3 (deterministic,  │
+│      no LLM) for efficient follow-up prompting           │
+└──────────────────────────────────────────────────────────┘
+
+Progress streamed via SSE at GET /api/duration-analysis/[id]/events
+Follow-up questions via POST /api/duration-analysis/[id]/chat
+```
+
+### Key design decisions
+
+| Decision | Rationale |
+|---|---|
+| Separate from 18-agent pipeline | Different access pattern (date range + domain vs broad report); lighter cost |
+| Deterministic Steps 0a/0b before LLM | Period slicing and transit overlay are exact — no LLM needed; reduces prompt tokens |
+| 3 agents sequential (no fan-out) | Each agent depends on the prior; parallelism would not help |
+| Post-LLM merge of transitContext | LLM reliably produces interpretive text; joining structured data back in code avoids asking the model to reproduce large nested objects faithfully |
+| Category-scoped extraction | Minimises input tokens — health query only gets health-relevant columns |
+| contextSummary (deterministic) | After 2+ follow-up turns, substitutes full da1Output in prompt to prevent token growth |
+| Symptom gate override | Mirrors halt-gate UX from Wave 4; practitioner can override and get analysis with caveats |
 
 ---
 

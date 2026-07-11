@@ -301,7 +301,7 @@ export interface AntarDasha {
   start: Date
   end: Date
   duration_days: number
-  pratyantardashas?: PratyanDasha[]
+  pratyantardashas: PratyanDasha[]
 }
 
 /** Mahadasha (major period) — top level of the dasha tree. */
@@ -359,12 +359,25 @@ export interface LLMCallOptions {
   model: string
   /** LLM provider. */
   provider: 'anthropic' | 'openai' | 'google'
-  /** Complete prompt to send. */
+  /** Complete prompt to send (the volatile part when cachedPrefix is set). */
   prompt: string
   /** Sampling temperature (0–1). */
   temperature: number
   /** Maximum output tokens. */
   maxTokens: number
+  /**
+   * Optional stable prompt prefix sent BEFORE `prompt`. On Anthropic it is
+   * marked with cache_control (ephemeral) so byte-identical prefixes across
+   * calls hit the prompt cache; on other providers it is simply prepended
+   * (OpenAI caches long repeated prefixes automatically server-side).
+   */
+  cachedPrefix?: string
+  /**
+   * Optional per-call API key override. When set, it is used instead of the
+   * provider's environment key (ANTHROPIC_API_KEY / OPENAI_API_KEY). Used
+   * transiently — never persisted. Falls back to the env key when omitted.
+   */
+  apiKey?: string
 }
 
 /** Response from an LLM API call. */

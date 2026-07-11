@@ -34,7 +34,7 @@ interface SerializedAntarDasha {
   start: string
   end: string
   duration_days: number
-  pratyantardashas?: SerializedPratyanDasha[]
+  pratyantardashas: SerializedPratyanDasha[]
 }
 
 interface SerializedPratyanDasha {
@@ -372,7 +372,7 @@ export function serializeDashaTree(tree: DashaTree): SerializedDashaTree {
         start: ad.start.toISOString(),
         end: ad.end.toISOString(),
         duration_days: ad.duration_days,
-        pratyantardashas: ad.pratyantardashas?.map((pd) => ({
+        pratyantardashas: ad.pratyantardashas.map((pd) => ({
           lord: pd.lord,
           start: pd.start.toISOString(),
           end: pd.end.toISOString(),

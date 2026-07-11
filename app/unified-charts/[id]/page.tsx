@@ -109,12 +109,20 @@ export default function ChartDetailPage() {
               <span>Created: {formatDate(chart.createdAt)}</span>
             </div>
           </div>
-          <button
-            onClick={() => router.push(`/unified-charts/${chart.id}/analyze`)}
-            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
-          >
-            Run AI Analysis
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/duration-analysis?chartId=${chart.id}`}
+              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 transition-colors whitespace-nowrap"
+            >
+              Duration Analysis
+            </Link>
+            <button
+              onClick={() => router.push(`/unified-charts/${chart.id}/analyze`)}
+              className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
+            >
+              Run AI Analysis
+            </button>
+          </div>
         </div>
 
         {/* Meta Info */}

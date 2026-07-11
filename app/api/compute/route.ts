@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
           start: ad.start.toISOString(),
           end: ad.end.toISOString(),
           duration_days: ad.duration_days,
-          pratyantardashas: ad.pratyantardashas?.map((pd) => ({
+          pratyantardashas: ad.pratyantardashas.map((pd) => ({
             lord: pd.lord,
             start: pd.start.toISOString(),
             end: pd.end.toISOString(),

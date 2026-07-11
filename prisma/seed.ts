@@ -43,6 +43,19 @@ const modelConfigs: ModelSeed[] = [
 
   // Verification agent
   { waveId: 'VERIFICATION', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.0, maxTokens: 8192, promptVersion: 'v1.0' },
+
+  // Duration Analysis agents — sequential 3-agent pipeline (DA-2 is conditional on symptoms).
+  // The domain step is registry-driven (engine/durationAnalysis/registry.ts): one row per
+  // domain agent. The legacy 'DA-1' row is kept for backward compatibility.
+  { waveId: 'DA-1', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA1-HEALTH',   modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA1-CAREER',   modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA1-WEALTH',   modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA1-MARRIAGE', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA1-PROPERTY', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA1-CASHFLOW', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
+  { waveId: 'DA-2', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.0, maxTokens: 4096, promptVersion: 'v1.0' },
+  { waveId: 'DA-3', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 8192, promptVersion: 'v1.0' },
 ]
 
 async function main() {

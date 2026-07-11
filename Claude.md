@@ -17,7 +17,7 @@ HTML reports. It is one **Next.js 14 (App Router, TypeScript)** monorepo — UI,
 routes, the deterministic compute engine, the LLM pipeline, and the report renderer
 all live in one project and one deployment.
 
-### Three practitioner-facing features
+### Four practitioner-facing features
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in one `UnifiedChart` store:
@@ -29,6 +29,13 @@ all live in one project and one deployment.
 3. **Reporting** — Wave 4 synthesis JSON is rendered to an HTML report
    (`engine/renderer.ts`), stored on disk, and served via `/api/reports/[id]` and
    the report viewer at `/runs/[id]/report`.
+4. **Duration Analysis** — a separate 3-agent sequential pipeline
+   (`engine/durationAnalysis/`): user picks a date range + life domain (health,
+   career, wealth, marriage, property, cashflow); the dasha tree is sliced and a
+   registry-selected domain agent (DA1-*) analyses each period, with an optional
+   symptom-validation gate (DA-2) and a forecast + chat agent (DA-3). Entry:
+   `POST /api/duration-analysis`. Domain knowledge lives in `prompts/domains/`
+   (shared with Wave 2 via `{{include:}}`); see `skills/backend/duration-analysis.md`.
 
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.

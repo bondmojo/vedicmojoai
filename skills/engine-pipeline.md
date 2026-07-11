@@ -55,3 +55,26 @@
 - Critical errors (4A): halt pipeline, set `pipeline_runs.status = 'halted_for_review'`
 - Orchestrator emits SSE `critical_error` event with action buttons
 - Override sets `override_applied = true` and adds report watermark
+
+## Duration Analysis Pipeline Rules
+
+A **separate** 3-agent pipeline for focused date-range analysis. Not related to the
+18-agent wave pipeline. Lives in `engine/durationAnalysis/`.
+
+1. **Execution order is strictly sequential:** Step 0a (slicer) → Step 0b (transitOverlay) → DA-1 → DA-2 (conditional) → DA-3 → contextSummary.
+2. **Fail-fast on invalid JSON:** `parseAgentJson()` throws on malformed output. The outer catch sets `status=failed` and persists `errorMessage`. Never proceed with malformed agent output.
+3. **Symptom gate is fail-closed:** If DA-2's `symptom_diagnosis` is absent or `found` is not a boolean, treat as failure — not a silent bypass.
+4. **Post-LLM merge:** After DA-1 returns valid JSON, `mergePeriodContext()` joins `transitContext` (from `transitOverlay[]` by `ad.start`) and `lordAnnotations` (from `periodSlice[]`) back onto each `period_analysis` entry deterministically. The LLM does not produce these.
+5. **Period slice truncation:** `sliceDashaTree` caps at 200 periods and returns `{ slices, truncated }`. When `truncated=true`, a warning is prepended to the DA-1 prompt.
+6. **Category extraction includes `nakshatras`, `relationships`, `ashtakavarga` for ALL categories** — they are required for lord annotation, yoga detection, and BAV scoring respectively.
+7. **Transit overlay is best-effort:** If `computeTransits()` throws for a specific AD date, that entry is skipped and the overlay continues. Never fail the whole pipeline on a single ephemeris error.
+8. **contextSummary is deterministic** (no LLM). Substitutes full `da1Output` in follow-up prompts when `conversationHistory.length > 2` to prevent token growth.
+9. **Chat spend rolls up:** `POST /api/duration-analysis/[id]/chat` increments `totalTokenIn/Out/CostUsd` on the analysis record after each call.
+
+## Duration Analysis Model Tiers
+
+| Agent | Model | Temperature | Purpose |
+|---|---|---|---|
+| DA-1 | claude-sonnet-4-5 | 0.3 | Interpretive per-period analysis |
+| DA-2 | claude-sonnet-4-5 | 0.0 | Gate validation — deterministic |
+| DA-3 | claude-sonnet-4-5 | 0.3 | Forecast + follow-up chat |
