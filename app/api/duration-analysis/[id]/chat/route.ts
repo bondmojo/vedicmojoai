@@ -101,7 +101,8 @@ export async function POST(
 
   const prefixParts: string[] = []
   prefixParts.push('--- CHART DATA ---')
-  prefixParts.push(JSON.stringify(categoryData, null, 1))
+  // Compact JSON (no indent) — lossless, ~20-40% fewer input tokens.
+  prefixParts.push(JSON.stringify(categoryData))
   prefixParts.push('')
 
   if (contextSummary && historyDepth > 2) {
@@ -109,13 +110,13 @@ export async function POST(
     prefixParts.push(contextSummary)
   } else {
     prefixParts.push('--- DA-1 ANALYSIS ---')
-    prefixParts.push(JSON.stringify(da1Output, null, 1))
+    prefixParts.push(JSON.stringify(da1Output))
   }
 
   if (da2Output) {
     prefixParts.push('')
     prefixParts.push('--- DA-2 VALIDATION ---')
-    prefixParts.push(JSON.stringify(da2Output, null, 1))
+    prefixParts.push(JSON.stringify(da2Output))
   }
   prefixParts.push('')
   prefixParts.push('')

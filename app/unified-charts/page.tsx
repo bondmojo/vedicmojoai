@@ -109,6 +109,7 @@ export default function UnifiedChartsPage() {
                 chart={chart}
                 onAnalyze={() => router.push(`/unified-charts/${chart.id}/analyze`)}
                 onView={() => router.push(`/unified-charts/${chart.id}`)}
+                onChanged={loadCharts}
               />
             ))}
           </div>
@@ -378,21 +379,87 @@ function ChartCard({
   chart,
   onAnalyze,
   onView,
+  onChanged,
 }: {
   chart: UnifiedChartSummary
   onAnalyze: () => void
   onView: () => void
+  onChanged: () => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [nameDraft, setNameDraft] = useState(chart.name)
+  const [saving, setSaving] = useState(false)
+
+  const saveRename = async () => {
+    const trimmed = nameDraft.trim()
+    if (!trimmed || trimmed === chart.name) {
+      setEditing(false)
+      setNameDraft(chart.name)
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/unified-charts/${chart.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      })
+      if (res.ok) {
+        setEditing(false)
+        onChanged()
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4 hover:border-gray-600 transition-all">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <button
-            onClick={onView}
-            className="text-lg font-medium hover:text-indigo-400 transition-colors text-left"
-          >
-            {chart.name}
-          </button>
+          {editing ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveRename()
+                  if (e.key === 'Escape') { setEditing(false); setNameDraft(chart.name) }
+                }}
+                autoFocus
+                className="rounded bg-gray-900 border border-indigo-500 px-2 py-1 text-lg font-medium text-white focus:outline-none"
+              />
+              <button
+                onClick={saveRename}
+                disabled={saving}
+                className="rounded px-2 py-1 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => { setEditing(false); setNameDraft(chart.name) }}
+                className="rounded px-2 py-1 text-xs font-medium text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onView}
+                className="text-lg font-medium hover:text-indigo-400 transition-colors text-left"
+              >
+                {chart.name}
+              </button>
+              <button
+                onClick={() => { setNameDraft(chart.name); setEditing(true) }}
+                title="Rename chart"
+                className="text-xs text-gray-500 hover:text-indigo-400 transition-colors"
+              >
+                ✎ Rename
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-4 mt-1 text-sm text-gray-400">
             <span className="flex items-center gap-1">
               <SourceBadge source={chart.source} />

@@ -393,7 +393,7 @@ separate from the 18-agent wave pipeline.
 | UnifiedChart → PipelineRun | 1:N (nullable) | Each unified chart can back multiple AI analysis runs (`unifiedChartId`) |
 | UnifiedChart → DurationAnalysis | 1:N | Each unified chart can have multiple Duration Analysis runs |
 | DurationAnalysis → DurationMessage | 1:N | Each analysis has a conversation log |
-| SavedChart (standalone) | — | Legacy independent computed chart storage (superseded by UnifiedChart) |
+| SavedChart (standalone) | — | Legacy independent computed chart storage — READ-ONLY since the compute page moved to UnifiedChart; existing rows promoted via `npm run db:migrate-saved` |
 | Wave1Cache (standalone) | — | Caches expensive Wave 1 computations by chartHash |
 | ModelConfig (standalone) | — | AI model configuration per wave/agent — including DA-1, DA-2, DA-3 |
 

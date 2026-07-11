@@ -75,8 +75,14 @@ const RETRY_SUFFIX =
 
 /**
  * Calls the LLM and parses the response as JSON. On a parse failure, retries
- * ONCE with an explicit correction instruction appended to the prompt. Throws
- * (fail-fast, pipeline → status=failed) if the retry is also malformed.
+ * ONCE with an explicit correction instruction appended to the prompt.
+ *
+ * Special case: if the first call was truncated (finishReason === 'length'),
+ * a retry cannot help — the JSON was cut off mid-output because the model
+ * hit maxOutputTokens. We fail immediately with a clear actionable message
+ * rather than burning another identical call.
+ *
+ * Throws (fail-fast, pipeline → status=failed) if parsing fails after retry.
  * Token totals cover both calls when a retry happened.
  */
 export async function callAgentJson<T>(
@@ -87,6 +93,14 @@ export async function callAgentJson<T>(
   let tokenIn = first.tokenIn
   let tokenOut = first.tokenOut
   let costUsd = first.costUsd
+
+  // Truncation check — fail fast with an actionable message.
+  if (first.truncated) {
+    throw new Error(
+      `${agentId} output was truncated: model hit maxOutputTokens (${params.maxTokens}). ` +
+      `Use a smaller date range, reduce DA1_BATCH_SIZE, or pick a model with a larger output window.`
+    )
+  }
 
   try {
     const output = parseAgentJson<T>(first.content, agentId)
@@ -99,6 +113,14 @@ export async function callAgentJson<T>(
   tokenIn += retry.tokenIn
   tokenOut += retry.tokenOut
   costUsd += retry.costUsd
+
+  // Check truncation on the retry too.
+  if (retry.truncated) {
+    throw new Error(
+      `${agentId} retry output was also truncated (hit maxOutputTokens: ${params.maxTokens}). ` +
+      `Use a smaller date range or pick a model with a larger output window.`
+    )
+  }
 
   let output: T
   try {

@@ -1,10 +1,17 @@
 /**
  * GET    /api/unified-charts/[id] — Load a single unified chart with full domain data.
- * DELETE /api/unified-charts/[id] — Delete a unified chart (cascades to pipeline runs).
+ * PATCH  /api/unified-charts/[id] — Rename a unified chart.
+ * DELETE /api/unified-charts/[id] — Delete a unified chart (cascades to pipeline
+ *                                   runs AND duration analyses/messages).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/db'
+
+const RenameSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(120),
+})
 
 export async function GET(
   _request: NextRequest,
@@ -91,6 +98,55 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = RenameSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const chart = await prisma.unifiedChart.findUnique({
+      where: { id: params.id },
+      select: { id: true },
+    })
+    if (!chart) {
+      return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
+    }
+
+    const updated = await prisma.unifiedChart.update({
+      where: { id: params.id },
+      data: { name: parsed.data.name },
+      select: { id: true, name: true, updatedAt: true },
+    })
+
+    return NextResponse.json({
+      id: updated.id,
+      name: updated.name,
+      updatedAt: updated.updatedAt,
+      message: 'Chart renamed successfully',
+    })
+  } catch (error) {
+    console.error('Rename unified chart error:', error)
+    return NextResponse.json(
+      { error: 'Failed to rename chart', message: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -108,14 +164,22 @@ export async function DELETE(
       )
     }
 
-    // Delete associated pipeline runs first (cascade isn't automatic with Prisma)
-    await prisma.pipelineRun.deleteMany({
-      where: { unifiedChartId: params.id },
-    })
-
-    await prisma.unifiedChart.delete({
-      where: { id: params.id },
-    })
+    // Cascade isn't automatic with Prisma — remove dependents in FK order:
+    // duration messages → duration analyses → pipeline runs → chart.
+    await prisma.$transaction([
+      prisma.durationMessage.deleteMany({
+        where: { analysis: { unifiedChartId: params.id } },
+      }),
+      prisma.durationAnalysis.deleteMany({
+        where: { unifiedChartId: params.id },
+      }),
+      prisma.pipelineRun.deleteMany({
+        where: { unifiedChartId: params.id },
+      }),
+      prisma.unifiedChart.delete({
+        where: { id: params.id },
+      }),
+    ])
 
     return NextResponse.json({ message: 'Chart deleted successfully' })
   } catch (error) {

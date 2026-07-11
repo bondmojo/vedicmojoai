@@ -109,6 +109,9 @@ docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
 - **`PipelineRun`** keeps a required legacy `chartId` (`Chart` FK) and a nullable
   `unifiedChartId` (`UnifiedChart` FK). AI Analysis from a unified chart ensures a
   matching `Chart` exists by `chartHash`, then sets both.
+- **All chart CRUD goes through `UnifiedChart`** — the compute page's Save/Load/
+  Delete, renames (`PATCH /api/unified-charts/[id]`), and every pipeline read.
+  `SavedChart` is legacy/read-only (promote old rows: `npm run db:migrate-saved`).
 - Other tables: `Chart` (legacy immutable input), `SavedChart` (legacy computed
   store), `Wave1Cache`, `WaveOutput`, `RunMessage`, `ModelConfig`.
 - Format conversion is centralized in `lib/chart-mapper.ts`.

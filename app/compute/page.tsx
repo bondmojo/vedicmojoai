@@ -41,21 +41,15 @@ const TIMEZONES = [
   ['11','UTC+11'],['12','UTC+12 (NZST)'],
 ]
 
+// Saved charts are UnifiedChart rows — the single canonical store shared
+// with AI Analysis and Duration Analysis (SavedChart is legacy/read-only).
 interface SavedChartSummary {
   id: string
   name: string
-  birthDate: string
-  birthTime: string
-  timezone: number
-  latitude: number
-  longitude: number
-  sunriseMode: string
   lagna: string
-  lagnaLongitude: number
-  moonLongitude: number
-  ayanamsa: number
+  source: string
+  birthDatetime: string
   createdAt: string
-  updatedAt: string
 }
 
 export default function ComputePage() {
@@ -90,11 +84,11 @@ export default function ComputePage() {
   const [showSavedCharts, setShowSavedCharts] = useState(false)
   const [loadingChart, setLoadingChart] = useState<string | null>(null)
 
-  // Load saved charts list
+  // Load saved charts list (UnifiedChart — the canonical store)
   const fetchSavedCharts = useCallback(async () => {
     setLoadingCharts(true)
     try {
-      const res = await fetch('/api/compute/charts')
+      const res = await fetch('/api/unified-charts')
       if (res.ok) {
         const data = await res.json()
         setSavedCharts(data)
@@ -145,26 +139,27 @@ export default function ComputePage() {
     setSaveMessage(null)
 
     try {
-      const res = await fetch('/api/compute/save', {
+      // Save to the canonical UnifiedChart store (same as AI Analysis / Duration Analysis)
+      const res = await fetch('/api/unified-charts/from-compute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name || 'Unnamed Chart',
-          birthDate: form.date,
-          birthTime: form.time,
+          date: form.date,
+          time: form.time,
           timezone: parseFloat(form.timezone),
           latitude: parseFloat(form.latitude),
           longitude: parseFloat(form.longitude),
           sunriseMode: form.sunriseMode,
-          chartData: result.chart,
-          dashaTree: result.dashaTree,
         }),
       })
 
       const data = await res.json()
-      if (res.ok) {
-        setSaveMessage(data.isUpdate ? 'Chart updated successfully' : 'Chart saved successfully')
+      if (res.status === 201) {
+        setSaveMessage('Chart saved to Unified Charts')
         fetchSavedCharts() // Refresh the list
+      } else if (res.status === 409) {
+        setSaveMessage(`Already saved as "${data.name}" — rename it from the Unified Charts page if needed`)
       } else {
         setSaveMessage(`Save failed: ${data.error}`)
       }
@@ -215,30 +210,57 @@ export default function ComputePage() {
   async function handleLoadChart(chartId: string) {
     setLoadingChart(chartId)
     try {
-      const res = await fetch(`/api/compute/charts/${chartId}`)
+      const res = await fetch(`/api/unified-charts/${chartId}`)
       if (!res.ok) {
         setError('Failed to load chart')
         return
       }
       const data = await res.json()
 
-      // Populate form with saved birth data
-      setForm({
-        name: data.name,
-        date: data.birthDate,
-        time: data.birthTime,
-        timezone: String(data.timezone),
-        latitude: String(data.latitude),
-        longitude: String(data.longitude),
-        sunriseMode: data.sunriseMode as 'precise' | 'jhora',
-      })
+      // Compute-sourced charts store the original BirthInput; paste-sourced
+      // charts have no birth data to load into the compute form.
+      const birth = data.birthInput as
+        | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
+        | null
+      if (data.source !== 'compute' || !birth?.date || !birth?.time) {
+        setError('This chart was pasted as JSON — it has no birth data to load. View it on the Unified Charts page.')
+        return
+      }
 
-      // Set the result directly (no need to recompute)
-      setResult({
-        success: true,
-        chart: data.chartData,
-        dashaTree: data.dashaTree,
+      // Populate form with saved birth data
+      const loadedForm = {
+        name: data.name as string,
+        date: birth.date,
+        time: birth.time.length === 8 ? birth.time.slice(0, 5) : birth.time,
+        timezone: String(birth.timezone ?? 5.5),
+        latitude: String(birth.latitude ?? ''),
+        longitude: String(birth.longitude ?? ''),
+        sunriseMode: (birth.sunriseMode ?? data.sunriseMode ?? 'precise') as 'precise' | 'jhora',
+      }
+      setForm(loadedForm)
+
+      // Recompute for display — deterministic and fast, avoids storing a
+      // second copy of the display shape.
+      const computeRes = await fetch('/api/compute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: loadedForm.name || undefined,
+          date: loadedForm.date,
+          time: loadedForm.time,
+          timezone: parseFloat(loadedForm.timezone),
+          latitude: parseFloat(loadedForm.latitude),
+          longitude: parseFloat(loadedForm.longitude),
+          sunriseMode: loadedForm.sunriseMode,
+        }),
       })
+      const computed = await computeRes.json()
+      if (!computeRes.ok) {
+        setError(computed.error || 'Failed to recompute chart')
+        return
+      }
+
+      setResult(computed)
       setActiveTab('charts')
       setShowSavedCharts(false)
       setSaveMessage(null)
@@ -251,9 +273,9 @@ export default function ComputePage() {
   }
 
   async function handleDeleteChart(chartId: string) {
-    if (!confirm('Delete this saved chart?')) return
+    if (!confirm('Delete this chart? This also removes its AI analyses and duration analyses.')) return
     try {
-      const res = await fetch(`/api/compute/charts/${chartId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/unified-charts/${chartId}`, { method: 'DELETE' })
       if (res.ok) {
         fetchSavedCharts()
       }
@@ -315,9 +337,12 @@ export default function ComputePage() {
                         <span className="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">
                           {chart.lagna}
                         </span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${chart.source === 'compute' ? 'bg-cyan-900/50 text-cyan-400' : 'bg-purple-900/50 text-purple-400'}`}>
+                          {chart.source}
+                        </span>
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        {chart.birthDate} {chart.birthTime} | Lat: {chart.latitude.toFixed(4)}° Lon: {chart.longitude.toFixed(4)}°
+                        Born {new Date(chart.birthDatetime).toISOString().slice(0, 16).replace('T', ' ')} UTC · saved {new Date(chart.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-4">

@@ -173,13 +173,13 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/charts/[id]` | GET | Chart detail + run history |
 | `/api/charts/[id]/dasha` | GET | Computed dasha tree (current period derived at request time) |
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
-| `/api/compute/save` | POST | Save a computed chart to the database (with dedup via input hash) |
-| `/api/compute/charts` | GET | List all saved computed charts (metadata only) |
-| `/api/compute/charts/[id]` | GET, DELETE | Load or delete a single saved computed chart |
+| `/api/compute/save` | POST | LEGACY (UI no longer calls it) — save to SavedChart; superseded by `from-compute` |
+| `/api/compute/charts` | GET | LEGACY — list SavedChart rows; the compute page now lists unified charts |
+| `/api/compute/charts/[id]` | GET, DELETE | LEGACY — load/delete a SavedChart row |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
-| `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` |
+| `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` (shared creator: `lib/unified-chart-create.ts`) |
 | `/api/unified-charts/from-paste` | POST | **Generate Chart (Path B)** — validate + persist pasted `ChartInputV1` as `source="paste"` |
-| `/api/unified-charts/[id]` | GET, DELETE | Load full domain data / delete a unified chart (cascades runs) |
+| `/api/unified-charts/[id]` | GET, PATCH, DELETE | Load full domain data / rename / delete (cascades pipeline runs + duration analyses) |
 | `/api/unified-charts/[id]/analyze` | POST | **AI Analysis** — start pipeline on a unified chart (202 + run_id); skips Wave 1 for compute source |
 | `/api/duration-analysis` | POST | **Duration Analysis** — create run for date range + category (202 + analysisId) |
 | `/api/duration-analysis/[id]` | GET | Full Duration Analysis record with all agent outputs and messages |

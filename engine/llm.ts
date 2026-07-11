@@ -153,11 +153,14 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
     const tokenIn = result.usage?.inputTokens ?? 0
     const tokenOut = result.usage?.outputTokens ?? 0
     const costUsd = estimateCost(model, tokenIn, tokenOut)
+    // finishReason === 'length' means the model hit maxOutputTokens and the
+    // output is truncated. For JSON agents this guarantees parse failure.
+    const truncated = result.finishReason === 'length'
 
     // Log response
     console.log(`\n┌─── LLM RESPONSE ───────────────────────────────────`)
     console.log(`│ Provider:  ${provider} / ${model}`)
-    console.log(`│ Status:    SUCCESS`)
+    console.log(`│ Status:    ${truncated ? '⚠ TRUNCATED (hit maxOutputTokens)' : 'SUCCESS'}`)
     console.log(`│ Time:      ${(elapsed / 1000).toFixed(2)}s`)
     console.log(`│ Tokens In: ${tokenIn.toLocaleString()}`)
     console.log(`│ Tokens Out:${tokenOut.toLocaleString()}`)
@@ -170,6 +173,7 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
       tokenIn,
       tokenOut,
       costUsd,
+      truncated,
     }
   } catch (error) {
     const elapsed = Date.now() - startTime

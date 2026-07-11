@@ -390,6 +390,12 @@ export interface LLMResponse {
   tokenOut: number
   /** Estimated cost in USD. */
   costUsd: number
+  /**
+   * True when the model stopped because it hit maxOutputTokens (finishReason
+   * === 'length'). Callers should treat truncated JSON as unrecoverable and
+   * fail fast rather than retrying — the output cannot be valid JSON.
+   */
+  truncated?: boolean
 }
 
 /** Structured output from a single agent execution. */

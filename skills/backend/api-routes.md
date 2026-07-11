@@ -15,7 +15,7 @@
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) |
 | `/api/unified-charts/from-compute` | POST | Generate Chart (Path A) — compute + persist `source="compute"` |
 | `/api/unified-charts/from-paste` | POST | Generate Chart (Path B) — validate + persist `source="paste"` |
-| `/api/unified-charts/[id]` | GET/DELETE | Load full domain data / delete (cascades runs) |
+| `/api/unified-charts/[id]` | GET/PATCH/DELETE | Load full domain data / rename (`{name}`) / delete (cascades pipeline runs + duration analyses/messages) |
 | `/api/unified-charts/[id]/analyze` | POST | AI Analysis on a unified chart (202); skips Wave 1 for compute source |
 | `/api/duration-analysis` | POST | **Duration Analysis** — create run (202 + analysisId); validates 10yr cap + dashaTree present |
 | `/api/duration-analysis` | GET | Run history — newest 50, optional `?unifiedChartId=` filter; sweeps stale runs first |

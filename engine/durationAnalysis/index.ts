@@ -670,7 +670,9 @@ function buildDA1Prompt(
   batch?: { index: number; count: number }
 ): { cachedPrefix: string; prompt: string } {
   const { dashaTree: _omitted, ...chartForPrompt } = categoryData
-  const cachedPrefix = ['--- CHART DATA ---', JSON.stringify(chartForPrompt, null, 1), '', ''].join('\n')
+  // Compact JSON (no indent) — lossless, but ~20-40% fewer input tokens than
+  // pretty-printed. Models parse minified JSON identically.
+  const cachedPrefix = ['--- CHART DATA ---', JSON.stringify(chartForPrompt), '', ''].join('\n')
 
   const parts: string[] = []
   if (truncated) {
@@ -687,10 +689,10 @@ function buildDA1Prompt(
     parts.push('')
   }
   parts.push('--- PERIOD TABLE ---')
-  parts.push(JSON.stringify(periodSlice, null, 1))
+  parts.push(JSON.stringify(periodSlice))
   parts.push('')
   parts.push('--- TRANSIT OVERLAY ---')
-  parts.push(JSON.stringify(transitOverlay, null, 1))
+  parts.push(JSON.stringify(transitOverlay))
   if (userQuestion) {
     parts.push('')
     parts.push('--- USER QUESTION ---')
@@ -714,10 +716,10 @@ function buildDA2Prompt(
 ): string {
   const parts: string[] = []
   parts.push('--- CHART DATA ---')
-  parts.push(JSON.stringify(categoryData, null, 1))
+  parts.push(JSON.stringify(categoryData))
   parts.push('')
   parts.push('--- DA-1 ANALYSIS ---')
-  parts.push(JSON.stringify(da1Output, null, 1))
+  parts.push(JSON.stringify(da1Output))
   parts.push('')
   parts.push('--- SYMPTOMS ---')
   parts.push(symptoms)
@@ -746,7 +748,7 @@ function buildDA3Prompt(
 ): string {
   const parts: string[] = []
   parts.push('--- CHART DATA ---')
-  parts.push(JSON.stringify(categoryData, null, 1))
+  parts.push(JSON.stringify(categoryData))
   parts.push('')
   // Use context summary for history depth > 2, otherwise full DA-1 output
   if (contextSummary && conversationHistory.length > 2) {
@@ -754,12 +756,12 @@ function buildDA3Prompt(
     parts.push(contextSummary)
   } else {
     parts.push('--- DA-1 ANALYSIS ---')
-    parts.push(JSON.stringify(da1Output, null, 1))
+    parts.push(JSON.stringify(da1Output))
   }
   if (da2Output) {
     parts.push('')
     parts.push('--- DA-2 VALIDATION ---')
-    parts.push(JSON.stringify(da2Output, null, 1))
+    parts.push(JSON.stringify(da2Output))
   }
   if (conversationHistory.length > 0) {
     parts.push('')
