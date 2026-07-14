@@ -2,10 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme system
+ * ------------
+ * The app was built entirely with literal gray/slate/white Tailwind classes
+ * (bg-gray-900, text-gray-400, border-gray-700, text-white, …) rather than
+ * the `dark:` variant system. Rewriting every className would touch ~800
+ * occurrences across ~20 files, so instead `gray` and `slate` are redefined
+ * in tailwind.config.ts to resolve through these CSS variables. `:root` below
+ * holds the LIGHT values; `.dark` overrides them with the ORIGINAL dark
+ * values, so the existing dark UI is pixel-identical to before this change.
+ *
+ * `next-themes` toggles the `.dark` class on <html> (see app/layout.tsx /
+ * components/ThemeProvider.tsx); default is dark to preserve current behavior
+ * for existing users.
+ */
+
+/*
+ * IMPORTANT: the gray/slate scales below are INVERTED between themes, not
+ * just re-colored. In the existing dark UI, `bg-gray-900`/`bg-gray-950` are
+ * used as dark PAGE/PANEL SURFACES, `text-gray-400/500` as light MUTED TEXT
+ * readable on those dark surfaces, and `border-gray-700/600` as BORDERS
+ * visible on dark surfaces. For light mode to render correctly, those same
+ * class names must resolve to the opposite end of the lightness scale:
+ * `gray-900` becomes a light surface, `gray-400` becomes darker muted text,
+ * etc. `.dark` below restores Tailwind's normal (non-inverted) gray/slate
+ * scale — i.e. the exact values the app already shipped with.
+ */
+
 :root {
+  --foreground-rgb: 15, 15, 20;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 244, 244, 247;
+
+  /* Primary text color (replaces bare `text-white` usages via the `ink`
+     Tailwind color) — near-black in light mode, white in dark mode. */
+  --color-ink: 17, 24, 39;
+
+  /*
+   * MIRRORED scale: light-mode gray-N = dark-mode's gray-(mirror of N), so
+   * gray-950/900/800 (dark-mode's darkest, used as page/panel backgrounds)
+   * become the lightest surfaces, while gray-50/100 (dark-mode's lightest,
+   * rarely used) become the darkest — giving correct contrast for text,
+   * borders, and surfaces without per-usage rewrites.
+   */
+  --color-gray-50: 3, 7, 18;      /* mirrors dark gray-950 */
+  --color-gray-100: 17, 24, 39;   /* mirrors dark gray-900 */
+  --color-gray-200: 31, 41, 55;   /* mirrors dark gray-800 */
+  --color-gray-300: 55, 65, 81;   /* mirrors dark gray-700 */
+  --color-gray-400: 75, 85, 99;   /* mirrors dark gray-600 */
+  --color-gray-500: 107, 114, 128;/* self-paired (midpoint) */
+  --color-gray-600: 156, 163, 175;/* mirrors dark gray-400 */
+  --color-gray-700: 209, 213, 219;/* mirrors dark gray-300 */
+  --color-gray-800: 229, 231, 235;/* mirrors dark gray-200 */
+  --color-gray-900: 243, 244, 246;/* mirrors dark gray-100 */
+  --color-gray-950: 249, 250, 251;/* mirrors dark gray-50 */
+
+  --color-slate-50: 2, 6, 23;
+  --color-slate-100: 15, 23, 42;
+  --color-slate-200: 30, 41, 59;
+  --color-slate-300: 51, 65, 85;
+  --color-slate-400: 71, 85, 105;
+  --color-slate-500: 100, 116, 139;
+  --color-slate-600: 148, 163, 184;
+  --color-slate-700: 203, 213, 225;
+  --color-slate-800: 226, 232, 240;
+  --color-slate-900: 241, 245, 249;
+  --color-slate-950: 248, 250, 252;
+}
+
+.dark {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 15, 15, 20;
   --background-end-rgb: 25, 25, 35;
+
+  --color-ink: 255, 255, 255;
+
+  /* Tailwind's default gray/slate scale (unchanged from before this change). */
+  --color-gray-50: 249, 250, 251;
+  --color-gray-100: 243, 244, 246;
+  --color-gray-200: 229, 231, 235;
+  --color-gray-300: 209, 213, 219;
+  --color-gray-400: 156, 163, 175;
+  --color-gray-500: 107, 114, 128;
+  --color-gray-600: 75, 85, 99;
+  --color-gray-700: 55, 65, 81;
+  --color-gray-800: 31, 41, 55;
+  --color-gray-900: 17, 24, 39;
+  --color-gray-950: 3, 7, 18;
+
+  --color-slate-50: 248, 250, 252;
+  --color-slate-100: 241, 245, 249;
+  --color-slate-200: 226, 232, 240;
+  --color-slate-300: 203, 213, 225;
+  --color-slate-400: 148, 163, 184;
+  --color-slate-500: 100, 116, 139;
+  --color-slate-600: 71, 85, 105;
+  --color-slate-700: 51, 65, 85;
+  --color-slate-800: 30, 41, 59;
+  --color-slate-900: 15, 23, 42;
+  --color-slate-950: 2, 6, 23;
 }
 
 body {
@@ -16,6 +112,7 @@ body {
     rgb(var(--background-end-rgb))
   );
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 @layer utilities {

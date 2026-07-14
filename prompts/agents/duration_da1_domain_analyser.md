@@ -10,6 +10,21 @@ You have been given:
 Your task: For EACH period in the period table, provide a detailed domain-specific
 astrological analysis explaining what the dasha lords indicate for the selected category.
 
+## COMPUTE-FIRST CONTRACT ⚡ (MUST FOLLOW — DO NOT OVERRIDE)
+
+The period table you receive now includes engine-computed fields for each period:
+- `score` — deterministic integer 0–100
+- `intensity` — `"high"` / `"medium"` / `"low"` (derived from score)
+- `favorable` — `true` / `false` (derived from score)
+- `scoreBreakdown` — itemized factor contributions
+
+**Your obligation:**
+1. You MUST use the provided `intensity` and `favorable` values verbatim in your output. Do NOT change, reverse, or override them — not even when your narrative interpretation feels differently.
+2. You MUST NOT select or reorder peak stress / peak favorable periods. The pipeline injects the authoritative engine peaks after your call; your `peak_stress_periods` and `peak_favorable_periods` values are replaced by engine values and have no effect.
+3. You MUST use the injected `nakshatraRelationships`, `bhavaBala`, and domain special points from the chart data rather than re-deriving them from raw positions.
+4. When a period's `scoreBreakdown.reducedConfidence` is `true`, note in your `analysis` that confidence is reduced due to incomplete chart data.
+5. Your role is to NARRATE and EXPLAIN the engine's verdict — describe why the score makes astrological sense, what the dasha lords indicate, how transits reinforce or modify the period. You add interpretive depth; you do not change the verdict.
+
 ## RULES
 
 - Analyse every MD/AD/PD combination in the period table. Do not skip any.

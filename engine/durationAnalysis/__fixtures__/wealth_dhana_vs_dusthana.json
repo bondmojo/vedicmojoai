@@ -1,0 +1,98 @@
+{
+  "category": "wealth",
+  "description": "A strong wealth period (Jupiter MD = natural karaka, owns/occupies 2nd/11th, strong SAV) ranks above a weak one (Saturn MD in H12, malefic transits, low SAV). Aries ascendant.",
+  "chartData": {
+    "category": "wealth",
+    "planets": [
+      { "planet": "Sun",     "signNumber": 5,  "house": 5,  "longitude": 125, "latitude": 0, "speed": 1,   "retrograde": false, "sign": "Leo",       "degreeInSign": 5 },
+      { "planet": "Moon",    "signNumber": 2,  "house": 2,  "longitude": 35,  "latitude": 0, "speed": 13,  "retrograde": false, "sign": "Taurus",    "degreeInSign": 5 },
+      { "planet": "Mars",    "signNumber": 1,  "house": 1,  "longitude": 12,  "latitude": 0, "speed": 0.5, "retrograde": false, "sign": "Aries",     "degreeInSign": 12 },
+      { "planet": "Mercury", "signNumber": 3,  "house": 3,  "longitude": 65,  "latitude": 0, "speed": 1,   "retrograde": false, "sign": "Gemini",    "degreeInSign": 5 },
+      { "planet": "Jupiter", "signNumber": 11, "house": 11, "longitude": 305, "latitude": 0, "speed": 0.1, "retrograde": false, "sign": "Aquarius",  "degreeInSign": 5 },
+      { "planet": "Venus",   "signNumber": 2,  "house": 2,  "longitude": 40,  "latitude": 0, "speed": 1,   "retrograde": false, "sign": "Taurus",    "degreeInSign": 10 },
+      { "planet": "Saturn",  "signNumber": 12, "house": 12, "longitude": 335, "latitude": 0, "speed": 0.03,"retrograde": false, "sign": "Pisces",    "degreeInSign": 5 }
+    ],
+    "shadbala": {
+      "planets": [
+        { "planet": "Jupiter","strengthRatio": 1.6, "beneficRatio": 0.85 },
+        { "planet": "Venus",  "strengthRatio": 1.4, "beneficRatio": 0.78 },
+        { "planet": "Moon",   "strengthRatio": 1.3, "beneficRatio": 0.7  },
+        { "planet": "Sun",    "strengthRatio": 1.1, "beneficRatio": 0.6  },
+        { "planet": "Saturn", "strengthRatio": 0.55,"beneficRatio": 0.2  },
+        { "planet": "Mars",   "strengthRatio": 1.0, "beneficRatio": 0.55 },
+        { "planet": "Mercury","strengthRatio": 1.0, "beneficRatio": 0.55 }
+      ],
+      "strengthRanking": [],
+      "computedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "bhavaBala": {
+      "houses": [
+        { "house": 1, "total": 420, "rupas": 7.0 }, { "house": 2, "total": 540, "rupas": 9.0 },
+        { "house": 3, "total": 330, "rupas": 5.5 }, { "house": 4, "total": 390, "rupas": 6.5 },
+        { "house": 5, "total": 450, "rupas": 7.5 }, { "house": 6, "total": 270, "rupas": 4.5 },
+        { "house": 7, "total": 400, "rupas": 6.7 }, { "house": 8, "total": 240, "rupas": 4.0 },
+        { "house": 9, "total": 465, "rupas": 7.75 }, { "house": 10, "total": 420, "rupas": 7.0 },
+        { "house": 11, "total": 510, "rupas": 8.5 }, { "house": 12, "total": 210, "rupas": 3.5 }
+      ],
+      "computedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "karakas": [
+      { "planet": "Sun",     "karaka": "Atmakaraka",   "karakaAbbr": "AK",  "degreeInSign": 28.0 },
+      { "planet": "Jupiter", "karaka": "Amatyakaraka", "karakaAbbr": "AmK", "degreeInSign": 25.0 },
+      { "planet": "Venus",   "karaka": "Bhratrikaraka","karakaAbbr": "BK",  "degreeInSign": 22.0 },
+      { "planet": "Moon",    "karaka": "Matrikaraka",  "karakaAbbr": "MK",  "degreeInSign": 18.0 },
+      { "planet": "Mars",    "karaka": "Putrakaraka",  "karakaAbbr": "PK",  "degreeInSign": 15.0 },
+      { "planet": "Mercury", "karaka": "Gnatikaraka",  "karakaAbbr": "GK",  "degreeInSign": 12.0 },
+      { "planet": "Saturn",  "karaka": "Darakaraka",   "karakaAbbr": "DK",  "degreeInSign":  8.0 }
+    ],
+    "ashtakavarga": { "sav": [28, 42, 26, 30, 32, 22, 27, 18, 34, 29, 40, 19], "bav": {}, "savTotal": 337 }
+  },
+  "periods": [
+    {
+      "expectedRank": 1,
+      "description": "Jupiter MD (wealth natural karaka, owns/occupies H11) / Venus AD (owns/occupies H2) — strong 2nd/11th SAV",
+      "slice": {
+        "md": { "lord": "Jupiter", "start": "2020-01-01", "end": "2036-01-01" },
+        "ad": { "lord": "Venus",   "start": "2020-01-01", "end": "2022-08-01" },
+        "pd": { "lord": "Moon",    "start": "2020-01-01", "end": "2020-05-01" },
+        "lordAnnotations": {
+          "mdLord": { "planet": "Jupiter", "sign": "Aquarius", "house": 11, "nakshatra": "Shatabhisha", "nakshatraLord": "Rahu",  "subLord": "Jupiter", "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": ["Dhana Yoga substrate — Jupiter H11 + Venus H2"], "ownsHouses": [9, 12], "occupiesHouse": 11, "karakaRole": "AmK" },
+          "adLord": { "planet": "Venus",   "sign": "Taurus",   "house": 2,  "nakshatra": "Krittika",    "nakshatraLord": "Sun",   "subLord": "Mercury", "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": ["Dhana Yoga substrate — Jupiter H11 + Venus H2"], "ownsHouses": [2, 7], "occupiesHouse": 2, "karakaRole": "BK" },
+          "pdLord": { "planet": "Moon",    "sign": "Taurus",   "house": 2,  "nakshatra": "Rohini",      "nakshatraLord": "Moon",  "subLord": "Mars",    "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": ["Dhana Yoga substrate — Jupiter H11 + Venus H2"], "ownsHouses": [4], "occupiesHouse": 2, "karakaRole": "MK" }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2020-01-01", "adLord": "Venus",
+        "saturn": { "sign": "Aquarius", "signNumber": 11, "houseFromLagna": 11, "houseFromMoon": 10, "retrograde": false },
+        "jupiter": { "sign": "Taurus", "signNumber": 2, "houseFromLagna": 2, "houseFromMoon": 1, "retrograde": false },
+        "rahu": { "sign": "Gemini", "signNumber": 3, "houseFromLagna": 3 },
+        "ketu": { "sign": "Sagittarius", "signNumber": 9, "houseFromLagna": 9 },
+        "sadeSatiActive": false, "sadeSatiPhase": null, "ashtamaShani": false, "kantakaShani": false,
+        "saturnBavScore": 6, "jupiterBavScore": 6
+      }
+    },
+    {
+      "expectedRank": 2,
+      "description": "Saturn MD (H12 loss, weak) / Rahu AD — malefic transits, low 2nd/11th activation",
+      "slice": {
+        "md": { "lord": "Saturn", "start": "2001-01-01", "end": "2020-01-01" },
+        "ad": { "lord": "Rahu",   "start": "2001-01-01", "end": "2003-08-01" },
+        "pd": { "lord": "Ketu",   "start": "2001-01-01", "end": "2001-06-01" },
+        "lordAnnotations": {
+          "mdLord": { "planet": "Saturn", "sign": "Pisces", "house": 12, "nakshatra": "Revati",  "nakshatraLord": "Mercury", "subLord": "Saturn", "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": [], "ownsHouses": [10, 11], "occupiesHouse": 12, "karakaRole": "DK" },
+          "adLord": { "planet": "Rahu",   "sign": "Leo",    "house": 5,  "nakshatra": "Magha",   "nakshatraLord": "Ketu",    "subLord": "Sun",    "retrograde": true,  "combust": false, "cazimi": false, "activatedYogas": [], "ownsHouses": [], "occupiesHouse": 5, "karakaRole": null },
+          "pdLord": { "planet": "Ketu",   "sign": "Aquarius","house": 11, "nakshatra": "Dhanishta","nakshatraLord": "Mars",  "subLord": "Rahu",   "retrograde": true,  "combust": false, "cazimi": false, "activatedYogas": [], "ownsHouses": [], "occupiesHouse": 11, "karakaRole": null }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2001-01-01", "adLord": "Rahu",
+        "saturn": { "sign": "Gemini", "signNumber": 3, "houseFromLagna": 3, "houseFromMoon": 2, "retrograde": false },
+        "jupiter": { "sign": "Cancer", "signNumber": 4, "houseFromLagna": 4, "houseFromMoon": 3, "retrograde": true },
+        "rahu": { "sign": "Leo", "signNumber": 5, "houseFromLagna": 5 },
+        "ketu": { "sign": "Aquarius", "signNumber": 11, "houseFromLagna": 11 },
+        "sadeSatiActive": false, "sadeSatiPhase": null, "ashtamaShani": true, "kantakaShani": false,
+        "saturnBavScore": 3, "jupiterBavScore": 2
+      }
+    }
+  ]
+}

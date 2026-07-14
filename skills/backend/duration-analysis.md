@@ -7,13 +7,15 @@ A separate, lighter pipeline for focused date-range / domain-specific analysis.
 
 | File | Responsibility |
 |---|---|
-| `slicer.ts` | `sliceDashaTree()` — pure TS. Overlap filter, lord annotation (nakshatra lord, combustion, ownsHouses), yoga activation (parivartana, Raja/Dhana substrate, Neechabhanga). Returns `{ slices, truncated }`. |
+| `slicer.ts` | `sliceDashaTree()` — pure TS. Overlap filter, lord annotation (nakshatra lord, combustion, ownsHouses, **karakaRole from stored `karakas`**), yoga activation (parivartana, Raja/Dhana substrate, Neechabhanga). Returns `{ slices, truncated }`. Pass `chart.karakas` to get karakaRole tags. |
 | `transitOverlay.ts` | `buildTransitOverlay()` — calls `computeTransits()` once per unique AD start date; extracts Saturn/Jupiter/Rahu/Ketu + BAV scores from stored `ashtakavarga.bav`. |
 | `registry.ts` | `DOMAIN_AGENT_REGISTRY` — single source of truth per category: agent id, prompt file, `model_config` waveId, divisional charts (e.g. career = D9 + D10), extra columns (`shadbala`/`jaimini`). Adding a domain agent = one entry + prompt file + seed row. |
-| `extractor.ts` | `extractCategoryData()` — registry-driven. All categories get `planets`, `nakshatras`, `relationships`, `ashtakavarga`, `dashaTree`; the registry adds `divisionalCharts[]` + extra columns per category. |
+| `scoringWeights.ts` | **NEW.** `DOMAIN_SCORING_WEIGHTS` — single source of truth for all per-domain scoring parameters (beneficHouses, maleficHouses, primaryHouses, karakaRoles, naturalKarakas, per-factor weights, specialPoints, primaryFactors). `WEIGHTS_VERSION = '0.1.0-provisional'`. `resolveDomainWeights(category)` — throws `ScoringConfigError` on missing category. |
+| `scoring.ts` | **NEW.** `scorePeriod(period, chartData, transitEntry, domainWeights)` — pure deterministic scorer, 15 factors, never throws. Returns `{ score, breakdown }`. `identifyPeaks(scored, topN, minSignificance)` — significance floor, deterministic tie-order. Constants: `FAVORABLE_THRESHOLD=50`, `INTENSITY_HIGH/MEDIUM_DELTA=25/12`, `PEAK_SIGNIFICANCE_DELTA=12`, `BHAVA_RUPAS_CALIBRATION=12`, `SAV_MEAN=28`. |
+| `extractor.ts` | `extractCategoryData()` — registry-driven. All categories get `planets`, `nakshatras`, `relationships`, `ashtakavarga`, `dashaTree`, **`nakshatraRelationships` (computed on-demand), `bhavaBala`, `specialPoints` (resolved from DOMAIN_SCORING_WEIGHTS)**; registry adds `divisionalCharts[]` + extra columns per category. `toScoringChartData()` — assembles thin `ScoringChartData` for the scoring engine. |
 | `agentJson.ts` | `extractJsonBlock()` / `parseAgentJson()` / `callAgentJson()` — lenient JSON extraction (fences/preamble stripped) + ONE retry with a correction instruction; throws after the retry fails. Supports `cachedPrefix` pass-through. |
 | `reaper.ts` | `isStale()` / `reapStaleAnalyses()` — marks queued/running rows with no heartbeat for 10 min as failed. Called on every read path (GET [id], SSE poll, list). |
-| `index.ts` | `executeDurationPipeline()` + `resumeDurationPipeline()`. Sequential: Step 0a → Step 0b → DA-1 (batched) → DA-2 (cond.) → DA-3. Merges `transitContext`/`lordAnnotations` onto DA-1 output after parsing. |
+| `index.ts` | `executeDurationPipeline()` + `resumeDurationPipeline()`. Sequential: Step 0a → Step 0b → **Step 0c (extractCategoryData)** → **Step 0d (scoring: scorePeriod per period, identifyPeaks)** → DA-1 (batched) → DA-2 (cond.) → DA-3. Merges `transitContext`/`lordAnnotations`/`score`/`intensity`/`favorable`/`scoreBreakdown` onto DA-1 output after parsing. |
 
 ## Domain Agents (registry-driven)
 
@@ -40,7 +42,24 @@ expands `{{include:}}` at load time (paths with `/` resolve from `prompts/`).
 **Edit domain astrology in `prompts/domains/` only** — never duplicate it into
 agent prompt files.
 
-## Key Rules
+## Compute-First Contract (Phase 1 Scoring Layer)
+
+The scoring layer runs deterministically at **Step 0d** (before DA-1):
+
+1. `resolveDomainWeights(category)` — throws `ScoringConfigError` if the category is unregistered
+2. `toScoringChartData(categoryData, rawChart)` — assembles typed scoring input
+3. `scorePeriod(slice, chartData, overlayEntry, domainWeights)` per slice → `{ score, breakdown }`
+4. `identifyPeaks(scoredSlices)` → `{ peakStress, peakFavorable }`
+5. Persist `ScoredDashaSlice[]` (each entry has `score`, `intensity`, `favorable`, `scoreBreakdown`) into `periodSlice`
+
+**DA-1 receives scored slices** — the period table carries engine verdicts as authoritative context.
+**`mergePeriodContext()`** overwrites any model-emitted `intensity`/`favorable` with engine values.
+**Engine peaks** replace LLM-chosen peaks in the persisted `da1Output`.
+**DA-3 receives** a compact scored-period summary + engine peaks as authoritative context.
+
+**Phase 1 weights are PROVISIONAL** (`WEIGHTS_VERSION = '0.1.0-provisional'`). Never present scores as calibrated until Phase 2 Calibration_Gate.
+
+**Legacy backward compatibility:** pre-feature `periodSlice` entries (no `score`/`scoreBreakdown`) are returned verbatim with no rescoring. The GET route adds a top-level `peaks` field only when present in `da1Output`.
 
 - All LLM calls go through `callAgentJson()` → `callLLM()` — never call providers directly
 - The domain-analysis step resolves its prompt file and `model_config` row from `DOMAIN_AGENT_REGISTRY` — never hardcode per-category logic in the orchestrator or extractor

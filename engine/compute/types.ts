@@ -232,6 +232,7 @@ export interface ShadbalPlanet {
   masaBala: number
   varaBala: number
   horaBala: number
+  ayanaBala: number
 
   cheshtaBala: number
   naisargikaBala: number
@@ -449,6 +450,83 @@ export interface BhavaBalaHouse {
 
 export interface BhavaBalaResult {
   houses: BhavaBalaHouse[]
+  computedAt: string
+}
+
+// ─── Varshaphal (Tajika annual solar-return chart) ───────────────────
+
+/** The five office-bearer candidates competing to be Varshesha (year lord). */
+export interface VarsheshaCandidate {
+  /** Which office this planet holds among the five. */
+  office:
+    | 'muntha_lord'
+    | 'varsha_lagna_lord'
+    | 'janma_lagna_lord'
+    | 'dinaratri_lord'
+    | 'trirashi_lord'
+  planet: string
+  /** Human-readable label for the office. */
+  officeLabel: string
+  /** Final Panchavargeeya Bala (0–20 scale). */
+  panchavargeeyaBala: number
+}
+
+/** Per-planet Panchavargeeya Bala breakdown (Tajika 5-fold strength). */
+export interface PanchavargeeyaBalaEntry {
+  planet: string
+  kshetraBala: number   // sign dignity (Vishwa)
+  ucchaBala: number     // exaltation proximity (Vishwa)
+  haddaBala: number     // Egyptian term / bound (Vishwa)
+  drekkanaBala: number  // D3 dignity (Vishwa)
+  navamsaBala: number   // D9 dignity (Vishwa)
+  total: number         // sum of the five (Vishwa)
+  finalBala: number     // total / 4 → 0–20
+  grade: 'Weak' | 'Ordinary' | 'Powerful' | 'VeryStrong' | 'Extraordinary'
+}
+
+export interface Muntha {
+  signNumber: number
+  sign: string
+  /** House occupied in the annual (Varsha) chart, counted from Varsha Lagna. */
+  house: number
+  lord: string
+}
+
+export interface VarshaPravesh {
+  julianDay: number
+  /** Local civil date of the solar return (YYYY-MM-DD). */
+  date: string
+  /** Local civil time of the solar return (HH:MM:SS). */
+  time: string
+  /** ISO-8601 UTC instant of the solar return. */
+  utcISO: string
+  weekday: string
+  weekdayLord: string
+}
+
+export interface VarshaphalResult {
+  varshaYear: number
+  /** Completed years of age at the solar return (= varshaYear − birthYear). */
+  age: number
+  natalSunLongitude: number
+  natalLagnaSignNumber: number
+  varshaPravesh: VarshaPravesh
+  /** Full chart cast for the solar-return instant at the birthplace. */
+  annualChart: ComputedChart
+  muntha: Muntha
+  /** Whether the birth (natal) was a day birth (Sun above horizon). */
+  dayBirth: boolean
+  panchavargeeyaBala: PanchavargeeyaBalaEntry[]
+  candidates: VarsheshaCandidate[]
+  /** The selected year lord (strongest candidate by Panchavargeeya Bala). */
+  varshesha: {
+    planet: string
+    office: VarsheshaCandidate['office']
+    officeLabel: string
+    panchavargeeyaBala: number
+  }
+  /** Method notes / caveats surfaced to the UI. */
+  method: string
   computedAt: string
 }
 

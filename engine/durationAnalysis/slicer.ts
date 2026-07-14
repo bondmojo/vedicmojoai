@@ -88,6 +88,24 @@ interface ChartInput {
   planets: unknown
   nakshatras: unknown
   relationships: unknown
+  /** Stored CharaKaraka[] from UnifiedChart.karakas (may be absent for paste-path charts). */
+  karakas?: unknown
+}
+
+interface RawCharaKaraka {
+  planet: string
+  karakaAbbr: string
+}
+
+/**
+ * Returns the Jaimini Chara Karaka abbreviation (AK/AmK/BK/MK/PK/GK/DK) for a planet,
+ * or null when the planet is not found in the karakas array (Rahu/Ketu are not assigned,
+ * and absent/empty karakas data returns null for all planets).
+ */
+export function lookupKarakaRole(karakas: unknown, planet: string): string | null {
+  if (!Array.isArray(karakas) || karakas.length === 0) return null
+  const entry = (karakas as RawCharaKaraka[]).find((k) => k.planet === planet)
+  return entry?.karakaAbbr ?? null
 }
 
 interface RawPlanet {
@@ -193,7 +211,8 @@ function buildAnnotation(
   planets: unknown,
   nakshatras: unknown,
   relationships: unknown,
-  activatedYogas: string[]
+  activatedYogas: string[],
+  karakas: unknown = null
 ): PeriodLordAnnotation {
   const p = lookupPlanet(planets, planet)
   const n = lookupNakshatra(nakshatras, planet)
@@ -213,6 +232,7 @@ function buildAnnotation(
     activatedYogas,
     ownsHouses,
     occupiesHouse: p?.house ?? 0,
+    karakaRole: lookupKarakaRole(karakas, planet),
   }
 }
 
@@ -362,6 +382,8 @@ export function sliceDashaTree(
     planets: unknown
     nakshatras: unknown
     relationships: unknown
+    /** Stored CharaKaraka[] — optional; absent for paste-path/pre-migration charts. */
+    karakas?: unknown
   }
 ): SliceResult {
   const tree = asRawDashaTree(dashaTree)
@@ -401,21 +423,24 @@ export function sliceDashaTree(
             chart.planets,
             chart.nakshatras,
             chart.relationships,
-            activatedYogas
+            activatedYogas,
+            chart.karakas
           )
           const adAnnotation = buildAnnotation(
             ad.lord,
             chart.planets,
             chart.nakshatras,
             chart.relationships,
-            activatedYogas
+            activatedYogas,
+            chart.karakas
           )
           const pdAnnotation = buildAnnotation(
             pd.lord,
             chart.planets,
             chart.nakshatras,
             chart.relationships,
-            activatedYogas
+            activatedYogas,
+            chart.karakas
           )
 
           results.push({

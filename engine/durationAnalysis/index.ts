@@ -13,9 +13,10 @@ import { prisma } from '@/lib/db'
 import { readPromptFile } from '@/engine/llm'
 import { sliceDashaTree } from './slicer'
 import { buildTransitOverlay } from './transitOverlay'
-import { extractCategoryData } from './extractor'
+import { extractCategoryData, toScoringChartData } from './extractor'
 import { getDomainAgentSpec } from './registry'
 import { callAgentJson } from './agentJson'
+import { scorePeriod, identifyPeaks, resolveDomainWeights } from './scoring'
 import type {
   DurationPipelineInput,
   DA1Output,
@@ -26,6 +27,8 @@ import type {
   DashaSlice,
   TransitOverlay,
   PeriodAnalysis,
+  ScoredDashaSlice,
+  PeakPeriod,
 } from '@/lib/durationTypes'
 
 // ─── Cooperative cancellation ────────────────────────────────────────
@@ -59,9 +62,11 @@ export const DA1_BATCH_SIZE = 25
 
 /**
  * Merges per-batch DA-1 outputs into one DA1Output. period_analysis is
- * concatenated in batch (chronological) order. Batch trends are joined;
- * peak periods are kept from every batch — they cannot be re-ranked across
- * batches without scores, and downstream consumers tolerate longer lists.
+ * concatenated in batch (chronological) order. Batch trends are joined.
+ *
+ * NOTE: peak_stress_periods and peak_favorable_periods from the LLM are
+ * intentionally DISCARDED here — they are replaced by the engine-computed
+ * authoritative peaks during the compute-first merge (task 6.2).
  */
 export function mergeDA1Outputs(outputs: DA1Output[]): DA1Output {
   if (outputs.length === 0) {
@@ -76,8 +81,9 @@ export function mergeDA1Outputs(outputs: DA1Output[]): DA1Output {
       .map((o) => o.overall_trend)
       .filter(Boolean)
       .join(' '),
-    peak_stress_periods: outputs.flatMap((o) => o.peak_stress_periods ?? []),
-    peak_favorable_periods: outputs.flatMap((o) => o.peak_favorable_periods ?? []),
+    // Engine peaks override these — clear them now so there is no ambiguity.
+    peak_stress_periods: [],
+    peak_favorable_periods: [],
   }
 }
 
@@ -85,13 +91,16 @@ export function mergeDA1Outputs(outputs: DA1Output[]): DA1Output {
 
 /**
  * Enriches each DA-1 period_analysis entry with the deterministic
- * `lordAnnotations` (from the matching period slice) and `transitContext`
- * (from the matching transit overlay). The LLM does not emit these — they are
- * joined back in here so the UI and downstream consumers get real data.
+ * `lordAnnotations` (from the matching period slice), `transitContext`
+ * (from the matching transit overlay), and — COMPUTE-FIRST CONTRACT —
+ * the engine `score`, `intensity`, `favorable`, and `scoreBreakdown`.
+ *
+ * Engine values always win: any model-emitted intensity/favorable is
+ * overwritten, even when the entry has no matching slice (Requirement 8.3/8.4).
  */
-function mergePeriodContext(
+export function mergePeriodContext(
   da1Output: DA1Output,
-  periodSlice: DashaSlice[],
+  scoredSlices: ScoredDashaSlice[],
   transitOverlay: TransitOverlay[]
 ): DA1Output {
   if (!da1Output || !Array.isArray(da1Output.period_analysis)) {
@@ -101,23 +110,23 @@ function mergePeriodContext(
   const datePart = (iso: string): string => (typeof iso === 'string' ? iso.slice(0, 10) : '')
 
   const merged: PeriodAnalysis[] = da1Output.period_analysis.map((period) => {
-    // Match slice by full lord triple + pd.start, then fall back to lord triple only.
+    // Match slice by full lord triple + pd.start, then fall back progressively.
     const slice =
-      periodSlice.find(
+      scoredSlices.find(
         (s) =>
           s.md.lord === period.md?.lord &&
           s.ad.lord === period.ad?.lord &&
           s.pd.lord === period.pd?.lord &&
           s.pd.start === period.pd?.start
       ) ??
-      periodSlice.find(
+      scoredSlices.find(
         (s) =>
           s.md.lord === period.md?.lord &&
           s.ad.lord === period.ad?.lord &&
           s.pd.lord === period.pd?.lord &&
           datePart(s.pd.start) === datePart(period.pd?.start ?? '')
       ) ??
-      periodSlice.find(
+      scoredSlices.find(
         (s) =>
           s.md.lord === period.md?.lord &&
           s.ad.lord === period.ad?.lord &&
@@ -134,6 +143,16 @@ function mergePeriodContext(
       ...period,
       lordAnnotations: slice?.lordAnnotations ?? period.lordAnnotations,
       transitContext: overlay ?? period.transitContext,
+      // Compute-first contract: engine values are authoritative.
+      // Overwrite whatever the model emitted, even when slice is unmatched (use slice value when available).
+      ...(slice != null ? {
+        intensity: slice.intensity,
+        favorable: slice.favorable,
+        score: slice.score,
+        scoreBreakdown: slice.scoreBreakdown,
+      } : {
+        // No matching slice: keep model-emitted intensity/favorable as-is (legacy/edge case)
+      }),
     }
   })
 
@@ -182,7 +201,7 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
       prisma.modelConfig.findUniqueOrThrow({ where: { waveId: 'DA-3' } }),
     ])
 
-    // 3. Step 0a: Period Slicer with lord annotation
+    // 3. Step 0a: Period Slicer with lord annotation + Karaka_Role tagging
     const { slices: periodSlice, truncated } = sliceDashaTree(
       chart.dashaTree,
       dateFrom,
@@ -191,6 +210,7 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
         planets: chart.planets,
         nakshatras: chart.nakshatras,
         relationships: chart.relationships,
+        karakas: chart.karakas,   // for karakaRole annotation
       }
     )
 
@@ -225,10 +245,10 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
 
     await prisma.durationAnalysis.update({
       where: { id: analysisId },
-      data: { periodSlice: periodSlice as any, transitOverlay: transitOverlay as any },
+      data: { transitOverlay: transitOverlay as any },
     })
 
-    // 4. Category data extraction
+    // 4. Category data extraction (with bhavaBala, nakshatraRelationships, special points)
     const categoryData = extractCategoryData(
       {
         planets: chart.planets,
@@ -239,19 +259,59 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
         jaimini: chart.jaimini,
         ashtakavarga: chart.ashtakavarga,
         dashaTree: chart.dashaTree,
+        bhavaBala: chart.bhavaBala,
+        arudhaPadas: chart.arudhaPadas,
+        specialLagnas: chart.specialLagnas,
+        karakas: chart.karakas,
+        upagrahas: chart.upagrahas,
       },
       category
+    )
+
+    // Step 0d: Deterministic scoring — runs BEFORE DA-1 so engine verdicts
+    // are authoritative context for DA-1 (compute-first contract).
+    const domainWeights = resolveDomainWeights(category)
+    const scoringChartData = toScoringChartData(categoryData, {
+      shadbala: chart.shadbala,
+      bhavaBala: chart.bhavaBala,
+      karakas: chart.karakas,
+      ashtakavarga: chart.ashtakavarga,
+      planets: chart.planets,
+    })
+
+    // Build an overlay index keyed by AD start for O(1) lookup per period
+    const overlayByAdStart = new Map(transitOverlay.map((o) => [o.adStart, o]))
+
+    const scoredSlices: ScoredDashaSlice[] = periodSlice.map((slice) => {
+      const overlayEntry =
+        overlayByAdStart.get(slice.ad.start) ??
+        transitOverlay.find((o) => o.adLord === slice.ad.lord) ??
+        null
+      const { score, breakdown } = scorePeriod(slice, scoringChartData, overlayEntry, domainWeights)
+      return {
+        ...slice,
+        score,
+        intensity: breakdown.intensity,
+        favorable: breakdown.favorable,
+        scoreBreakdown: breakdown,
+      }
+    })
+
+    // Identify peaks from the full scored window (global, batch-independent)
+    const { peakStress, peakFavorable } = identifyPeaks(
+      scoredSlices.map((s) => ({ period: s, result: { score: s.score, breakdown: s.scoreBreakdown } }))
     )
 
     // 5. Step 1: DA-1 Domain Analyser — batched so the per-call output stays
     // within maxTokens regardless of range length. Each batch gets only its
     // own slices + the transit overlays for the ADs it touches.
+    // The period table passed to DA-1 includes engine scores/verdicts as authoritative context.
     emitEvent({ type: 'agent_start', agent_id: 'DA-1', timestamp: new Date().toISOString() })
     const da1PromptTemplate = await readPromptFile(domainSpec.promptFile)
 
-    const batches: DashaSlice[][] = []
-    for (let i = 0; i < periodSlice.length; i += DA1_BATCH_SIZE) {
-      batches.push(periodSlice.slice(i, i + DA1_BATCH_SIZE))
+    const batches: ScoredDashaSlice[][] = []
+    for (let i = 0; i < scoredSlices.length; i += DA1_BATCH_SIZE) {
+      batches.push(scoredSlices.slice(i, i + DA1_BATCH_SIZE))
     }
 
     let totalTokenIn = 0
@@ -298,12 +358,23 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
       await throwIfCancelled(analysisId)
     }
 
-    // Merge batches, then join deterministic per-period context back on.
+    // Merge batches, then join deterministic per-period context + engine verdicts back on.
     let da1Output = mergeDA1Outputs(batchOutputs)
-    da1Output = mergePeriodContext(da1Output, periodSlice, transitOverlay)
+    da1Output = mergePeriodContext(da1Output, scoredSlices, transitOverlay)
+
+    // Compute-first: replace LLM-chosen peaks with authoritative engine peaks.
+    const peakStressForDA1 = peakStress.map((p) => ({ period: p.label, reason: `Score: ${p.score}` }))
+    const peakFavorableForDA1 = peakFavorable.map((p) => ({ period: p.label, reason: `Score: ${p.score}` }))
+    da1Output = {
+      ...da1Output,
+      peak_stress_periods: peakStressForDA1,
+      peak_favorable_periods: peakFavorableForDA1,
+    }
+
     await prisma.durationAnalysis.update({
       where: { id: analysisId },
       data: {
+        periodSlice: scoredSlices as any,  // persist scored slices with score/breakdown
         da1Output: da1Output as any,
         totalTokenIn,
         totalTokenOut,
@@ -391,7 +462,10 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
       da2Output,
       userQuestion,
       conversationHistory,
-      undefined // no context summary on first run
+      undefined, // no context summary on first run
+      scoredSlices,
+      peakStress,
+      peakFavorable
     )
     const da3Response = await callAgentJson<DA3Output>(
       {
@@ -410,7 +484,7 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
     totalCostUsd += da3Response.costUsd
 
     // Generate context summary (deterministic — no LLM)
-    const contextSummary = buildContextSummary(da1Output, da3Output, periodSlice)
+    const contextSummary = buildContextSummary(da1Output, da3Output, scoredSlices)
 
     await prisma.durationAnalysis.update({
       where: { id: analysisId },
@@ -537,7 +611,7 @@ export async function resumeDurationPipeline(
     )
 
     // Reconstruct the period slice (needed for context summary)
-    const periodSlice = (analysis.periodSlice as unknown as DashaSlice[]) ?? []
+    const periodSlice = (analysis.periodSlice as unknown as ScoredDashaSlice[]) ?? []
 
     // 4. Build DA-3 prompt with override preamble
     const da3PromptTemplate = await readPromptFile('duration_da3_future_analyser.md')
@@ -651,19 +725,18 @@ export async function resumeDurationPipeline(
 /**
  * Assembles the DA-1 Domain Analyser prompt as { cachedPrefix, prompt }.
  *
+ * The period table now includes engine score/intensity/favorable for each period —
+ * DA-1 reads these as authoritative and must narrate them, not override them.
+ *
  * cachedPrefix = the chart-data section — byte-identical across every batch
  * of a run, so Anthropic prompt caching pays for it once and reads it from
  * cache for batches 2..N. prompt = the per-batch volatile part (notes,
  * period table, transit overlay, question, instructions).
- *
- * The dashaTree column is stripped from the chart payload — the period table
- * already carries every period DA-1 must analyse, and the full tree would
- * roughly double the prompt for no interpretive gain.
  */
 function buildDA1Prompt(
   template: string,
   categoryData: CategoryChartData,
-  periodSlice: DashaSlice[],
+  periodSlice: ScoredDashaSlice[],
   transitOverlay: TransitOverlay[],
   userQuestion?: string,
   truncated = false,
@@ -732,7 +805,8 @@ function buildDA2Prompt(
 /**
  * Assembles the DA-3 Future Analyser prompt.
  * Injects: chart data → DA-1 (or context summary for deep conversations) →
- *          DA-2 (if present) → conversation history → user question → agent instructions.
+ *          DA-2 (if present) → ENGINE VERDICTS (scored periods + peaks, authoritative) →
+ *          conversation history → user question → agent instructions.
  *
  * Token optimisation: after 2+ turns, substitutes the full DA-1 output with a
  * compact context summary to keep the prompt within the token budget.
@@ -744,7 +818,10 @@ function buildDA3Prompt(
   da2Output: DA2Output | null,
   userQuestion: string | undefined,
   conversationHistory: Array<{ role: string; content: string }>,
-  contextSummary?: string
+  contextSummary?: string,
+  scoredSlices?: ScoredDashaSlice[],
+  peakStress?: PeakPeriod[],
+  peakFavorable?: PeakPeriod[]
 ): string {
   const parts: string[] = []
   parts.push('--- CHART DATA ---')
@@ -763,6 +840,47 @@ function buildDA3Prompt(
     parts.push('--- DA-2 VALIDATION ---')
     parts.push(JSON.stringify(da2Output))
   }
+
+  // Inject engine verdicts as authoritative context (task 6.3)
+  if (scoredSlices && scoredSlices.length > 0) {
+    parts.push('')
+    parts.push('--- ENGINE VERDICTS (AUTHORITATIVE — DO NOT REVERSE) ---')
+    parts.push('These score/intensity/favorable values were computed deterministically.')
+    parts.push('Your forecast MUST remain consistent with them. You may add nuance but must not flip direction.')
+    parts.push('')
+    // Compact one-line summary per AD (not per PD — reduces tokens)
+    const adSeen = new Set<string>()
+    const adRows: string[] = []
+    for (const s of scoredSlices) {
+      const adKey = `${s.md.lord}/${s.ad.lord}`
+      if (adSeen.has(adKey)) continue
+      adSeen.add(adKey)
+      const topFactor = s.scoreBreakdown.factors
+        .sort((a, b) => b.contribution - a.contribution)[0]?.factor ?? ''
+      adRows.push(
+        `${s.md.lord} MD / ${s.ad.lord} AD: score=${s.score} intensity=${s.intensity} favorable=${s.favorable}` +
+        (topFactor ? ` topFactor=${topFactor}` : '')
+      )
+    }
+    parts.push(adRows.join('\n'))
+  }
+  if (peakStress && peakFavorable) {
+    parts.push('')
+    parts.push('--- ENGINE PEAKS (AUTHORITATIVE) ---')
+    if (peakStress.length > 0) {
+      parts.push('Peak stress periods:')
+      for (const p of peakStress) {
+        parts.push(`  ${p.label} — score ${p.score}, top factors: ${p.topFactors.map(f => f.factor).join(', ')}`)
+      }
+    }
+    if (peakFavorable.length > 0) {
+      parts.push('Peak favorable periods:')
+      for (const p of peakFavorable) {
+        parts.push(`  ${p.label} — score ${p.score}, top factors: ${p.topFactors.map(f => f.factor).join(', ')}`)
+      }
+    }
+  }
+
   if (conversationHistory.length > 0) {
     parts.push('')
     parts.push('--- CONVERSATION HISTORY ---')
@@ -790,7 +908,7 @@ function buildDA3Prompt(
 function buildContextSummary(
   da1Output: DA1Output,
   da3Output: DA3Output,
-  periodSlice: DashaSlice[]
+  periodSlice: ScoredDashaSlice[]
 ): string {
   const lines: string[] = []
   lines.push(`=== DURATION ANALYSIS SUMMARY ===`)

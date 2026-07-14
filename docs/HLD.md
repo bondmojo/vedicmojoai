@@ -98,8 +98,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
                              │ HTTP / SSE
 ┌────────────────────────────▼────────────────────────────────────┐
 │                   NEXT.JS API LAYER  (/app/api)                 │
-│  POST /api/runs   GET /api/runs/:id/events   GET /api/charts    │
-│  GET /api/charts/:id/dasha   GET /api/reports/:id               │
+│  POST /api/unified-charts/[id]/analyze  GET /api/runs/:id/events│
+│  POST /api/compute   GET /api/reports   GET /api/runs/:id       │
 └────────────────────────────┬────────────────────────────────────┘
                              │ function calls (same process)
 ┌────────────────────────────▼────────────────────────────────────┐
@@ -134,13 +134,14 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PERSISTENCE LAYER                           │
 │   PostgreSQL (via Prisma)          File System                  │
-│   - Chart                          - reports/{slug}.html        │
-│   - PipelineRun                    - prompts/agents/*.md        │
-│   - WaveOutput                     (prompt files read-only)     │
+│   - Chart (legacy, paste-path)     - reports/{slug}.html        │
+│   - UnifiedChart                   - prompts/agents/*.md        │
+│   - PipelineRun                    (prompt files read-only)     │
+│   - WaveOutput                                                  │
 │   - Wave1Cache                                                  │
 │   - RunMessage                                                  │
 │   - ModelConfig                                                 │
-│   - SavedChart (computed charts)                                │
+│   - SavedChart (legacy, read-only — superseded by UnifiedChart) │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -150,15 +151,19 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 ### 3.1 UI Layer (`/app`)
 
+> **v1.3 note:** the legacy `/charts` (list/detail/new-run/dasha) pages and the
+> `Chart`-model `POST /api/runs` route were removed. `/` is now the Chart
+> Compute UI directly (formerly at `/compute`); AI Analysis runs are started
+> exclusively via `/unified-charts/[id]/analyze` → `POST
+> /api/unified-charts/[id]/analyze`. The legacy `Chart` table and its
+> read-only detail queries still exist (paste-path runs keep a legacy `Chart`
+> row for the `PipelineRun` FK — see §3.2), but there is no dedicated UI for it.
+
 | Page | Route | Purpose |
 |---|---|---|
-| Chart List | `/` | Lists all submitted charts — client name, lagna, run count, last run |
-| Chart Detail | `/charts/[id]` | Chart summary, run history, "New Run" button, dasha timeline |
-| New Run | `/charts/[id]/run` | Query type selector, free-text field, agent preview, run button |
+| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts; tabs incl. **Varshaphal** (annual solar-return chart per year) |
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
-| Dasha Timeline | `/charts/[id]/dasha` | Interactive lifetime dasha viewer (mahadasha → antardasha → pratyantar) |
-| Chart Compute | `/compute` | Real-time chart computation from birth data + Save/Load computed charts |
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
 | Unified Chart Detail | `/unified-charts/[id]` | Full domain view of a unified chart + run history |
 | Unified Chart Analyze | `/unified-charts/[id]/analyze` | AI Analysis launcher — query-type + agent selection, model override, 202 redirect |
@@ -167,15 +172,17 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 ### 3.2 API Layer (`/app/api`)
 
+> **v1.3 note:** the legacy `Chart`-model routes (`/api/charts`,
+> `/api/charts/[id]`, `/api/charts/[id]/dasha`, `POST /api/runs`) and the
+> dormant `/api/compute/save`, `/api/compute/charts`, `/api/compute/charts/[id]`,
+> `/api/reports/[id]`, `/api/runs/[id]/rerun` routes were deleted — none had a
+> remaining UI caller. `POST /api/unified-charts/[id]/analyze` is now the only
+> way to start a pipeline run.
+
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/charts` | GET, POST | List charts / submit new chart |
-| `/api/charts/[id]` | GET | Chart detail + run history |
-| `/api/charts/[id]/dasha` | GET | Computed dasha tree (current period derived at request time) |
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
-| `/api/compute/save` | POST | LEGACY (UI no longer calls it) — save to SavedChart; superseded by `from-compute` |
-| `/api/compute/charts` | GET | LEGACY — list SavedChart rows; the compute page now lists unified charts |
-| `/api/compute/charts/[id]` | GET, DELETE | LEGACY — load/delete a SavedChart row |
+| `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
 | `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` (shared creator: `lib/unified-chart-create.ts`) |
 | `/api/unified-charts/from-paste` | POST | **Generate Chart (Path B)** — validate + persist pasted `ChartInputV1` as `source="paste"` |
@@ -186,8 +193,13 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/duration-analysis/[id]/events` | GET | SSE stream for DA pipeline progress |
 | `/api/duration-analysis/[id]/chat` | POST | Follow-up question to DA-3 with conversation history |
 | `/api/duration-analysis/[id]/override` | POST | Override symptom gate and resume to DA-3 |
-| `/api/runs` | POST | Start a new pipeline run against a legacy `Chart` (returns 202 + run_id) || `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
+| `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
 | `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
+| `/api/runs/[id]/cancel` | POST | Cancel a running/queued pipeline run |
+| `/api/runs/[id]/override` | POST | Override the critical-error halt gate and resume |
+| `/api/runs/[id]/chat` | POST | Follow-up question against a completed report |
+| `/api/runs/[id]/report-content` | GET | Raw markdown report content (for `.md` output format) |
+| `/api/reports` | GET | List all completed pipeline runs (for the Reports page) |
 | `/api/reports/[id]` | GET | Serve HTML report file |
 
 ### 3.3 Engine Layer (`/engine`)
@@ -218,7 +230,8 @@ engine/
 │   ├── relationships.ts   # NEW — conjunctions, aspects, yuddha, parivartana… (deterministic 1D)
 │   ├── nakshatraRelationships.ts # NEW — sub-lords, depositor chains, parivartana, clusters
 │   ├── jaimini.ts         # NEW — argala, yogi/avayogi, special-lagna aspects
-│   └── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
+│   ├── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
+│   └── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
 └── waves/
     ├── wave1.ts           # LLM path: 1A, 1B, 1C, 1D (compute path skips these)
     ├── wave2.ts           # parallel, planner-selected: 2A–2G
@@ -553,11 +566,20 @@ Next.js background route handlers are sufficient for ~10 reports/month.
 
 ---
 
-## 8.1 Chart Computation & Persistence Flow (NEW)
+## 8.1 Chart Computation & Persistence Flow (SUPERSEDED by §8.2)
 
-Separate from the AI analysis pipeline, the system includes a **deterministic chart computation engine** (`/compute`) that calculates planetary positions, divisional charts, and dasha trees using Swiss Ephemeris. Computed charts can be saved to and loaded from the database.
+> **v1.3:** This section describes the original `SavedChart`-based compute flow.
+> It has been fully superseded by `UnifiedChart` (§8.2) — the `/api/compute/save`,
+> `/api/compute/charts`, and `/api/compute/charts/[id]` routes described below
+> were dormant (no remaining UI caller) and have been **deleted**. The `Chart
+> Compute` UI now lives at `/` (formerly `/compute`) and its "Save Chart" button
+> calls `POST /api/unified-charts/from-compute` instead. `SavedChart` remains in
+> the schema as a read-only legacy table (old rows are not migrated away
+> automatically) but nothing writes to it anymore.
 
-### Architecture
+Separate from the AI analysis pipeline, the system includes a **deterministic chart computation engine** that calculates planetary positions, divisional charts, and dasha trees using Swiss Ephemeris.
+
+### Architecture (historical — `SavedChart` write path, now removed)
 
 ```
 PRACTITIONER
@@ -565,7 +587,7 @@ PRACTITIONER
      │  Birth data (date, time, tz, lat/lon)
      ▼
 ┌────────────────────────┐
-│  /compute (UI)         │
+│  Chart Compute (UI)    │
 │  Client Component      │
 │  • Input form          │
 │  • Chart visualization │
@@ -587,28 +609,23 @@ PRACTITIONER
 │   planets, nakshatras, │
 │   karakas, ashtaka,    │
 │   dasha, transits,     │
-│   pinda)               │
+│   pinda, varshaphal)   │
 └──────────┬─────────────┘
            │ User clicks "Save Chart"
-           │ POST /api/compute/save
+           │ POST /api/unified-charts/from-compute  (was /api/compute/save)
            ▼
 ┌────────────────────────┐           ┌─────────────────────┐
-│  Save API              │─────────►│ D6: SavedChart       │
+│  from-compute API      │─────────►│ UnifiedChart         │
 │  • Validates input     │           │ (PostgreSQL)         │
-│  • SHA-256 dedup hash  │           │ • birth metadata     │
-│  • Upsert record       │           │ • chartData (JSONB)  │
-│                        │           │ • dashaTree (JSONB)  │
+│  • Persists via shared │           │ • one JSONB column   │
+│    creator function    │           │   per domain         │
 └────────────────────────┘           └─────────────────────┘
-                                              ▲
-┌────────────────────────┐                    │
-│  Load APIs             │────────────────────┘
-│  GET /compute/charts   │ (list all)
-│  GET /compute/charts/  │ (load single)
-│      [id]              │
-└────────────────────────┘
 ```
 
-### Data stored in `SavedChart`
+Load/list is now `GET /api/unified-charts` and `GET /api/unified-charts/[id]`
+(§8.2), not the deleted `/api/compute/charts` routes.
+
+### Data historically stored in `SavedChart` (legacy, no longer written)
 
 | Field | Type | Purpose |
 |---|---|---|
@@ -621,15 +638,6 @@ PRACTITIONER
 | `chartData` | JSONB | **Full `ComputedChart` object** — contains all divisional charts, planets, upagrahas, special lagnas, arudha padas, etc. |
 | `dashaTree` | JSONB | Full Vimshottari dasha tree |
 | `inputHash` | TEXT (unique) | SHA-256 of birth input for dedup |
-
-### Relationship to Analysis Pipeline
-
-The **Compute flow** and the **Analysis Pipeline flow** are intentionally independent:
-
-- `/compute` → Deterministic astronomical calculation → `SavedChart` table
-- `/charts` (POST) → Submit pre-computed ChartInputV1 → `Chart` table → triggers AI pipeline
-
-Future enhancement: A saved computed chart could be exported as `ChartInputV1` format and submitted to the AI pipeline for analysis, bridging the two flows.
 
 ---
 

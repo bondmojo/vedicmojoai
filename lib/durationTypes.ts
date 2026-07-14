@@ -43,6 +43,8 @@ export interface PeriodLordAnnotation {
   activatedYogas: string[] // yogas formed with this lord e.g. ["Raja Yoga (1st-5th lord exchange)"]
   ownsHouses: number[]     // houses this planet rules in D1 e.g. [6, 11]
   occupiesHouse: number    // natal house (same as house — explicit for prompt clarity)
+  /** Jaimini Chara Karaka role (AK/AmK/BK/MK/PK/GK/DK), or null for Rahu/Ketu/absent karakas. */
+  karakaRole: string | null
 }
 
 // ─── Transit Overlay ────────────────────────────────────────────────
@@ -121,6 +123,10 @@ export interface PeriodAnalysis {
   favorable: boolean
   bahiranga: string
   antaranga: string
+  /** Deterministic engine score (0–100). Absent on pre-feature legacy periods. */
+  score?: number
+  /** Full itemized breakdown produced by the scoring engine. Absent on legacy periods. */
+  scoreBreakdown?: ScoreBreakdown
 }
 
 export interface DA1Output {
@@ -202,4 +208,200 @@ export interface DurationSSEEvent {
 export interface DurationChatRequest {
   message: string
   focusPeriod?: string  // e.g. "Jupiter MD / Saturn AD 2024-03" — anchors DA-3 response
+}
+
+// ─── Scoring Engine Types ─────────────────────────────────────────────
+// Types for the deterministic compute-first scoring layer (Phase 1).
+// See: engine/durationAnalysis/scoring.ts, engine/durationAnalysis/scoringWeights.ts
+
+/**
+ * The 15 deterministic scoring factors used by the Scoring Engine.
+ * Three dignity factors + 12 chart/transit factors.
+ */
+export type ScoringFactorKey =
+  | 'mdLordDignity'
+  | 'adLordDignity'
+  | 'pdLordDignity'
+  | 'shadbala'
+  | 'ishtaKashta'
+  | 'houseOwnership'
+  | 'karakaRole'
+  | 'naturalKaraka'
+  | 'activatedYogas'
+  | 'bhavaBala'
+  | 'domainHouseActivation'
+  | 'mdAdRelationship'
+  | 'natalHouseStrength'
+  | 'transitBav'
+  | 'saturnAfflictions'
+
+/** One applied factor's contribution record in the ScoreBreakdown. */
+export interface ScoreFactorContribution {
+  factor: ScoringFactorKey
+  /** Raw astrological value before normalization (e.g. dignity string, strength ratio). */
+  value: unknown
+  /** Normalized value n_f ∈ [0, 1] fed into the formula. */
+  normalized: number
+  /** Weight w_f read from DomainScoringWeights.weights. */
+  weight: number
+  /** w_f × n_f — the points this factor contributed to the weighted sum. */
+  contribution: number
+}
+
+/** An omitted factor recorded in the ScoreBreakdown. */
+export interface ScoreOmission {
+  factor: ScoringFactorKey
+  /** Human-readable reason (e.g. "shadbala not available for paste-path chart"). */
+  reason: string
+  /** Primary omissions materially dent confidence; secondary are footnotes. */
+  severity: 'primary' | 'secondary'
+}
+
+/**
+ * Full itemized breakdown for a single period's score.
+ * Persisted in the periodSlice JSONB column alongside score/intensity/favorable.
+ */
+export interface ScoreBreakdown {
+  /** Integer Period_Score 0–100. */
+  score: number
+  /** Discrete intensity band derived from the score. */
+  intensity: 'high' | 'medium' | 'low'
+  /** True when score ≥ FAVORABLE_THRESHOLD (50). */
+  favorable: boolean
+  /** All Scoring_Factors that were applied (available data). */
+  factors: ScoreFactorContribution[]
+  /** All Scoring_Factors that were omitted (unavailable or malformed data). */
+  omissions: ScoreOmission[]
+  /** Sum of weights of the factors that were actually applied. */
+  weightSumApplied: number
+  /**
+   * True when one or more primary factors were omitted due to missing chart data
+   * (e.g. paste-path chart lacking shadbala). Signals the score is less reliable.
+   */
+  reducedConfidence: boolean
+  /** Confidence ratio 0–1: proportion of primary-factor weight that was applied. */
+  confidence: number
+  /**
+   * WEIGHTS_VERSION stamp from DOMAIN_SCORING_WEIGHTS.
+   * Allows every persisted score to be traced to the exact weight table that produced it.
+   */
+  weightsVersion: string
+}
+
+/**
+ * A DashaSlice augmented with the engine score and breakdown.
+ * Persisted in the periodSlice JSONB column after Step 0d.
+ */
+export interface ScoredDashaSlice extends DashaSlice {
+  score: number
+  intensity: 'high' | 'medium' | 'low'
+  favorable: boolean
+  scoreBreakdown: ScoreBreakdown
+}
+
+/** A deterministic peak period entry (most favorable or most stressful). */
+export interface PeakPeriod {
+  /** Human-readable label, e.g. "Jupiter MD / Saturn AD (2024-03 – 2026-09)". */
+  label: string
+  /** Stable key for the period: "<mdLord>/<adLord>/<pdLord>/<pd.start>". */
+  periodKey: string
+  score: number
+  /** Top-3 contributing factors by contribution magnitude (from ScoreBreakdown.factors). */
+  topFactors: { factor: ScoringFactorKey; contribution: number }[]
+}
+
+// ─── Domain Special Points ────────────────────────────────────────────
+
+/** Declares a special point a domain needs, as registered in DOMAIN_SCORING_WEIGHTS. */
+export interface DomainSpecialPointSpec {
+  /** Key used in the injected chart data (e.g. 'upapadaLagna', 'ghatiLagna'). */
+  key: string
+  /** Which stored column this point is resolved from. */
+  source: 'arudhaPadas' | 'specialLagnas' | 'karakas' | 'upagrahas'
+  /** The abbreviation or identifier used to look up the entry (e.g. 'UL', 'GL', 'DK'). */
+  selector: string
+  /**
+   * Primary omissions materially dent the Score_Breakdown confidence;
+   * secondary omissions are recorded as footnotes only.
+   */
+  confidence: 'primary' | 'secondary'
+}
+
+/**
+ * A resolved special point as injected into the chart data for a domain.
+ * When the point was found in stored chart data, value is present and omitted is false.
+ * When the point was declared but unavailable, omitted is true and value is undefined.
+ */
+export interface ResolvedSpecialPoint {
+  key: string
+  /** The resolved longitude / sign / house data, or undefined when omitted. */
+  value?: unknown
+  /** True when the point was declared by the domain but unavailable in this chart. */
+  omitted: boolean
+}
+
+/** Map of all resolved special points for a domain (keyed by DomainSpecialPointSpec.key). */
+export type DomainSpecialPoints = Record<string, ResolvedSpecialPoint>
+
+// ─── Domain Scoring Weights ────────────────────────────────────────────
+// Defined in engine/durationAnalysis/scoringWeights.ts; types live here for
+// importability without creating a circular dependency.
+
+/** Per-domain parameter table for the Scoring Engine. */
+export interface DomainScoringWeights {
+  category: DurationCategory
+  /** Houses considered favorable for this domain (e.g. career: [1,2,6,9,10,11]). */
+  beneficHouses: number[]
+  /** Houses considered unfavorable for this domain. 6/8/12 also get the dusthana penalty. */
+  maleficHouses: number[]
+  /**
+   * The domain's defining houses for domainHouseActivation and natalHouseStrength.
+   * (e.g. marriage: [7], career: [10], wealth: [2,11])
+   */
+  primaryHouses: number[]
+  /** Jaimini Chara Karaka abbreviations relevant to this domain (e.g. ['DK'] for marriage). */
+  relevantKarakaRoles: string[]
+  /** Natural significator planets for this domain (e.g. marriage: ['Venus','Jupiter']). */
+  relevantNaturalKarakas: string[]
+  /** Per-factor weights (weights need not sum to any fixed total). */
+  weights: Record<ScoringFactorKey, number>
+  /** Special points declared by this domain (resolved by extractor at runtime). */
+  specialPoints: DomainSpecialPointSpec[]
+  /**
+   * Factors whose omission materially dents confidence (primary severity).
+   * Missing primary factor → reducedConfidence = true in the breakdown.
+   */
+  primaryFactors: ScoringFactorKey[]
+}
+
+// ─── Scoring Chart Data ────────────────────────────────────────────────
+// Thin scoring-focused view of the chart assembled by the extractor.
+// Keeps the engine free of the full CategoryChartData prompt payload.
+
+import type {
+  ShadbalResult,
+  BhavaBalaResult,
+  CharaKaraka,
+  AshtakavargaResult,
+  PlanetPosition,
+} from '@/engine/compute/types'
+
+export interface ScoringChartData {
+  category: DurationCategory
+  /** Array-indexed ShadbalPlanet[]. Access with .find(p => p.planet === lord). */
+  shadbala?: ShadbalResult | null
+  /** Per-house Bhava Bala (total + rupas). */
+  bhavaBala?: BhavaBalaResult | null
+  /** Jaimini Chara Karaka assignments (karakaAbbr). */
+  karakas?: CharaKaraka[] | null
+  /**
+   * Natal Sarvashtakavarga. `sav` is SIGN-indexed (sav[0] = Aries … sav[11] = Pisces),
+   * NOT house-indexed — see engine/compute/ashtakavarga.ts. The scoring engine converts
+   * each domain house → sign via the lagna before indexing (factorNatalHouseStrength).
+   */
+  ashtakavarga?: AshtakavargaResult | null
+  /** Natal D1 planet positions — used for dignity, house ownership, mdAdRelationship. */
+  planets?: PlanetPosition[] | null
+  /** Domain special points resolved by the extractor. */
+  specialPoints?: DomainSpecialPoints
 }

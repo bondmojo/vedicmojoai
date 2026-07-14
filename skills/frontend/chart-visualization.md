@@ -1,6 +1,7 @@
 # Chart Visualization Components
 
-Located in `app/compute/components/`:
+Located in `app/components/` (moved here from `app/compute/components/` in v1.3,
+when the Chart Compute UI became the home page):
 
 | Component | Purpose |
 |---|---|
@@ -14,6 +15,7 @@ Located in `app/compute/components/`:
 | `AshtakavargaView.tsx` | Bindhu scores display |
 | `PindaStrengthView.tsx` | Pinda/Bala strength bars |
 | `TransitsView.tsx` | Current transits overlay |
+| `VarshaphalView.tsx` | Tajika annual solar-return chart (year picker + results) |
 
 **Rules for chart components:**
 - Accept typed props — no `any` or loose objects

@@ -427,7 +427,7 @@ function ChartCard({
                   if (e.key === 'Escape') { setEditing(false); setNameDraft(chart.name) }
                 }}
                 autoFocus
-                className="rounded bg-gray-900 border border-indigo-500 px-2 py-1 text-lg font-medium text-white focus:outline-none"
+                className="rounded bg-gray-900 border border-indigo-500 px-2 py-1 text-lg font-medium text-ink focus:outline-none"
               />
               <button
                 onClick={saveRename}
@@ -438,7 +438,7 @@ function ChartCard({
               </button>
               <button
                 onClick={() => { setEditing(false); setNameDraft(chart.name) }}
-                className="rounded px-2 py-1 text-xs font-medium text-gray-400 hover:text-white"
+                className="rounded px-2 py-1 text-xs font-medium text-gray-400 hover:text-ink"
               >
                 Cancel
               </button>

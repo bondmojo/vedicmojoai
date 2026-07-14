@@ -397,12 +397,19 @@ Practitioner submits follow-up query
 
 ## Level 2 — API ↔ Engine Data Flows
 
+> **v1.3 note:** this flow originally ran through the legacy `Chart` model's
+> `POST /api/runs` and `GET /api/charts/:id/dasha` / `GET /api/reports/:id`
+> routes. Those routes had no remaining UI caller and were deleted. The
+> current entry point is `POST /api/unified-charts/[id]/analyze` (see P9
+> below); the SSE progress and run-detail flows are unchanged.
+
 ```
 BROWSER                    API LAYER                    ENGINE / DB
    │                           │                            │
-   │── POST /api/runs ─────────►│                            │
-   │   {chart_id, types[],      │── validate chart ─────────►│ D1: Chart
-   │    user_query}             │                            │
+   │── POST /api/unified-      │                            │
+   │   charts/:id/analyze ────►│                            │
+   │   {queryTypes[],           │── read UnifiedChart ──────►│ D7: UnifiedChart
+   │    userQuery, ...}         │                            │
    │                           │── create PipelineRun ─────►│ D2: PipelineRun
    │◄── 202 {run_id} ──────────│                            │
    │                           │                            │
@@ -418,26 +425,30 @@ BROWSER                    API LAYER                    ENGINE / DB
    │── GET /api/runs/:id ──────►│── read PipelineRun ───────►│ D2: PipelineRun
    │◄── run detail JSON ───────│                            │
    │                           │                            │
-   │── GET /api/charts/:id/    │                            │
-   │       dasha ──────────────►│── read Wave1Cache ─────────►│ D3: Wave1Cache
-   │◄── DashaTree JSON ────────│  (compute currentPeriod   │
-   │   {currentPeriod derived  │   from today() at         │
-   │    at request time}       │   request time)            │
+   │── GET /api/reports ───────►│── list done runs ──────────►│ D2: PipelineRun
+   │◄── report list JSON ──────│                            │
    │                           │                            │
-   │── GET /api/reports/:id ───►│── read report_path ────────►│ D2: PipelineRun
-   │                           │── serve HTML file ─────────►│ FS: reports/
-   │◄── HTML report ───────────│                            │
+   │── GET /api/runs/:id/       │                            │
+   │   report-content ─────────►│── read report_path ────────►│ D2: PipelineRun
+   │◄── markdown/HTML content ─│── serve file content ──────│ FS: reports/
 ```
 
 ---
 
 ---
 
-## Level 2 — P8: Chart Compute + Save/Load (NEW)
+## Level 2 — P8: Chart Compute + Save/Load (SUPERSEDED by P9)
 
 This process is independent from the AI analysis pipeline. It handles real-time
-astronomical chart computation from birth data, and persists/retrieves computed
-charts for future reference.
+astronomical chart computation from birth data.
+
+> **v1.3 note:** the P8.2/P8.3 save-and-load steps below (via `SavedChart` and
+> `/api/compute/save`, `/api/compute/charts[/id]`) are historical — those routes
+> were dormant and have been deleted. Save/Load now goes through P9's
+> `UnifiedChart` (`POST /api/unified-charts/from-compute`, `GET
+> /api/unified-charts[/id]`). P8.1 (the compute engine itself, stateless) is
+> unchanged and still lives behind `POST /api/compute`; its UI is now the
+> home page (`/`, formerly `/compute`).
 
 ```
 PRACTITIONER
@@ -469,47 +480,13 @@ PRACTITIONER
 └──────────────┬────────────────┘
                │ ComputedChart + DashaTree (JSON)
                │
-               │─────────────────────────────────────► PRACTITIONER (/compute UI)
+               │─────────────────────────────────────► PRACTITIONER (Chart Compute UI, `/`)
                │
-               │ (User clicks "Save Chart")
-               │ POST /api/compute/save
+               │ (User clicks "Save Chart" — now via P9, see below)
+               │ POST /api/unified-charts/from-compute
                ▼
-┌───────────────────────────────┐
-│  P8.2                         │
-│  SAVE CHART                   │
-│  • Generate inputHash         │
-│    (SHA-256 of birth params)  │
-│  • Check for duplicate        │
-│  • Upsert SavedChart record   │
-└──────────────┬────────────────┘
-               │
-               ▼
-         D6: SavedChart
-         ┌──────────────────┐
-         │ id, name         │
-         │ birthDate/Time   │
-         │ timezone, lat/lon│
-         │ lagna, ayanamsa  │
-         │ chartData (JSONB)│◀── Full ComputedChart
-         │ dashaTree (JSONB)│◀── Full DashaTree
-         │ inputHash (uniq) │
-         └────────┬─────────┘
-                  │
-                  │ (User clicks "Load")
-                  │ GET /api/compute/charts or /[id]
-                  ▼
-┌───────────────────────────────┐
-│  P8.3                         │
-│  LOAD CHART                   │
-│  • List: metadata only        │
-│  • Single: full chartData +   │
-│    dashaTree + birth params   │
-│  • Populates form + result    │
-│    in UI (no recomputation)   │
-└──────────────┬────────────────┘
-               │ SavedChart data
-               ▼
-         PRACTITIONER (/compute UI — chart displayed immediately)
+              (See "Level 2 — P9: Unified Chart Ingestion + Analyze" —
+               persists to UnifiedChart, not the legacy SavedChart table.)
 ```
 
 ### Data flows within Compute engine (P8.1):
@@ -540,6 +517,38 @@ BirthInput
     │
     └─► computeVimshottari(moonLong, birthDate) → DashaTree
 ```
+
+### P8.4 — Varshaphal (Tajika annual solar-return chart) — on demand
+
+Independent, stateless flow triggered from the `/compute` **Varshaphal** tab.
+
+```
+PRACTITIONER (Varshaphal tab: birth data + varshaYear)
+     │ POST /api/compute/varshaphal
+     ▼
+┌───────────────────────────────────────────┐
+│  computeVarshaphal() (engine/compute/       │
+│  varshaphal.ts)                             │
+│                                             │
+│  • natal Sun sidereal longitude             │
+│  • findSolarReturnJulianDay()   → Varsha    │
+│    Pravesh instant (Newton on Sun long.)    │
+│  • julianDayToLocalCivil()      → date/time │
+│  • computeFullChart(annual)     → annual    │
+│    chart (planets, Varsha Lagna, vargas,    │
+│    Shadbala, …)                             │
+│  • computeMuntha()  (+1 sign/year)          │
+│  • computePanchavargeeyaBala()  (7 planets) │
+│  • computeVarshesha() (5 candidates → lord) │
+└──────────────┬──────────────────────────────┘
+               │ VarshaphalResult (JSON)
+               ▼
+         PRACTITIONER (/compute Varshaphal tab)
+```
+
+No DB writes. Reuses `computeFullChart` for the annual chart (so the annual
+Shadbala is the same engine as the natal). Method/caveats are surfaced in the
+`method` field of the result.
 
 ---
 

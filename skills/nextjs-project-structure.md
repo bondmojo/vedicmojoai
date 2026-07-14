@@ -4,52 +4,60 @@ This is a Next.js 14 (App Router) TypeScript monorepo. All UI, API routes, pipel
 
 ## Directory Layout
 
+> **v1.3:** the legacy `/charts` pages (list/detail/new-run/dasha, backed by the
+> `Chart` model) and their API routes were deleted, along with `POST /api/runs`,
+> `/api/compute/save`, `/api/compute/charts[/id]`, `/api/reports/[id]`, and
+> `/api/runs/[id]/rerun` — none had a remaining UI caller. The Chart Compute UI
+> (formerly `/compute`) moved to `app/page.tsx` (the home page); its shared
+> chart components moved from `app/compute/components/` to `app/components/`
+> (also home to the new `ThemeProvider`/`ThemeToggle`). A light/dark theme
+> toggle was added (`next-themes`, CSS-variable-backed `gray`/`slate`/`ink`
+> Tailwind colors — see `app/globals.css` and `tailwind.config.ts`).
+
 ```
 vedicmojoai/
 ├── app/                          # Next.js App Router
-│   ├── layout.tsx                # Root layout
-│   ├── page.tsx                  # Redirects to /charts (home)
-│   ├── charts/
-│   │   └── [id]/
-│   │       ├── page.tsx          # Chart detail + run history
-│   │       ├── run/page.tsx      # New run form (legacy path)
-│   │       └── dasha/page.tsx    # Dasha timeline viewer
+│   ├── layout.tsx                # Root layout — ThemeProvider + ThemeToggle
+│   ├── page.tsx                  # Home — Chart Compute UI (formerly /compute)
+│   ├── globals.css               # Theme CSS variables (:root = light, .dark = dark)
+│   ├── components/                # Shared chart components (moved from app/compute/components/)
+│   │   ├── ThemeProvider.tsx     # next-themes wrapper (class strategy, default dark)
+│   │   ├── ThemeToggle.tsx       # light/dark switch button
+│   │   ├── NorthIndianChart.tsx, SouthIndianChart.tsx, ChartGrid.tsx, ...
+│   │   ├── VarshaphalView.tsx    # Varshaphal (annual solar-return) tab
+│   │   └── chartTypes.ts
 │   ├── runs/
 │   │   └── [id]/
 │   │       ├── page.tsx          # Run progress (SSE)
 │   │       └── report/page.tsx   # Report viewer (Reporting)
-│   ├── compute/                  # Generate Chart — compute UI + chart components
-│   │   └── components/           # NorthIndianChart, ChartGrid, DashaTimeline, etc.
 │   ├── unified-charts/           # Generate Chart hub + AI Analysis launcher
 │   │   ├── page.tsx              # List unified charts (compute + paste)
 │   │   └── [id]/
 │   │       ├── page.tsx          # Unified chart detail (full domain view)
 │   │       └── analyze/page.tsx  # AI Analysis launcher
+│   ├── duration-analysis/        # Duration Analysis form + results
+│   ├── reports/page.tsx          # List of completed reports
 │   └── api/
-│       ├── charts/               # GET, POST (legacy chart management)
-│       │   └── [id]/
-│       │       ├── route.ts
-│       │       └── dasha/route.ts
-│       ├── compute/              # POST compute; save/load computed charts
+│       ├── compute/              # POST compute (stateless; home page calls this)
 │       │   ├── route.ts
-│       │   ├── save/route.ts
-│       │   └── charts/[id]/route.ts
+│       │   └── varshaphal/route.ts    # POST Tajika Varshaphal (annual chart)
 │       ├── unified-charts/       # UnifiedChart CRUD + ingestion + analyze
 │       │   ├── route.ts          # GET list
 │       │   ├── from-compute/route.ts  # POST Path A (Generate Chart)
 │       │   ├── from-paste/route.ts    # POST Path B (Generate Chart)
 │       │   └── [id]/
-│       │       ├── route.ts           # GET/DELETE
-│       │       └── analyze/route.ts   # POST AI Analysis
-│       ├── runs/                 # POST (start legacy run)
+│       │       ├── route.ts           # GET/PATCH/DELETE
+│       │       └── analyze/route.ts   # POST AI Analysis — the only way to start a run
+│       ├── runs/
 │       │   └── [id]/
 │       │       ├── route.ts      # GET run status
 │       │       ├── events/route.ts  # SSE stream
 │       │       ├── override/route.ts
-│       │       ├── rerun/route.ts
-│       │       └── cancel/route.ts
-│       ├── reports/
-│       │   └── [id]/route.ts     # Serve HTML report
+│       │       ├── cancel/route.ts
+│       │       ├── chat/route.ts
+│       │       └── report-content/route.ts
+│       ├── duration-analysis/    # Duration Analysis pipeline routes
+│       ├── reports/route.ts      # GET list of completed reports
 │       └── health/route.ts       # Health check
 ├── engine/                       # Pipeline engine (TypeScript)
 │   ├── constants.ts              # YEAR_DAYS, nakshatra map, dasha years, domain→agent map
@@ -77,6 +85,7 @@ vedicmojoai/
 │   │   ├── nakshatraRelationships.ts # sub-lords, depositor chains, clusters
 │   │   ├── jaimini.ts            # argala, yogi/avayogi, special-lagna aspects
 │   │   ├── bhavaBala.ts          # Bhavadhipati/Dig/Drishti bala
+│   │   ├── varshaphal.ts         # Tajika annual solar-return chart (on-demand)
 │   │   └── types.ts              # all compute type definitions
 │   └── waves/
 │       ├── wave1.ts              # LLM path: 1A, 1B, 1C, 1D (skipped for compute path)

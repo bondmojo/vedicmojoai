@@ -518,7 +518,7 @@ export default function DurationAnalysisPage() {
             >
               ← Back to Chart
             </Link>
-            <h1 className="text-2xl font-bold text-white">{record.chartName}</h1>
+            <h1 className="text-2xl font-bold text-ink">{record.chartName}</h1>
             <div className="flex items-center flex-wrap gap-2 mt-2">
               <CategoryBadge category={record.category} />
               <StatusBadge status={record.status} />

@@ -27,8 +27,10 @@ all live in one project and one deployment.
    `POST /api/unified-charts/[id]/analyze`. Compute-path charts **skip LLM Wave 1**
    because their foundation data is already computed deterministically.
 3. **Reporting** — Wave 4 synthesis JSON is rendered to an HTML report
-   (`engine/renderer.ts`), stored on disk, and served via `/api/reports/[id]` and
-   the report viewer at `/runs/[id]/report`.
+   (`engine/renderer.ts`), stored on disk, and served via the report viewer at
+   `/runs/[id]/report` (data fetched from `GET /api/runs/[id]` +
+   `GET /api/runs/[id]/report-content`; the list of completed reports comes from
+   `GET /api/reports`).
 4. **Duration Analysis** — a separate 3-agent sequential pipeline
    (`engine/durationAnalysis/`): user picks a date range + life domain (health,
    career, wealth, marriage, property, cashflow); the dasha tree is sliced and a
@@ -36,6 +38,13 @@ all live in one project and one deployment.
    symptom-validation gate (DA-2) and a forecast + chat agent (DA-3). Entry:
    `POST /api/duration-analysis`. Domain knowledge lives in `prompts/domains/`
    (shared with Wave 2 via `{{include:}}`); see `skills/backend/duration-analysis.md`.
+
+Alongside these, the home page (`/`, the Chart Compute UI) also offers
+**Varshaphal** (Tajika annual solar-return chart) as an on-demand, stateless
+tool: `POST /api/compute/varshaphal`
+→ `engine/compute/varshaphal.ts` computes the Varsha Pravesh (solar return), the
+annual chart (reusing `computeFullChart`, so the annual Shadbala uses the same
+engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord).
 
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.

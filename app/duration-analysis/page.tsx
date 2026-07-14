@@ -243,7 +243,7 @@ function DurationAnalysisForm() {
                   setUnifiedChartId(e.target.value)
                   setFormErrors((prev) => ({ ...prev, unifiedChartId: undefined }))
                 }}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
               >
                 <option value="">— select a chart —</option>
                 {charts.map((c) => (
@@ -276,7 +276,7 @@ function DurationAnalysisForm() {
                   setDateFrom(e.target.value)
                   setFormErrors((prev) => ({ ...prev, dateFrom: undefined, dateTo: undefined }))
                 }}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
               />
               {formErrors.dateFrom && (
                 <p className="mt-1 text-xs text-red-400">{formErrors.dateFrom}</p>
@@ -293,7 +293,7 @@ function DurationAnalysisForm() {
                   setDateTo(e.target.value)
                   setFormErrors((prev) => ({ ...prev, dateTo: undefined }))
                 }}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
               />
               {formErrors.dateTo && (
                 <p className="mt-1 text-xs text-red-400">{formErrors.dateTo}</p>
@@ -313,7 +313,7 @@ function DurationAnalysisForm() {
                   className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                     category === key
                       ? 'bg-indigo-600 border-indigo-500 text-white'
-                      : 'bg-gray-900 border-gray-600 text-gray-300 hover:border-indigo-500 hover:text-white'
+                      : 'bg-gray-900 border-gray-600 text-gray-300 hover:border-indigo-500 hover:text-ink'
                   }`}
                 >
                   {label}
@@ -331,7 +331,7 @@ function DurationAnalysisForm() {
               rows={3}
               maxLength={2000}
               placeholder="Current symptoms or observations (optional)"
-              className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white placeholder-gray-600 focus:border-indigo-500 focus:outline-none resize-y text-sm"
+              className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink placeholder-gray-600 focus:border-indigo-500 focus:outline-none resize-y text-sm"
             />
             <p className="mt-0.5 text-xs text-gray-600 text-right">
               {symptoms.length}/2000
@@ -347,7 +347,7 @@ function DurationAnalysisForm() {
               rows={3}
               maxLength={2000}
               placeholder="Your question (optional)"
-              className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white placeholder-gray-600 focus:border-indigo-500 focus:outline-none resize-y text-sm"
+              className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink placeholder-gray-600 focus:border-indigo-500 focus:outline-none resize-y text-sm"
             />
             <p className="mt-0.5 text-xs text-gray-600 text-right">
               {userQuestion.length}/2000
@@ -377,7 +377,7 @@ function DurationAnalysisForm() {
                     // Default to the first model for the chosen provider.
                     setModel(next === 'default' ? '' : MODELS_BY_PROVIDER[next][0].id)
                   }}
-                  className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
                 >
                   {PROVIDER_OPTIONS.map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
@@ -392,7 +392,7 @@ function DurationAnalysisForm() {
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   disabled={provider === 'default'}
-                  className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {provider === 'default' ? (
                     <option value="">Server default</option>
@@ -417,7 +417,7 @@ function DurationAnalysisForm() {
                   onChange={(e) => setApiKey(e.target.value)}
                   autoComplete="off"
                   placeholder="Leave blank to use the server's environment key"
-                  className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-white placeholder-gray-600 focus:border-indigo-500 focus:outline-none font-mono text-sm"
+                  className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink placeholder-gray-600 focus:border-indigo-500 focus:outline-none font-mono text-sm"
                 />
                 <p className="mt-1 text-xs text-gray-600">
                   Used only for this run and never stored. Blank falls back to the server key.

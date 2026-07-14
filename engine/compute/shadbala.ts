@@ -13,9 +13,10 @@
  * Documented classical approximations (flagged inline):
  *   - FIX-6  Natonnata is proportional (not the binary 60/30/0 of old REQ-1.3a).
  *   - FIX-7  Cheshta uses |speed|/mean-motion as a proxy for the classical
- *            Cheshta-Kendra/3 epicyclic value (JHora divergence). Sun's Cheshta
- *            is now its REAL Ayana Bala (declination-based, FIX-A); Moon's
- *            Cheshta = Paksha in FULL.
+ *            Cheshta-Kendra/3 epicyclic value (JHora divergence).
+ *   - JHORA-ALIGN (docs/computation_varshaphal.md §4–5): Ayana Bala is now a
+ *            Kaala Bala term for all seven planets (Sun doubled); both luminaries'
+ *            Cheshta Bala = 0; Sun's required Shadbala = 5.0 rupas (300 virupas).
  *   - Paksha  elongation is folded to 0–180 so benefic/malefic balas stay 0–60.
  *   - Abda   year-lord uses an approximate fixed Mesha (Aries) ingress date
  *            (~Apr 14) — see {@link getAriesIngressWeekday}.
@@ -108,10 +109,19 @@ const NAISARGIKA_BALA: Record<string, number> = {
   Sun: 60.0, Moon: 51.43, Venus: 42.86, Jupiter: 34.29, Mercury: 25.71, Mars: 17.14, Saturn: 8.57,
 }
 
-/** FIX-5 required Shadbala in RUPAS. */
+/**
+ * Required Shadbala in RUPAS. JHora-aligned: the Sun uses 5.0 (300 virupas),
+ * not the 6.5 of the older FIX-5 table — confirmed by two independent JHora
+ * screens (natal + Varshaphal). See docs/computation_varshaphal.md §4.2.
+ */
 const REQUIRED_RUPAS: Record<string, number> = {
-  Sun: 6.5, Moon: 6, Mars: 5, Mercury: 7, Jupiter: 6.5, Venus: 5.5, Saturn: 5,
+  Sun: 5.0, Moon: 6, Mars: 5, Mercury: 7, Jupiter: 6.5, Venus: 5.5, Saturn: 5,
 }
+
+/** Ayana Bala direction preference (declination that strengthens the planet). */
+const AYANA_NORTH_PREFERRING = ['Sun', 'Mars', 'Jupiter', 'Venus']
+const AYANA_SOUTH_PREFERRING = ['Moon', 'Saturn']
+// Mercury always gains from |declination| (handled explicitly).
 
 /** Mean daily motion (degrees/day) — Cheshta proxy denominator. */
 const MEAN_DAILY_MOTION: Record<string, number> = {
@@ -170,20 +180,38 @@ function radToDeg(rad: number): number {
 const OBLIQUITY_EPS = 23.4392811
 
 /**
- * FIX-A Ayana Bala for the Sun. The Sun's Cheshta Bala IS its Ayana Bala.
- * From the sidereal longitude we recover the tropical longitude
- * (tropical = sidereal + ayanamsa), derive the declination δ via
+ * Ayana Bala (Kaala Bala sub-component) for any classical planet.
+ *
+ * The declination δ is derived from the tropical longitude
+ * (tropical = sidereal + ayanamsa), ignoring ecliptic latitude (DOCUMENTED
+ * APPROXIMATION — exact for the Sun, slightly off for planets with latitude):
  *   δ = asin( sin(EPS) · sin(tropicalLon) )
- * and score it so the Sun peaks at maximum NORTHERN declination:
- *   AyanaBala = ((EPS + δ) / (2·EPS)) · 60 , clamped to 0..60.
+ *
+ * Direction preference (effective kranti):
+ *   - North-preferring (Sun, Mars, Jupiter, Venus): +δ
+ *   - South-preferring (Moon, Saturn):              −δ
+ *   - Mercury:                                      +|δ| (always gains)
+ * Score:  AyanaBala = ((EPS + effectiveKranti) / (2·EPS)) · 60  → 0..60.
+ *
+ * The Sun's Ayana Bala is DOUBLED (classical rule) → 0..120. Rahu/Ketu → 0.
  */
-export function computeAyanaBala(sunSiderealLon: number, ayanamsa: number): number {
-  const tropicalLon = normLon(sunSiderealLon + ayanamsa)
+export function computeAyanaBala(planet: string, siderealLon: number, ayanamsa: number): number {
+  if (planet === 'Rahu' || planet === 'Ketu') return 0
+  const tropicalLon = normLon(siderealLon + ayanamsa)
   const declination = radToDeg(
     Math.asin(Math.sin(degToRad(OBLIQUITY_EPS)) * Math.sin(degToRad(tropicalLon)))
   )
-  const bala = ((OBLIQUITY_EPS + declination) / (2 * OBLIQUITY_EPS)) * 60
-  return clamp(bala, 0, 60)
+
+  let effectiveKranti: number
+  if (planet === 'Mercury') effectiveKranti = Math.abs(declination)
+  else if (AYANA_SOUTH_PREFERRING.includes(planet)) effectiveKranti = -declination
+  else if (AYANA_NORTH_PREFERRING.includes(planet)) effectiveKranti = declination
+  else return 0
+
+  let bala = ((OBLIQUITY_EPS + effectiveKranti) / (2 * OBLIQUITY_EPS)) * 60
+  bala = clamp(bala, 0, 60)
+  if (planet === 'Sun') bala *= 2 // classical doubling → 0..120
+  return bala
 }
 
 /** Planet's sign number (1–12) in a given divisional chart. */
@@ -525,7 +553,11 @@ export function computeHoraBala(
   return planet === horaLord ? 60 : 0
 }
 
-/** Kaala Bala = sum of the seven temporal sub-balas. */
+/**
+ * Kaala Bala = sum of the temporal sub-balas, now INCLUDING Ayana Bala
+ * (declination-based, Sun doubled — see {@link computeAyanaBala}). Yuddha
+ * (planetary-war) Bala is not yet implemented, so this stays ≥ 0.
+ */
 export function computeKaalaBala(parts: {
   natonnata: number
   pakshaBala: number
@@ -534,6 +566,7 @@ export function computeKaalaBala(parts: {
   masaBala: number
   varaBala: number
   horaBala: number
+  ayana: number
 }): number {
   return (
     parts.natonnata +
@@ -542,31 +575,31 @@ export function computeKaalaBala(parts: {
     parts.abdaBala +
     parts.masaBala +
     parts.varaBala +
-    parts.horaBala
+    parts.horaBala +
+    parts.ayana
   )
 }
 
 // ─── Cheshta Bala ───────────────────────────────────────────────────
 
 /**
- * 1.4 / FIX-7 Cheshta Bala. DOCUMENTED APPROXIMATION: classical Cheshta =
+ * 1.4 Cheshta Bala. DOCUMENTED APPROXIMATION: classical Cheshta =
  * Cheshta-Kendra/3 (epicyclic); we use |speed|/mean-motion as a proxy, which
- * diverges from JHora. FIX-A: the Sun's Cheshta is now its real Ayana Bala
- * (declination-based, see {@link computeAyanaBala}) rather than a flat-30
- * stand-in. Moon uses its Paksha Bala in FULL; Rahu/Ketu = 30. Combustion
- * (single source, REQ-2.7) halves the motional value for the five true
- * planets. Capped 0–60.
+ * diverges from JHora.
+ *
+ * JHora-ALIGNED (docs/computation_varshaphal.md §4.2, finding #2): the two
+ * luminaries have NO Cheshta Bala — Sun = 0 and Moon = 0. (The Sun's
+ * declination strength is now booked as Ayana Bala inside Kaala; the Moon's
+ * Paksha is already a Kaala term.) Rahu/Ketu = 30. Combustion (single source,
+ * REQ-2.7) halves the motional value for the five true planets. Capped 0–60.
  */
 export function computeCheshtaBala(
   planet: string,
   planetPos: PlanetPosition,
   sunLon: number,
-  pakshaBalaValue: number,
-  ayanamsa: number,
   combustionForPlanet?: CombustionResult
 ): number {
-  if (planet === 'Sun') return computeAyanaBala(planetPos.longitude, ayanamsa) // FIX-A: Ayana Bala
-  if (planet === 'Moon') return clamp(pakshaBalaValue, 0, 60) // Paksha in FULL
+  if (planet === 'Sun' || planet === 'Moon') return 0 // luminaries have no Cheshta (JHora)
   if (planet === 'Rahu' || planet === 'Ketu') return 30
 
   const meanMotion = MEAN_DAILY_MOTION[planet]
@@ -743,10 +776,11 @@ export function computeShadbala(
     const masaBala = computeMasaBala(name, sunSignNumber)
     const varaBala = computeVaraBala(name, effectiveWeekday)
     const horaBala = computeHoraBala(name, effectiveWeekday, birthTimeSeconds, sunriseSeconds)
-    const kaala = computeKaalaBala({ natonnata, pakshaBala, tribhagaBala, abdaBala, masaBala, varaBala, horaBala })
+    const ayanaBala = computeAyanaBala(name, pos.longitude, ayanamsa)
+    const kaala = computeKaalaBala({ natonnata, pakshaBala, tribhagaBala, abdaBala, masaBala, varaBala, horaBala, ayana: ayanaBala })
 
     // Cheshta / Naisargika / Drik
-    const cheshtaBala = computeCheshtaBala(name, pos, sunLon, pakshaBala, ayanamsa, combustionByPlanet[name])
+    const cheshtaBala = computeCheshtaBala(name, pos, sunLon, combustionByPlanet[name])
     const naisargikaBala = computeNaisargikaBala(name)
     const drikBala = computeDrikBala(name, pos, planets, combustionByPlanet, waxingMoon)
 
@@ -787,6 +821,7 @@ export function computeShadbala(
       masaBala,
       varaBala,
       horaBala,
+      ayanaBala,
       cheshtaBala,
       naisargikaBala,
       drikBala,

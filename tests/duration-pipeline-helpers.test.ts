@@ -8,10 +8,10 @@
  */
 import { describe, it, expect } from 'vitest'
 import { extractJsonBlock, parseAgentJson } from '@/engine/durationAnalysis/agentJson'
-import { mergeDA1Outputs } from '@/engine/durationAnalysis'
+import { mergeDA1Outputs, mergePeriodContext } from '@/engine/durationAnalysis'
 import { isStale, STALE_RUN_MS } from '@/engine/durationAnalysis/reaper'
 import { readPromptFile } from '@/engine/llm'
-import type { DA1Output } from '@/lib/durationTypes'
+import type { DA1Output, ScoredDashaSlice, ScoreBreakdown, PeriodLordAnnotation } from '@/lib/durationTypes'
 
 // ─── extractJsonBlock ────────────────────────────────────────────────
 
@@ -70,16 +70,99 @@ describe('mergeDA1Outputs', () => {
     expect(mergeDA1Outputs([batch])).toBe(batch)
   })
 
-  it('concatenates period_analysis in batch order and joins trends', () => {
+  it('concatenates period_analysis in batch order, joins trends, and clears LLM peaks (engine peaks are authoritative)', () => {
     const merged = mergeDA1Outputs([makeBatch('A'), makeBatch('B')])
     expect(merged.period_analysis.map((p) => p.analysis)).toEqual(['A', 'B'])
     expect(merged.overall_trend).toBe('trend-A trend-B')
-    expect(merged.peak_stress_periods.map((p) => p.period)).toEqual(['stress-A', 'stress-B'])
-    expect(merged.peak_favorable_periods.map((p) => p.period)).toEqual(['fav-A', 'fav-B'])
+    // Engine peaks replace LLM peaks — the merge clears them
+    expect(merged.peak_stress_periods).toEqual([])
+    expect(merged.peak_favorable_periods).toEqual([])
   })
 
   it('throws on an empty batch list', () => {
     expect(() => mergeDA1Outputs([])).toThrow()
+  })
+})
+
+// ─── mergePeriodContext (compute-first merge, Property 17) ───────────
+
+function fakeAnnot(planet: string): PeriodLordAnnotation {
+  return {
+    planet, sign: '', house: 1, nakshatra: '', nakshatraLord: '', subLord: '',
+    retrograde: false, combust: false, cazimi: false, activatedYogas: [],
+    ownsHouses: [], occupiesHouse: 1, karakaRole: null,
+  }
+}
+
+function fakeBreakdown(score: number, intensity: 'high' | 'medium' | 'low', favorable: boolean): ScoreBreakdown {
+  return {
+    score, intensity, favorable, factors: [], omissions: [],
+    weightSumApplied: 100, reducedConfidence: false, confidence: 1,
+    weightsVersion: '0.1.0-provisional',
+  }
+}
+
+function fakeScoredSlice(md: string, ad: string, pd: string, pdStart: string, score: number, intensity: 'high' | 'medium' | 'low', favorable: boolean): ScoredDashaSlice {
+  return {
+    md: { lord: md, start: '2020-01-01', end: '2030-01-01' },
+    ad: { lord: ad, start: pdStart, end: '2025-01-01' },
+    pd: { lord: pd, start: pdStart, end: '2025-04-01' },
+    lordAnnotations: { mdLord: fakeAnnot(md), adLord: fakeAnnot(ad), pdLord: fakeAnnot(pd) },
+    score, intensity, favorable, scoreBreakdown: fakeBreakdown(score, intensity, favorable),
+  }
+}
+
+function da1WithVerdict(md: string, ad: string, pd: string, pdStart: string, intensity: 'high' | 'medium' | 'low', favorable: boolean): DA1Output {
+  return {
+    agent_id: 'DA-1',
+    category: 'career',
+    date_range: { from: '2020-01-01', to: '2025-01-01' },
+    period_analysis: [
+      {
+        md: { lord: md, start: '2020-01-01', end: '2030-01-01' },
+        ad: { lord: ad, start: pdStart, end: '2025-01-01' },
+        pd: { lord: pd, start: pdStart, end: '2025-04-01' },
+        analysis: 'model prose',
+        key_factors: [], transit_factors: [], activated_yogas: [],
+        intensity, favorable, bahiranga: '', antaranga: '',
+      },
+    ],
+    overall_trend: '', peak_stress_periods: [], peak_favorable_periods: [],
+  }
+}
+
+describe('mergePeriodContext — engine verdict always wins (Property 17)', () => {
+  it('overwrites a model verdict that contradicts the engine (favorable→challenging)', () => {
+    // Model said favorable/high; engine says challenging/high.
+    const da1 = da1WithVerdict('Sun', 'Venus', 'Moon', '2021-01-01', 'high', true)
+    const scored = [fakeScoredSlice('Sun', 'Venus', 'Moon', '2021-01-01', 22, 'high', false)]
+    const merged = mergePeriodContext(da1, scored, [])
+    const p = merged.period_analysis[0]
+    expect(p.favorable).toBe(false)     // engine value wins
+    expect(p.intensity).toBe('high')
+    expect(p.score).toBe(22)
+    expect(p.scoreBreakdown?.weightsVersion).toBe('0.1.0-provisional')
+    expect(p.analysis).toBe('model prose')  // narrative preserved
+  })
+
+  it('attaches the engine score/breakdown and lordAnnotations onto the merged period', () => {
+    const da1 = da1WithVerdict('Jupiter', 'Mercury', 'Ketu', '2022-06-01', 'low', false)
+    const scored = [fakeScoredSlice('Jupiter', 'Mercury', 'Ketu', '2022-06-01', 78, 'high', true)]
+    const merged = mergePeriodContext(da1, scored, [])
+    const p = merged.period_analysis[0]
+    expect(p.favorable).toBe(true)
+    expect(p.intensity).toBe('high')
+    expect(p.score).toBe(78)
+    expect(p.lordAnnotations?.mdLord.planet).toBe('Jupiter')
+  })
+
+  it('matches by lord-triple even when the model reports a slightly different pd.start', () => {
+    const da1 = da1WithVerdict('Sun', 'Venus', 'Moon', '2021-01-15', 'medium', true)  // model drifted the date
+    const scored = [fakeScoredSlice('Sun', 'Venus', 'Moon', '2021-01-01', 30, 'medium', false)]
+    const merged = mergePeriodContext(da1, scored, [])
+    // date-only fallback fails (different day) → lord-triple fallback matches
+    expect(merged.period_analysis[0].favorable).toBe(false)
+    expect(merged.period_analysis[0].score).toBe(30)
   })
 })
 

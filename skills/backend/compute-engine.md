@@ -19,6 +19,23 @@ Deterministic astronomical calculations (Swiss Ephemeris):
 | `nakshatraRelationships.ts` | Sub-lords, depositor chains, nakshatra parivartana, clusters, Rahu/Ketu axis |
 | `jaimini.ts` | Argala/Virodha Argala, Yogi/Avayogi points, special-lagna aspects, lord relationship map |
 | `bhavaBala.ts` | Bhavadhipati / Bhava Dig / Bhava Drishti bala |
+| `varshaphal.ts` | **Tajika annual solar-return chart** — Varsha Pravesh (solar return), annual chart (reuses `computeFullChart`), Muntha, Panchavargeeya Bala, Varshesha (year lord). On-demand only — NOT part of `computeFullChart`/`ComputedChart` |
+
+**Varshaphal note:** `varshaphal.ts` imports `computeFullChart` from `index.ts`
+(one-directional — `index.ts` never imports `varshaphal.ts`, so no cycle). The
+solar-return instant is found by Newton iteration on the Sun's sidereal longitude
+(`findSolarReturnJulianDay` in `planets.ts`). Panchavargeeya Bala uses documented
+Neelakanthi maxima (Kshetra 30 / Uccha 20 / Hadda 15 / Drekkana 10 / Navamsa 5, ÷4)
+with Egyptian-term (Hadda) and Dorothean-triplicity tables; exact Vishwa scales vary
+by text/software, so values are indicative and the method is surfaced in the output.
+Entry point: `POST /api/compute/varshaphal`; UI: the "Varshaphal" tab on `/compute`.
+
+**Shadbala JHora-alignment (2026-07):** `shadbala.ts` now books **Ayana Bala** as a
+Kaala Bala term for all seven planets (declination-based; Sun doubled), sets both
+luminaries' **Cheshta Bala = 0**, and uses **Sun required = 5.0 rupas** (300 virupas).
+This changes natal Shadbala too (same engine). Remaining JHora divergences (uncapped
+epicyclic Cheshta, true-bhava Dig, complementary Ishta/Kashta, signed Yuddha) are
+spec-gated Tier B — see `docs/computation_varshaphal.md` §4–6.
 
 **Rules:**
 - Pure functions — no DB, no side effects
