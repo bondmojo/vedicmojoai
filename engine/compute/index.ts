@@ -68,7 +68,7 @@ export function computeFullChart(input: BirthInput): ComputedChart {
   // Step 5: Nakshatras
   const nakshatras = computeNakshatras(planets)
 
-  // Step 6: Divisional charts (D1, D4, D7, D9, D10, D30)
+  // Step 6: Divisional charts (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30)
   const divisionalCharts = computeDivisionalCharts(planets, ascendant.longitude)
 
   // Step 7: Chara Karakas

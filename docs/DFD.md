@@ -35,6 +35,16 @@
 - **Prompt caching**: DA-1 batches and DA-3 chat follow-ups send their stable
   chart-data prefix via `callLLM({ cachedPrefix })` (Anthropic cache_control).
 
+## What changed in v1.4
+
+- Added **P11 — MCP server** (`mcp/`): a separate stdio process that lets Claude
+  Desktop read deterministic data + rubrics and reason locally at **$0 API cost**.
+  It calls the app over HTTP and **never** flows into P4 (wave pipeline) or P10
+  (duration pipeline) — the paid LLM processes. New external entity: **CLAUDE
+  DESKTOP**. See the Level 2 — P11 section.
+- New data stores/flows are read-only: `POST /api/timeline` (deterministic scoring,
+  reuses P10.2/P10.3 pre-steps sans LLM) and `GET /api/knowledge/**` (rubric files).
+
 ---
 
 ## Level 0 — Context Diagram
@@ -465,7 +475,8 @@ PRACTITIONER
 │  • Swiss Ephemeris calls      │
 │  • Planetary positions (D1)   │
 │  • Divisional charts          │
-│    (D1, D4, D7, D9, D10, D30)│
+│    (D1–D30: D1,D2,D3,D4,D5,   │
+│    D6,D7,D9,D10,D12,D24,D30) │
 │  • Nakshatras                 │
 │  • Chara Karakas              │
 │  • Ashtakavarga               │
@@ -729,6 +740,49 @@ Follow-up chat (POST /api/duration-analysis/[id]/chat):
   Load D8 (da1/da2/da3 outputs) + D9 (messages) → build DA-3 prompt →
   use contextSummary when history depth > 2 → callLLM → D9 message + D8 totals updated
 ```
+
+---
+
+## Level 2 — P11: MCP Server (Claude Desktop, no paid LLM)
+
+The MCP server (`mcp/`) is a separate stdio process. It moves the *reasoning* into
+Claude Desktop and only ever reads deterministic data + rubrics from the app — it
+never triggers P4 or P10 (the paid LLM pipelines).
+
+```
+CLAUDE DESKTOP
+     │  MCP (stdio): tools / resources / prompts
+     ▼
+┌─────────────────────┐
+│  P11  MCP SERVER    │   thin HTTP client — no astrology logic, no LLM
+│  (mcp/, Node)       │
+└─────┬───────────────┘
+      │ HTTP (localhost, optional x-mcp-token)
+      ├──────────────► GET  /api/unified-charts[/id]     (D: UnifiedChart)   read
+      ├──────────────► POST /api/compute[/varshaphal]    (stateless compute) no DB, no LLM
+      ├──────────────► POST /api/timeline ───────────────► P10.2 slicer + P10.3 overlay
+      │                                                    + deterministic scorePeriod + identifyPeaks
+      │                                                    (NO DA-1/2/3, NO LLM)
+      ├──────────────► GET  /api/knowledge/**  ──────────► prompts/domains + prompts/agents (readPromptFile)
+      └──────────────► GET  /api/reports, /api/runs/[id], /api/duration-analysis[/id]   read-only
+
+  Claude Desktop then reasons over the returned numbers using the returned rubric
+  and writes the reading — billed to the Desktop subscription, $0 API.
+
+  ✗ P11 never calls POST /api/unified-charts/[id]/analyze  (P4)
+  ✗ P11 never calls POST /api/duration-analysis            (P10 create)
+     Enforced by tests/mcp-cost-guard.test.ts.
+```
+
+**P11 data flows**
+
+| Flow | From → To | Payload |
+|---|---|---|
+| discover | P11 → UnifiedChart | list/detail (read) |
+| compute | P11 → compute engine | ComputedChart + dashaTree (stateless) |
+| timeline | P11 → `/api/timeline` | scored MD/AD/PD periods + peaks + transit overlay |
+| knowledge | P11 → `/api/knowledge` | domain/framework rubric text (include-expanded) |
+| reports | P11 → runs / duration reads | already-generated results (no new cost) |
 
 ---
 

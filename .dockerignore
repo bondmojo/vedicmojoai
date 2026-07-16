@@ -3,3 +3,5 @@ node_modules
 .git
 .env
 .env.local
+mcp/node_modules
+mcp/dist

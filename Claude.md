@@ -54,12 +54,23 @@ engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord)
 ## Architecture at a glance
 
 ```
-Browser (Next.js UI)
-  → Next.js API routes (/app/api)
+Browser (Next.js UI)                         Claude Desktop
+  → Next.js API routes (/app/api)  ◄──HTTP──   → MCP server (mcp/, stdio, no LLM)
     → Engine (/engine): compute (deterministic) + pipeline (LLM) + renderer
       → LLM providers (Anthropic / OpenAI via Vercel AI SDK)
   → PostgreSQL (Prisma) + HTML reports on disk
 ```
+
+### MCP server (`mcp/`) — Claude Desktop path, $0 API
+
+A **separate stdio process** (its own package under `mcp/`) that exposes the
+deterministic engine (Tools), the domain rubrics (Resources), and ready-to-run
+analysis workflows (Prompts) to Claude Desktop, so the *reasoning* is billed to the
+Desktop subscription, not the API. It is a thin HTTP client of the app and
+**deliberately never calls the paid pipelines** (`analyze`, `duration-analysis`
+POST) — enforced by `tests/mcp-cost-guard.test.ts`. Backed by two new read-only,
+no-LLM routes: `POST /api/timeline` (deterministic period scoring) and
+`GET /api/knowledge/**` (rubrics). Details: `mcp/README.md`, HLD §3.9, DFD P11.
 
 ### The AI pipeline (LLM path)
 
@@ -98,9 +109,10 @@ engine/         Pipeline + deterministic compute
   compute/        Swiss Ephemeris modules (pure functions, no DB)
   waves/          wave1–wave4 utilities
   orchestrator.ts planner.ts llm.ts pre_analysis.ts computeVimshottari.ts renderer.ts
-lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts
+lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts, mcpAuth.ts
 prisma/         schema.prisma, migrations, seed.ts
 prompts/agents/ LLM prompt files (read at runtime, never modified by the app)
+mcp/            MCP server (separate stdio process; thin HTTP client, no LLM) — see mcp/README.md
 docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
 .kiro/skills/   AI Skills (implementation conventions)
 .kiro/specs/    Feature specs (requirements/design)
@@ -142,11 +154,17 @@ npm run db:seed      # seed model_config defaults (prisma/seed.ts)
 npm run db:studio    # Prisma Studio
 npm run docker:up    # docker-compose up -d (Postgres + app)
 npm run docker:down  # docker-compose down
+
+# MCP server (separate package under mcp/)
+cd mcp && npm install         # first time
+cd mcp && npm run build       # → dist/server.js (point Claude Desktop here)
+cd mcp && node smoke-test.mjs # live wiring check (app must be running)
 ```
 
 Environment: copy `.env.example` to `.env`. Requires `DATABASE_URL` and provider API
 keys (Anthropic / OpenAI). Models/providers are resolved at runtime from the
-`model_config` table, so provider swaps need no code change.
+`model_config` table, so provider swaps need no code change. The MCP server reads
+`VEDICMOJO_BASE_URL` (default `http://localhost:3000`) and optional `MCP_TOKEN`.
 
 ---
 

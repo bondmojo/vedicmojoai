@@ -8,7 +8,7 @@
 
 A divisional chart is obtained by dividing each 30° zodiac sign into N equal (or in one case unequal) parts and mapping each part to a specific sign. The resulting chart shows a more specific area of life: D9 for marriage and inner strength, D10 for career, etc.
 
-Our system computes: **D1, D2, D3, D4, D7, D9, D10, D12, D30**.
+Our system computes: **D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30**.
 
 All use **Lahiri (Chitrapaksha) ayanamsa** and **sidereal longitudes** from Swiss Ephemeris.
 
@@ -93,6 +93,45 @@ Each sign is divided into **7 equal parts of 4°17'08"** (30° / 7).
 
 ---
 
+## D5 — Panchamsa (Fame, Authority, Power)
+
+**Life area:** Fame, authority, and power.
+
+Each sign is divided into **5 equal parts of 6°** each.
+
+**Mapping rule — fixed table (same style as D2/D30):**
+
+Unlike the offset-counting divisions (D6, D7, D9, D10...), D5 uses a fixed
+lookup table — the target signs are the same for every sign sharing the same
+parity, regardless of which sign it is.
+
+| Part | Odd signs (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius) | Even signs (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces) |
+|---|---|---|
+| 1st (0°–6°) | Aries | Taurus |
+| 2nd (6°–12°) | Aquarius | Virgo |
+| 3rd (12°–18°) | Sagittarius | Pisces |
+| 4th (18°–24°) | Gemini | Capricorn |
+| 5th (24°–30°) | Libra | Scorpio |
+
+**Source:** Classical Parashari Panchamsa table.
+
+---
+
+## D6 — Shashthamsa (Health Troubles, Obstacles, Debts)
+
+**Life area:** Health troubles, obstacles, debts, litigation.
+
+Each sign is divided into **6 equal parts of 5°** each.
+
+**Mapping rule — offset counting (same style as D9/D10):**
+- If the natal sign is **odd**: counting starts from **Aries**.
+- If the natal sign is **even**: counting starts from **Libra**.
+- Count forward by part number (0 through 5) from the starting sign.
+
+**Source:** Classical Parashari Shashthamsa rule.
+
+---
+
 ## D9 — Navamsa
 
 **Life area:** Marriage, dharma, inner strength; also used for all planetary dignity assessment.
@@ -144,6 +183,21 @@ Each sign is divided into **12 equal parts of 2°30'** each.
 Counting starts from the natal sign itself and advances one sign per part.
 
 **Source:** BPHS.
+
+---
+
+## D24 — Chaturvimshamsa / Siddhamsa (Education, Learning, Knowledge)
+
+**Life area:** Education, learning capability, knowledge acquisition.
+
+Each sign is divided into **24 equal parts of 1°15'** (30° / 24).
+
+**Mapping rule — offset counting (same style as D6/D9/D10):**
+- If the natal sign is **odd**: counting starts from **Leo**.
+- If the natal sign is **even**: counting starts from **Cancer**.
+- Count forward by part number (0 through 23) from the starting sign.
+
+**Source:** BPHS (Chaturvimsamsa / Siddhamsa chapter).
 
 ---
 

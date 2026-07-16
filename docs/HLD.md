@@ -13,6 +13,22 @@
 The system now organizes around three practitioner-facing features.
 (See full details in v1.1 below.)
 
+## What changed in v1.4
+
+- Added the **VedicMojo MCP server** (`mcp/`) — a separate, read-only stdio process
+  that lets Claude Desktop act as the astrologer at **$0 API cost**. It exposes the
+  deterministic engine (Tools), the domain rubrics (Resources), and ready-to-run
+  analysis workflows (Prompts), and **never invokes the paid LLM pipelines**. It is a
+  thin HTTP client of the existing Next.js app. See §3.9 and DFD P11.
+- New **read-only, no-LLM** API routes backing the MCP:
+  - `POST /api/timeline` — deterministic dasha-period slice + transit overlay +
+    0–100 scoring + peaks (the Duration Analysis pre-steps, minus the LLM).
+  - `GET /api/knowledge` and `GET /api/knowledge/{domains|frameworks}/{name}` —
+    the prompt rubrics, `{{include:}}`-expanded, allow-listed.
+- New helper `lib/mcpAuth.ts` — optional `MCP_TOKEN` shared-secret guard on the new
+  routes. New guard test `tests/mcp-cost-guard.test.ts` proves the MCP never POSTs a
+  paid route.
+
 ## What changed in v1.2
 
 - Added **Duration Analysis** — a fourth practitioner-facing feature: a focused
@@ -201,6 +217,13 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/runs/[id]/report-content` | GET | Raw markdown report content (for `.md` output format) |
 | `/api/reports` | GET | List all completed pipeline runs (for the Reports page) |
 | `/api/reports/[id]` | GET | Serve HTML report file |
+| `/api/timeline` | POST | **MCP (no-LLM)** — deterministic dasha-period slice + transit overlay + 0–100 scoring + peaks over a date range + category (Duration Analysis pre-steps without the LLM) |
+| `/api/knowledge` | GET | **MCP** — list available domain + framework rubrics |
+| `/api/knowledge/[type]/[name]` | GET | **MCP** — one rubric (`type`=`domains`\|`frameworks`), `{{include:}}`-expanded, name allow-listed |
+
+> The `/api/timeline` and `/api/knowledge/**` routes are read-only and never call
+> an LLM. They back the MCP server (§3.9) and honour the optional `MCP_TOKEN`
+> guard (`lib/mcpAuth.ts`).
 
 ### 3.3 Engine Layer (`/engine`)
 
@@ -360,6 +383,35 @@ Every agent receives a **compact context**, not raw accumulated output:
 
 `chart_summary` is pre-computed once from `ChartInputV1` + `dasha_tree` and stored
 in `Wave1Cache`. It is never re-derived by an LLM agent.
+
+### 3.9 MCP Server (`mcp/`)
+
+A **separate Node process** (its own package under `mcp/`) that speaks the Model
+Context Protocol over **stdio** and is launched by Claude Desktop. It holds **no
+astrology logic** — every tool is a thin HTTP call to the routes in §3.2. Its
+purpose is to move the *reasoning* into Claude Desktop (billed to the Desktop
+subscription) instead of the paid API pipelines, so it deliberately **never calls**
+`POST /api/unified-charts/[id]/analyze` or `POST /api/duration-analysis`.
+
+Three primitives:
+
+- **Tools** — deterministic data: discovery (`list_clients`, `get_client_chart`),
+  compute (`compute_chart`, `compute_varshaphal`), focused extractors
+  (`get_shadbala`, `get_divisional_chart`, `get_dasha_tree`, `get_active_dasha`,
+  `get_ashtakavarga`, `get_relationships`, `get_jaimini`, `get_bhava_bala`,
+  `get_transits` — each taking a stored `chartId` **or** raw `birthData`),
+  timeline (`get_timeline_periods`, `get_domain_dataset`), knowledge
+  (`list_knowledge`, `get_domain_knowledge`, `get_framework`), and read-only
+  access to already-generated reports.
+- **Resources** — the 6 canonical domain rubrics (`knowledge://domains/{domain}`).
+- **Prompts** — ready-to-run readings (`analyze_{career|health|wealth|marriage|property|cashflow}`,
+  `duration_timeline`, `analyze_full_chart`). Each embeds the domain rubric and
+  instructs Claude which Tools to call for the given client (the "recipe →
+  ingredients → cook" loop).
+
+Backed by two new read-only, no-LLM routes: `POST /api/timeline` and
+`GET /api/knowledge/**` (§3.2). Auth is an optional `MCP_TOKEN` shared secret
+(`lib/mcpAuth.ts`). Full details: `mcp/README.md`.
 
 ---
 

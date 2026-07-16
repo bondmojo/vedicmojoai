@@ -171,7 +171,7 @@ compute path skip LLM Wave 1 entirely.
 
 ## Where is D1, D4 Planet Chart Data Stored?
 
-Divisional chart data (D1, D4, D7, D9, D10, D30) is stored **inside the `chartData` JSONB column** of the `saved_chart` table (and similarly inside `chartJson` of the `chart` table for analysis-input charts).
+Divisional chart data (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30) is stored **inside the `chartData` JSONB column** of the `saved_chart` table (and similarly inside `chartJson` of the `chart` table for analysis-input charts).
 
 ### Path within `chartData` JSON:
 
@@ -305,7 +305,7 @@ ComputedChart (root)
 ├── nakshatras[]: NakshatraInfo[]
 │   ├── planet, nakshatra, nakshatraIndex
 │   ├── pada, nakshatraLord, degreeInNakshatra
-├── divisionalCharts[]: DivisionalChart[]    ← D1, D4, D7, D9, D10, D30
+├── divisionalCharts[]: DivisionalChart[]    ← D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30
 │   ├── division, name, shortName
 │   ├── lagna, lagnaSignNumber, lagnaDegreee
 │   ├── planets[]: DivisionalPlacement[]     ← planet positions in this varga

@@ -72,7 +72,7 @@ vedicmojoai/
 │   │   ├── index.ts              # computeFullChart()
 │   │   ├── planets.ts            # planet longitudes, signs, houses
 │   │   ├── nakshatras.ts         # nakshatra, pada, sub-lord
-│   │   ├── divisional.ts         # D1–D30 incl. D2/D3/D12 (required for Shadbala)
+│   │   ├── divisional.ts         # D1–D30: D1/D2/D3/D4/D5/D6/D7/D9/D10/D12/D24/D30
 │   │   ├── ashtakavarga.ts       # BAV/SAV
 │   │   ├── karakas.ts            # Jaimini chara karakas
 │   │   ├── arudhaPadas.ts        # arudha padas

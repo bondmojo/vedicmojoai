@@ -45,3 +45,4 @@ This skill is split into focused sub-documents in `skills/backend/`:
 | [error-handling.md](backend/error-handling.md) | Error types and recovery patterns |
 | [api-routes.md](backend/api-routes.md) | All backend API routes reference |
 | [adding-agents.md](backend/adding-agents.md) | 7-step checklist for introducing new pipeline agents |
+| [mcp-server.md](backend/mcp-server.md) | MCP server (`mcp/`) for Claude Desktop — tools/resources/prompts, cost-guard rule. Deliberately outside the paid LLM pipeline above: it's a read/compute-only bridge, never a caller of it. |

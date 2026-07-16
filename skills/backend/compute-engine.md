@@ -6,7 +6,7 @@ Deterministic astronomical calculations (Swiss Ephemeris):
 |---|---|
 | `planets.ts` | Planet longitudes, signs, houses |
 | `nakshatras.ts` | Nakshatra, pada, sublord |
-| `divisional.ts` | Divisional charts incl. D2, D3, D12 (added for Shadbala/Vimsopaka) + D4/D7/D9/D10/D30 |
+| `divisional.ts` | Divisional charts: D1/D2/D3/D4/D5/D6/D7/D9/D10/D12/D24/D30 (D2/D3/D12 added for Shadbala/Vimsopaka; D5/D6/D24 added for practitioner coverage) |
 | `ashtakavarga.ts` | Bindhu scores per planet per house |
 | `karakas.ts` | Jaimini karaka assignments |
 | `arudhaPadas.ts` | Arudha pada calculations |

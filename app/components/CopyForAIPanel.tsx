@@ -17,6 +17,8 @@ const DIV_META: Record<number, string> = {
   2: 'Hora (Wealth)',
   3: 'Drekkana (Siblings)',
   4: 'Chaturthamsha (Property)',
+  5: 'Panchamsha (Fame / Authority)',
+  6: 'Shashthamsha (Health Troubles)',
   7: 'Saptamsha (Children)',
   9: 'Navamsha (Marriage / Dharma)',
   10: 'Dashamsha (Career)',
