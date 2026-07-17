@@ -18,10 +18,11 @@ import { prisma } from '@/lib/db'
 import { requireMcpToken } from '@/lib/mcpAuth'
 import { sliceDashaTree } from '@/engine/durationAnalysis/slicer'
 import { buildTransitOverlay } from '@/engine/durationAnalysis/transitOverlay'
-import { extractCategoryData, toScoringChartData } from '@/engine/durationAnalysis/extractor'
+import { extractCategoryData, toScoringChartData, pickScoringRawChart } from '@/engine/durationAnalysis/extractor'
 import { scorePeriod, identifyPeaks } from '@/engine/durationAnalysis/scoring'
 import { resolveDomainWeights, WEIGHTS_VERSION } from '@/engine/durationAnalysis/scoringWeights'
-import type { DurationCategory, ScoredDashaSlice, TransitOverlay } from '@/lib/durationTypes'
+import { buildPeriodInsights } from '@/engine/durationAnalysis/periodInsights'
+import type { DurationCategory, ScoredDashaSlice, TransitOverlay, PeriodInsights, DomainContext } from '@/lib/durationTypes'
 
 // ─── Input Validation ────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ const TimelineSchema = z.object({
   unifiedChartId: z.string().uuid(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dateFrom must be YYYY-MM-DD'),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dateTo must be YYYY-MM-DD'),
-  category: z.enum(['health', 'career', 'wealth', 'marriage', 'property', 'cashflow']),
+  category: z.enum(['health', 'career', 'wealth', 'marriage', 'property', 'cashflow', 'family']),
   // Include the domain-scoped chart dataset (vargas + significators) in the
   // response. `get_domain_dataset` wants it; `get_timeline_periods` can omit it.
   includeCategoryData: z.boolean().optional().default(true),
@@ -147,33 +148,44 @@ export async function POST(request: NextRequest) {
 
   // ── Step 0d: Deterministic scoring + peaks ────────────────────────
   const domainWeights = resolveDomainWeights(category as DurationCategory)
-  const scoringChartData = toScoringChartData(categoryData, {
-    shadbala: chart.shadbala,
-    bhavaBala: chart.bhavaBala,
-    karakas: chart.karakas,
-    ashtakavarga: chart.ashtakavarga,
-    planets: chart.planets,
-  })
+  const scoringChartData = toScoringChartData(categoryData, pickScoringRawChart(chart))
 
   const overlayByAdStart = new Map(transitOverlay.map((o) => [o.adStart, o]))
-  const scoredSlices: ScoredDashaSlice[] = periodSlice.map((slice) => {
+  const scoredSlices: Array<ScoredDashaSlice & { insights: PeriodInsights | null }> = periodSlice.map((slice) => {
     const overlayEntry =
       overlayByAdStart.get(slice.ad.start) ??
       transitOverlay.find((o) => o.adLord === slice.ad.lord) ??
       null
     const { score, breakdown } = scorePeriod(slice, scoringChartData, overlayEntry, domainWeights)
-    return {
+    const scored: ScoredDashaSlice = {
       ...slice,
       score,
       intensity: breakdown.intensity,
       favorable: breakdown.favorable,
       scoreBreakdown: breakdown,
     }
+    // Deterministic driver digest (drishti / control / nakshatra) — the no-LLM UI's
+    // stand-in for the interpretation the MCP path leaves to Claude Desktop.
+    const insights = buildPeriodInsights(scored, categoryData, domainWeights)
+    return { ...scored, insights }
   })
 
   const { peakStress, peakFavorable } = identifyPeaks(
     scoredSlices.map((s) => ({ period: s, result: { score: s.score, breakdown: s.scoreBreakdown } }))
   )
+
+  // Compact domain model so the UI (and Claude Desktop) can label houses/karakas
+  // without re-deriving them — single source of truth is DOMAIN_SCORING_WEIGHTS.
+  const domainContext: DomainContext = {
+    category: category as DurationCategory,
+    primaryHouses: domainWeights.primaryHouses,
+    beneficHouses: domainWeights.beneficHouses,
+    maleficHouses: domainWeights.maleficHouses,
+    primaryDivision: domainWeights.primaryDivision,
+    relevantKarakaRoles: domainWeights.relevantKarakaRoles,
+    relevantNaturalKarakas: domainWeights.relevantNaturalKarakas,
+    specialPoints: domainWeights.specialPoints.map((s) => ({ key: s.key, selector: s.selector })),
+  }
 
   return NextResponse.json({
     unifiedChartId,
@@ -183,6 +195,7 @@ export async function POST(request: NextRequest) {
     truncated,
     periodCount: scoredSlices.length,
     periods: scoredSlices,
+    domainContext,
     transitOverlay,
     peaks: { peakStress, peakFavorable },
     // Provisional/uncalibrated per the scoring engine — surfaced so callers

@@ -217,7 +217,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/runs/[id]/report-content` | GET | Raw markdown report content (for `.md` output format) |
 | `/api/reports` | GET | List all completed pipeline runs (for the Reports page) |
 | `/api/reports/[id]` | GET | Serve HTML report file |
-| `/api/timeline` | POST | **MCP (no-LLM)** — deterministic dasha-period slice + transit overlay + 0–100 scoring + peaks over a date range + category (Duration Analysis pre-steps without the LLM) |
+| `/api/timeline` | POST | **MCP + Duration Analyser UI (no-LLM)** — deterministic dasha-period slice + transit overlay + 0–100 scoring + peaks + per-period driver digest (`insights`) + `domainContext` over a date range + category (Duration Analysis pre-steps without the LLM). Consumed both by MCP (raw → Claude Desktop LLM interprets) and the `/duration-computation` UI (renders the digest directly, no LLM). See `docs/duration-analyser.md`. |
 | `/api/knowledge` | GET | **MCP** — list available domain + framework rubrics |
 | `/api/knowledge/[type]/[name]` | GET | **MCP** — one rubric (`type`=`domains`\|`frameworks`), `{{include:}}`-expanded, name allow-listed |
 

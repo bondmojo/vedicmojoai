@@ -70,6 +70,10 @@ function CategoryBadge({ category }: { category: DurationCategory }) {
     cashflow: 'bg-teal-900/50 text-teal-300',
     marriage: 'bg-pink-900/50 text-pink-300',
     property: 'bg-green-900/50 text-green-300',
+    // Not reachable from this page today (family is excluded from
+    // /api/duration-analysis's category enum — see registry.ts) but the
+    // Record must stay exhaustive over the shared DurationCategory type.
+    family:   'bg-cyan-900/50 text-cyan-300',
   }
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${styles[category]}`}>

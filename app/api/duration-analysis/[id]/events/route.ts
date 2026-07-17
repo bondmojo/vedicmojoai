@@ -80,6 +80,7 @@ export async function GET(
             select: {
               status: true,
               symptoms: true,
+              foundationOutput: true,
               da1Output: true,
               da2Output: true,
               da3Output: true,
@@ -130,8 +131,23 @@ export async function GET(
           const hasSymptoms = Boolean(analysis.symptoms)
 
           // ── agent_start derivation (Req 6.2) ──
-          // DA-1 starts as soon as the run is running.
-          if (analysis.status === 'running' && !reportedEvents.has('DA-1_start')) {
+          // FOUNDATION runs first (Track 2): natal foundation sub-agents before DA-1.
+          if (analysis.status === 'running' && !reportedEvents.has('FOUNDATION_start')) {
+            reportedEvents.add('FOUNDATION_start')
+            sendEvent('agent_start', { agent_id: 'FOUNDATION', timestamp: new Date().toISOString() })
+          }
+          // FOUNDATION completes once its output is persisted (present even when empty).
+          if (analysis.foundationOutput && !reportedEvents.has('FOUNDATION_complete')) {
+            reportedEvents.add('FOUNDATION_complete')
+            sendEvent('agent_complete', { agent_id: 'FOUNDATION', ...tokenPayload, timestamp: new Date().toISOString() })
+          }
+          // DA-1 starts once foundation is done (foundationOutput set); da1Output is a
+          // fallback so a domain with no foundation stage still surfaces DA-1_start.
+          if (
+            analysis.status === 'running' &&
+            (analysis.foundationOutput || analysis.da1Output) &&
+            !reportedEvents.has('DA-1_start')
+          ) {
             reportedEvents.add('DA-1_start')
             sendEvent('agent_start', { agent_id: 'DA-1', timestamp: new Date().toISOString() })
           }

@@ -226,6 +226,7 @@ model DurationAnalysis {
   overrideModel    String?    // UI-selected model id — applied to all DA agents; null = use seeded ModelConfig
   periodSlice    Json?        // DashaSlice[] — Step 0a output
   transitOverlay Json?        // TransitOverlay[] — Step 0b output, one entry per AD boundary
+  foundationOutput Json?      // FoundationOutput — natal foundation sub-agents (Track 2); null = pre-feature run
   contextSummary String?      // ~500-token summary generated after DA-3 for efficient follow-ups
   errorMessage   String?      // failure reason when status="failed" (surfaced via SSE)
   overrideApplied Boolean     @default(false) // true if user overrode symptom_unmatched gate

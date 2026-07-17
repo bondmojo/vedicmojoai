@@ -302,7 +302,13 @@ export default function ComputePage() {
               href="/duration-analysis"
               className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-violet-500 hover:text-violet-300 transition-colors"
             >
-              Duration Analysis
+              Duration Analysis (AI)
+            </Link>
+            <Link
+              href="/duration-computation"
+              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-teal-500 hover:text-teal-300 transition-colors"
+            >
+              Duration Analyser (Free)
             </Link>
             <button
               onClick={() => setShowSavedCharts(!showSavedCharts)}
@@ -357,7 +363,7 @@ export default function ComputePage() {
                       </button>
                       <button
                         onClick={() => handleDeleteChart(chart.id)}
-                        className="rounded px-3 py-1.5 text-xs font-medium bg-red-900/50 text-red-400 hover:bg-red-900 border border-red-800 transition-colors"
+                        className="rounded px-3 py-1.5 text-xs font-medium bg-red-900 text-red-300 hover:bg-red-800 border border-red-800 transition-colors"
                       >
                         Delete
                       </button>
@@ -440,7 +446,7 @@ export default function ComputePage() {
                 type="button"
                 onClick={handleSaveChart}
                 disabled={saving}
-                className="rounded-lg border border-emerald-600 bg-emerald-900/30 px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-900/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="rounded-lg border border-emerald-600 bg-emerald-900 px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {saving ? 'Saving...' : 'Save Chart'}
               </button>
@@ -463,7 +469,7 @@ export default function ComputePage() {
               <button
                 type="button"
                 onClick={() => setShowCopyPanel(true)}
-                className="rounded-lg border border-violet-600 bg-violet-900/30 px-5 py-2.5 text-sm font-semibold text-violet-300 hover:bg-violet-900/60 transition-colors"
+                className="rounded-lg border border-violet-600 bg-violet-900 px-5 py-2.5 text-sm font-semibold text-violet-300 hover:bg-violet-800 transition-colors"
               >
                 Copy for AI
               </button>

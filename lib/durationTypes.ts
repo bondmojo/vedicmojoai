@@ -16,6 +16,7 @@ export type DurationCategory =
   | 'marriage'
   | 'property'
   | 'cashflow' // liquidity / "Money Agent" — distinct from wealth (accumulation)
+  | 'family' // home/lineage/domestic happiness — deterministic-tab only, see registry.ts
 
 export type DurationStatus =
   | 'queued'
@@ -25,7 +26,27 @@ export type DurationStatus =
   | 'failed'
   | 'cancelled' // practitioner cancelled (gate or mid-run); pipeline unwinds cooperatively
 
-export type DurationAgentId = 'DA-1' | 'DA-2' | 'DA-3'
+export type DurationAgentId = 'DA-1' | 'DA-2' | 'DA-3' | 'FOUNDATION'
+
+// ─── Foundation Sub-Agents (Track 2) ─────────────────────────────────
+// Natal-chart foundation agents that run ONCE per (chart, domain) BEFORE DA-1,
+// producing durable structural context that DA-1 and DA-3 apply per period.
+
+export type FoundationAgentId =
+  | 'FOUND-PLANETS'
+  | 'FOUND-NAKSHATRA'
+  | 'FOUND-UPAGRAHA'
+  | 'FOUND-BAV'
+
+/** One foundation agent's JSON output. */
+export interface FoundationAgentOutput {
+  agent_id: string
+  summary: string
+  key_findings: string[]
+}
+
+/** Merged foundation outputs keyed by agent id — persisted in the foundationOutput column. */
+export type FoundationOutput = Partial<Record<FoundationAgentId, FoundationAgentOutput>>
 
 // ─── Period Lord Annotation ──────────────────────────────────────────
 // Natal chart metadata for a dasha lord — computed deterministically, no LLM
@@ -179,8 +200,9 @@ export interface CategoryChartData {
   nakshatras: unknown        // ALL categories — nakshatra lords of dasha lords
   relationships: unknown     // ALL categories — combustion + yoga detection
   ashtakavarga: unknown      // ALL categories — BAV transit scores
+  upagrahas?: unknown        // ALL categories — full upagraha table (Gulika, Mandi, …)
   shadbala?: unknown         // per DOMAIN_AGENT_REGISTRY extraColumns
-  divisionalCharts?: unknown[] // per DOMAIN_AGENT_REGISTRY divisions (e.g. career = D9 + D10)
+  divisionalCharts?: unknown[] // per DOMAIN_AGENT_REGISTRY divisions (e.g. career = D1 + D9 + D10)
   jaimini?: unknown          // per DOMAIN_AGENT_REGISTRY extraColumns
   dashaTree: unknown
 }
@@ -193,7 +215,7 @@ export type DurationSSEEventType =
   | 'agent_complete'
   | 'agent_error'
   | 'symptom_gate'
-  | 'run_complete'
+    | 'run_complete'
   | 'run_cancelled'
 
 export interface DurationSSEEvent {
@@ -215,8 +237,10 @@ export interface DurationChatRequest {
 // See: engine/durationAnalysis/scoring.ts, engine/durationAnalysis/scoringWeights.ts
 
 /**
- * The 15 deterministic scoring factors used by the Scoring Engine.
- * Three dignity factors + 12 chart/transit factors.
+ * The 21 deterministic scoring factors used by the Scoring Engine.
+ * Three dignity factors + 12 chart/transit factors + 3 depth factors
+ * (nakshatraDispositor, dashaLordBav, argalaOnDomainHouse) + 3 rashi-layer
+ * factors (divisionalChartStrength, rashiDrishti, rashiDispositorChain).
  */
 export type ScoringFactorKey =
   | 'mdLordDignity'
@@ -234,6 +258,12 @@ export type ScoringFactorKey =
   | 'natalHouseStrength'
   | 'transitBav'
   | 'saturnAfflictions'
+  | 'nakshatraDispositor'
+  | 'dashaLordBav'
+  | 'argalaOnDomainHouse'
+  | 'divisionalChartStrength'
+  | 'rashiDrishti'
+  | 'rashiDispositorChain'
 
 /** One applied factor's contribution record in the ScoreBreakdown. */
 export interface ScoreFactorContribution {
@@ -310,6 +340,143 @@ export interface PeakPeriod {
   topFactors: { factor: ScoringFactorKey; contribution: number }[]
 }
 
+// ─── Period Insights (deterministic UI digest) ────────────────────────
+// A curated, human-readable digest of drishti / control / nakshatra drivers
+// per period. Built by engine/durationAnalysis/periodInsights.ts as a pure
+// SELECTION + LABELING pass over data already computed and returned in the
+// /api/timeline payload (relationships.aspects/rashiAspects, nakshatraRelationships,
+// jaimini.argala, lordAnnotations, scoreBreakdown). NO new astrology.
+// Exists because the deterministic Duration Analyser UI has no LLM to interpret
+// the raw relationship arrays the MCP path hands to Claude Desktop.
+
+/** How a house relates to the active domain (from DOMAIN_SCORING_WEIGHTS). */
+export type HouseRole = 'primary' | 'benefic' | 'malefic' | 'neutral'
+
+/** A house tagged with its sign and domain role — used for control display. */
+export interface TaggedHouse {
+  house: number
+  sign: string
+  role: HouseRole
+}
+
+/** One graha-drishti (planetary aspect) cast BY a dasha lord. */
+export interface DrishtiCast {
+  /** Aspect type, e.g. '7th', 'jupiter_5th', 'saturn_10th'. */
+  type: string
+  toHouse: number
+  toSign: string
+  toRole: HouseRole
+  toPlanets: string[]
+  /** True when the aspected house is the domain's primary or benefic house. */
+  ontoDomain: boolean
+}
+
+/** One graha-drishti RECEIVED by a dasha lord (who aspects it). */
+export interface DrishtiReceived {
+  from: string
+  type: string
+  /** True when the aspecting planet is a natural benefic. */
+  benefic: boolean
+}
+
+/**
+ * Control + drishti for one dasha lord WITHIN one divisional chart (varga) — e.g.
+ * Saturn's placement and aspects inside D10 for a career reading. House numbers
+ * are varga-relative (counted from that varga's own lagna), and domain-house
+ * significance carries over by classical convention (10th of D10 = career
+ * result, same as 10th of D1).
+ */
+export interface VargaDriver {
+  division: number
+  /** e.g. "D10 — Dashamsa". */
+  name: string
+  occupies: TaggedHouse | null
+  owns: TaggedHouse[]
+  /** This lord's varga-aspects landing on the domain's primary house(s), within this varga. */
+  aspectsOntoPrimary: number[]
+}
+
+/** The full driver digest for one MD/AD/PD lord. */
+export interface LordDriver {
+  level: 'MD' | 'AD' | 'PD'
+  lord: string
+  // Condition
+  dignity: string | null
+  retrograde: boolean
+  combust: boolean
+  cazimi: boolean
+  karakaRole: string | null
+  /** True when this lord is one of the domain's relevantNaturalKarakas. */
+  isNaturalKaraka: boolean
+  // Control (D1)
+  owns: TaggedHouse[]
+  occupies: TaggedHouse | null
+  // Drishti (D1)
+  aspectsCast: DrishtiCast[]
+  aspectsReceived: DrishtiReceived[]
+  /** Domain primary houses reached by this lord's Jaimini rashi (sign) aspect. */
+  rashiDrishtiOnDomain: number[]
+  // Control + drishti within the domain's OTHER divisional charts (e.g. D9/D10 for
+  // career, D6/D9 for health) — every division in categoryData.divisionalCharts
+  // besides D1, which the main control/drishti fields above already cover.
+  vargas: VargaDriver[]
+  // Nakshatra
+  nakshatra: string
+  nakshatraLord: string
+  subLord: string
+  /** Nakshatra depositor chain (star-lord → its star-lord → …). */
+  nakshatraChain: string[]
+  /** The planet this lord is in nakshatra-parivartana (star exchange) with, if any. */
+  starExchangeWith: string | null
+  // Association
+  conjunctWith: string[]
+  /** The planet this lord is in rashi mutual reception (parivartana) with, if any. */
+  parivartanaWith: string | null
+}
+
+/** Per-domain-house focus: who governs / occupies / aspects each key house. */
+export interface DomainHouseFocus {
+  house: number
+  sign: string
+  role: HouseRole
+  lord: string | null
+  /** The natal house the house-lord occupies. */
+  lordHouse: number | null
+  lordDignity: string | null
+  occupants: string[]
+  aspectedBy: { planet: string; type: string; benefic: boolean }[]
+  argalaFrom: { house: number; planets: string[]; type: 'primary' | 'secondary' }[]
+  bhavaBalaRupas: number | null
+  /** Sarvashtakavarga bindus in this house's sign (0–8 per planet summed; typ. 25–35). */
+  savBindu: number | null
+}
+
+/** Compact per-domain model surfaced to the UI (and MCP) so houses can be labeled. */
+export interface DomainContext {
+  category: DurationCategory
+  primaryHouses: number[]
+  beneficHouses: number[]
+  maleficHouses: number[]
+  primaryDivision: number
+  relevantKarakaRoles: string[]
+  relevantNaturalKarakas: string[]
+  /** Special-point labels declared by the domain (key + selector, e.g. arudhaLagna/AL). */
+  specialPoints: { key: string; selector: string }[]
+}
+
+/** The full per-period insight digest attached to each scored slice in the response. */
+export interface PeriodInsights {
+  lords: LordDriver[]
+  domainHouseFocus: DomainHouseFocus[]
+  karakaSummary: {
+    naturalKarakas: string[]
+    /** Which of the MD/AD/PD lords are the domain's natural karakas. */
+    amongRunningLords: string[]
+    /** Human label when a running lord matches a relevant Jaimini karaka role, else null. */
+    karakaRoleMatch: string | null
+  }
+}
+
 // ─── Domain Special Points ────────────────────────────────────────────
 
 /** Declares a special point a domain needs, as registered in DOMAIN_SCORING_WEIGHTS. */
@@ -359,6 +526,13 @@ export interface DomainScoringWeights {
    * (e.g. marriage: [7], career: [10], wealth: [2,11])
    */
   primaryHouses: number[]
+  /**
+   * The single divisional chart (varga) canonical domain knowledge names as PRIMARY for this
+   * domain (e.g. career: 10 = Dashamsa, marriage: 9 = Navamsa, health: 30 = Trimshamsa).
+   * Used by divisionalChartStrength. Must be one of the numbers in the domain's
+   * DOMAIN_AGENT_REGISTRY.divisions (registry.ts) — that's what makes the chart available.
+   */
+  primaryDivision: number
   /** Jaimini Chara Karaka abbreviations relevant to this domain (e.g. ['DK'] for marriage). */
   relevantKarakaRoles: string[]
   /** Natural significator planets for this domain (e.g. marriage: ['Venus','Jupiter']). */
@@ -384,6 +558,9 @@ import type {
   CharaKaraka,
   AshtakavargaResult,
   PlanetPosition,
+  JaiminiGeometry,
+  DivisionalChart,
+  RelationshipGeometry,
 } from '@/engine/compute/types'
 
 export interface ScoringChartData {
@@ -402,6 +579,16 @@ export interface ScoringChartData {
   ashtakavarga?: AshtakavargaResult | null
   /** Natal D1 planet positions — used for dignity, house ownership, mdAdRelationship. */
   planets?: PlanetPosition[] | null
+  /** Jaimini geometry (argala / virodhaArgala) — used by argalaOnDomainHouse. */
+  jaimini?: JaiminiGeometry | null
+  /**
+   * Domain-filtered divisional charts (per DOMAIN_AGENT_REGISTRY.divisions — already
+   * filtered by extractCategoryData, e.g. career = [D9, D10]). Used by
+   * divisionalChartStrength to read the domain's primaryDivision varga.
+   */
+  divisionalCharts?: DivisionalChart[] | null
+  /** Natal relationship geometry — used by rashiDrishti (relationships.rashiAspects). */
+  relationships?: RelationshipGeometry | null
   /** Domain special points resolved by the extractor. */
   specialPoints?: DomainSpecialPoints
 }

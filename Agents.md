@@ -167,10 +167,17 @@ Runs after Wave 3 on follow-up queries. Ensures the new analysis doesn't contrad
 
 ## Duration Analysis Agents (Separate Pipeline)
 
-A focused 3-agent sequential pipeline for date-range / domain-specific analysis.
+A focused sequential pipeline for date-range / domain-specific analysis.
 Completely independent from the 18-agent wave pipeline.
 Entry point: `POST /api/duration-analysis`.
-Engine: `engine/durationAnalysis/` (slicer → transitOverlay → DA-1 → DA-2 → DA-3).
+Engine: `engine/durationAnalysis/` (slicer → transitOverlay → deterministic scoring
+→ **FOUNDATION sub-agents** → DA-1 → DA-2 → DA-3).
+
+The deterministic scorer (`scoring.ts`, `WEIGHTS_VERSION 0.2.0-provisional`) runs **18
+factors** — the 15 originals plus 3 depth factors added in Track 1a: `nakshatraDispositor`
+(dasha-lord nakshatra dispositor → domain house), `dashaLordBav` (lord's own BAV bindus in
+the domain house; node lords omitted), and `argalaOnDomainHouse` (net Jaimini argala on the
+primary house). Its verdict stays authoritative; the LLM agents narrate it.
 
 The domain-analysis step is **registry-driven**: `DOMAIN_AGENT_REGISTRY`
 (`engine/durationAnalysis/registry.ts`) maps each category to its prompt file,
@@ -183,12 +190,25 @@ prompt file + seed row — no orchestrator changes.
 
 | Category | Agent ID | Prompt File | Divisional charts | Extra columns |
 |---|---|---|---|---|
-| health | DA1-HEALTH | `duration_da1_health.md` | D30 | shadbala |
-| career | DA1-CAREER | `duration_da1_career.md` | D9, D10 | shadbala, jaimini |
+| health | DA1-HEALTH | `duration_da1_health.md` | D1, D6, D9 | shadbala |
+| career | DA1-CAREER | `duration_da1_career.md` | D1, D9, D10 | shadbala, jaimini |
 | wealth | DA1-WEALTH | `duration_da1_wealth.md` | D2 | shadbala, jaimini |
 | marriage | DA1-MARRIAGE | `duration_da1_marriage.md` | D9 | jaimini |
 | property | DA1-PROPERTY | `duration_da1_property.md` | D4 | — |
-| cashflow | DA1-CASHFLOW | `duration_da1_cashflow.md` | D2 | shadbala |
+| cashflow | DA1-CASHFLOW | `duration_da1_cashflow.md` | D1, D2, D9 | shadbala |
+
+`family` is registered in `DOMAIN_AGENT_REGISTRY` (D1, D4, D9; shadbala) but has
+**no prompt file or `model_config` row** — it is not an LLM agent. It only exists
+for the deterministic `/duration-computation` UI (`POST /api/timeline`, see
+`CLAUDE.md`), which is not part of this wave/agent pipeline; it is excluded from
+`/api/duration-analysis`'s category enum and never reaches DA-1/DA-2/DA-3.
+
+The `/duration-computation` UI has no LLM, so it attaches a deterministic **driver
+digest** (`engine/durationAnalysis/periodInsights.ts` → `insights`) to each scored
+period — a pure selection + labeling of the drishti / control / nakshatra / argala the
+payload already carries. This is **not an agent** and never calls an LLM; it is the UI's
+stand-in for the interpretation the MCP path leaves to Claude Desktop. See
+`docs/duration-analyser.md`.
 
 Each per-domain prompt composes `{{include:domains/<category>.md}}` — the canonical
 domain-knowledge fragment, also included by the corresponding Wave 2 agent — with
@@ -199,11 +219,18 @@ expands `{{include:...}}` directives at load time.
 from `wealth` (long-term accumulation) — mirroring the Wave 2C vs 3A split.
 
 All categories also receive `planets`, `nakshatras`, `relationships`,
-`ashtakavarga`, and `dashaTree`.
+`ashtakavarga`, `upagrahas`, and `dashaTree`.
+
+Each domain also declares `foundationAgents` (registry) — natal foundation sub-agents that
+run once, in parallel, BEFORE DA-1 (Step 0e). They are Haiku-tier, domain-agnostic facet
+readers whose merged output is injected into DA-1 and DA-3. Selection is deterministic and
+an agent is skipped when its chart facet is absent (paste-path); a single failure is
+swallowed (enrichment only).
 
 | Agent ID | Name | Prompt File | Model | Condition | Input | Output |
 |---|---|---|---|---|---|---|
-| **DA-1** (per-domain: DA1-HEALTH … DA1-CASHFLOW) | Domain Analyser | `duration_da1_<category>.md` (registry-resolved) | claude-sonnet-4-5 | Always; batched (≤25 periods/call, deterministically merged) | Category-scoped chart data (dashaTree stripped) + `periodSlice` batch + matching `transitOverlay` entries | Per-period analysis with key_factors, transit_factors, activated_yogas, bahiranga, antaranga |
+| **FOUND-PLANETS / -NAKSHATRA / -UPAGRAHA / -BAV** | Foundation facet readers | `duration_found_<facet>.md` | claude-haiku-4-5 | Per `registry.foundationAgents`; skipped when facet data absent | Domain label + the single natal facet (planets / nakshatras+relationships / upagrahas / ashtakavarga) | `{ agent_id, summary, key_findings[] }` — merged to `foundationOutput`, injected into DA-1 + DA-3 |
+| **DA-1** (per-domain: DA1-HEALTH … DA1-CASHFLOW) | Domain Analyser | `duration_da1_<category>.md` (registry-resolved) | claude-sonnet-4-5 | Always; batched (≤25 periods/call, deterministically merged) | Category-scoped chart data (dashaTree stripped) + foundation section + `periodSlice` batch + matching `transitOverlay` entries | Per-period analysis with key_factors, transit_factors, activated_yogas, bahiranga, antaranga |
 | **DA-2** | Symptom Validator | `duration_da2_symptom_validator.md` | claude-sonnet-4-5 | Only when `symptoms` provided | Chart data + DA-1 output + symptoms | `{ found, confidence, supporting_factors[], analysis }` — **gate**: if found=false pipeline halts |
 | **DA-3** | Future Analyser | `duration_da3_future_analyser.md` | claude-sonnet-4-5 | Always (after DA-2 passes) | Chart data + DA-1 + DA-2 (if ran) + conversation history | Per-AD forecast with bahiranga, antaranga, why, transit_why, recommendations |
 

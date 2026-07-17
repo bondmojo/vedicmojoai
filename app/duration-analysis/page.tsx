@@ -214,11 +214,19 @@ function DurationAnalysisForm() {
   return (
     <main className="min-h-screen p-6 bg-gray-950 text-gray-100">
       <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Duration Analysis</h1>
-          <p className="mt-1 text-gray-400 text-sm">
-            Select a chart, date range, and life domain to run a focused 3-agent dasha analysis.
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold">Duration Analysis</h1>
+            <p className="mt-1 text-gray-400 text-sm">
+              Select a chart, date range, and life domain to run a focused 3-agent dasha analysis.
+            </p>
+          </div>
+          <Link
+            href="/duration-computation"
+            className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-teal-500 hover:text-teal-300 transition-colors whitespace-nowrap"
+          >
+            Duration Analyser (Free)
+          </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-gray-700 bg-gray-800/50 p-6 space-y-6">

@@ -762,6 +762,7 @@ CLAUDE DESKTOP
       ├──────────────► POST /api/compute[/varshaphal]    (stateless compute) no DB, no LLM
       ├──────────────► POST /api/timeline ───────────────► P10.2 slicer + P10.3 overlay
       │                                                    + deterministic scorePeriod + identifyPeaks
+      │                                                    + buildPeriodInsights (driver digest) + domainContext
       │                                                    (NO DA-1/2/3, NO LLM)
       ├──────────────► GET  /api/knowledge/**  ──────────► prompts/domains + prompts/agents (readPromptFile)
       └──────────────► GET  /api/reports, /api/runs/[id], /api/duration-analysis[/id]   read-only

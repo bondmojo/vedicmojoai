@@ -52,7 +52,7 @@ export default function ChartGrid({
           <button
             onClick={() => setStyle('north')}
             className={`px-4 py-1.5 text-xs font-medium transition-colors ${
-              style === 'north' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              style === 'north' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-ink'
             }`}
           >
             North Indian
@@ -60,7 +60,7 @@ export default function ChartGrid({
           <button
             onClick={() => setStyle('south')}
             className={`px-4 py-1.5 text-xs font-medium transition-colors ${
-              style === 'south' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              style === 'south' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-ink'
             }`}
           >
             South Indian

@@ -39,6 +39,20 @@ all live in one project and one deployment.
    `POST /api/duration-analysis`. Domain knowledge lives in `prompts/domains/`
    (shared with Wave 2 via `{{include:}}`); see `skills/backend/duration-analysis.md`.
 
+   A sibling, purely deterministic UI — **Duration Analyser** (`/duration-computation`)
+   — sits on top of the same Step 0a–0d compute-first layer with no LLM call: pick a
+   chart, drill into a dasha period (MD → AD → PD), and pick an analysis type (Career,
+   Health, Money, Family) to see every computed chart for that window — divisional
+   charts, planets, nakshatras, upagrahas, balas, Ashtakavarga. Each period also gets a
+   deterministic **driver digest** (`engine/durationAnalysis/periodInsights.ts`) that
+   selects + labels the drishti / control / nakshatra / argala the raw payload already
+   carries — the no-LLM tab's stand-in for the interpretation the MCP path leaves to
+   Claude Desktop. Entry: `POST /api/timeline` (`includeCategoryData:true`) — the same
+   backbone the MCP server exposes to Claude Desktop. `family` is a UI-only domain
+   registered in `DOMAIN_AGENT_REGISTRY`/`DOMAIN_SCORING_WEIGHTS` for this path only; it
+   has no prompt file and is not reachable from `/api/duration-analysis`. See
+   `docs/duration-analyser.md` for the MCP-vs-UI exposure model.
+
 Alongside these, the home page (`/`, the Chart Compute UI) also offers
 **Varshaphal** (Tajika annual solar-return chart) as an on-demand, stateless
 tool: `POST /api/compute/varshaphal`

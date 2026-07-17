@@ -564,6 +564,374 @@ function factorNatalHouseStrength(
   return { ok: true, normalized, value: avg }
 }
 
+// ─── Factor builders — 3 depth factors (Track 1a) ────────────────────
+
+/** Natural benefics/malefics for argala classification.
+ *  v1 static list — Mercury/Moon treated as benefic; conditional (association /
+ *  waxing-Moon) classification is deferred. */
+const ARGALA_BENEFICS = new Set(['Jupiter', 'Venus', 'Mercury', 'Moon'])
+const ARGALA_MALEFICS = new Set(['Sun', 'Mars', 'Saturn', 'Rahu', 'Ketu'])
+
+/**
+ * Nakshatra Dispositor — whether each running lord's NATAL nakshatra dispositor
+ * (the lord of the nakshatra the dasha lord occupies) owns or occupies a domain
+ * house. Captures threads the whole-sign lordship of the dasha lord itself misses
+ * (e.g. an AD lord whose nakshatra dispositor rules the domain's primary house).
+ *
+ * Uses the pre-computed lordAnnotations.*.nakshatraLord — no chain-building (v1).
+ * Node dispositors (Rahu/Ketu) own no rasi sign, so only occupancy applies.
+ * "Aspects" is intentionally NOT modelled (v1) — the codebase only has natal-aspect
+ * logic for transiting Saturn/Jupiter. MD/AD/PD are weighted by dasha hierarchy.
+ */
+function factorNakshatraDispositor(
+  dispositors: string[], // [mdNakLord, adNakLord, pdNakLord]
+  chartData: ScoringChartData,
+  domainWeights: DomainScoringWeights
+): FactorResult {
+  const planets = chartData.planets
+  if (!planets) return { ok: false, reason: 'planets not available for nakshatraDispositor' }
+  const lagnaSign = deriveLagnaSign(planets)
+  if (lagnaSign == null) return { ok: false, reason: 'cannot derive lagna for nakshatraDispositor' }
+
+  const primary = new Set(domainWeights.primaryHouses)
+  const benefic = new Set(domainWeights.beneficHouses)
+  const malefic = new Set([...domainWeights.maleficHouses, 6, 8, 12])
+  const lordWeights = [0.4, 0.35, 0.25] // MD/AD/PD influence
+
+  let weightedSum = 0
+  let weightUsed = 0
+  const detail: Array<{ dispositor: string; houses: number[]; n: number }> = []
+
+  dispositors.forEach((dispositor, i) => {
+    if (!dispositor) return
+    const p = planets.find((pl) => pl.planet === dispositor)
+    if (!p) return // dispositor position unavailable — skip this lord
+
+    // Connected houses = occupancy ∪ owned (owned skipped for nodes: not a SIGN_LORDS value)
+    const houses = new Set<number>()
+    houses.add(p.house)
+    for (const [sn, l] of Object.entries(SIGN_LORDS)) {
+      if (l === dispositor) houses.add(signToHouse(Number(sn), lagnaSign))
+    }
+
+    const hs = [...houses]
+    const primaryHit = hs.some((h) => primary.has(h))
+    const beneficHit = hs.some((h) => benefic.has(h))
+    const maleficHit = hs.some((h) => malefic.has(h))
+
+    let n: number
+    if (primaryHit && !maleficHit) n = 1.0
+    else if (primaryHit && maleficHit) n = 0.65
+    else if (beneficHit && !maleficHit) n = 0.65
+    else if (maleficHit && !beneficHit) n = 0.3
+    else n = 0.5
+
+    weightedSum += n * lordWeights[i]
+    weightUsed += lordWeights[i]
+    detail.push({ dispositor, houses: hs, n })
+  })
+
+  if (weightUsed === 0) return { ok: false, reason: 'no usable nakshatra dispositor (missing positions)' }
+  return { ok: true, normalized: clamp(weightedSum / weightUsed, 0, 1), value: detail }
+}
+
+/**
+ * Dasha-Lord BAV — each running lord's OWN Bhinnashtakavarga bindus in the domain's
+ * primaryHouses (per-planet BAV, complementing the SAV-only natalHouseStrength).
+ *
+ * BAV is computed for the 7 planets only — Rahu/Ketu have NO bav array
+ * (engine/compute/ashtakavarga.ts), so a node lord is skipped, never fabricated.
+ * `bav[planet]` is SIGN-indexed (0 = Aries); each primary HOUSE → SIGN via lagna.
+ */
+function factorDashaLordBav(
+  lords: string[],
+  chartData: ScoringChartData,
+  domainWeights: DomainScoringWeights
+): FactorResult {
+  const bav = chartData.ashtakavarga?.bav
+  if (!bav) return { ok: false, reason: 'ashtakavarga BAV not available' }
+  const lagnaSign = deriveLagnaSign(chartData.planets)
+  if (lagnaSign == null) return { ok: false, reason: 'cannot derive lagna for dashaLordBav' }
+
+  const signs = domainWeights.primaryHouses.map((h) => houseToSign(h, lagnaSign))
+
+  const bindus: number[] = []
+  for (const lord of lords) {
+    const lordBav = bav[lord]
+    if (!Array.isArray(lordBav) || lordBav.length < 12) continue // Rahu/Ketu or missing → skip
+    for (const sign of signs) {
+      const b = lordBav[sign - 1]
+      if (b != null) bindus.push(b)
+    }
+  }
+
+  if (bindus.length === 0) {
+    return { ok: false, reason: 'no per-planet BAV bindus for running lords (node lords / missing)' }
+  }
+  const avg = bindus.reduce((a, b) => a + b, 0) / bindus.length
+  return { ok: true, normalized: clamp(avg / 8, 0, 1), value: avg }
+}
+
+/**
+ * Argala on the domain's primary house(s) — net Jaimini intervention.
+ * Primary argala (from the 2nd/4th/11th) whose offset is NOT neutralized by a
+ * virodha argala contributes +1 per benefic planet, −1 per malefic planet.
+ * No un-neutralized primary-house argala at all → omitted (keeps weight out of the
+ * denominator rather than dragging the score toward a 0.5 neutral).
+ */
+function factorArgalaOnDomainHouse(
+  chartData: ScoringChartData,
+  domainWeights: DomainScoringWeights
+): FactorResult {
+  const jaimini = chartData.jaimini
+  if (!jaimini?.argala) return { ok: false, reason: 'jaimini argala not available' }
+
+  const primary = new Set(domainWeights.primaryHouses)
+  const virodha = jaimini.virodhaArgala ?? []
+
+  let net = 0
+  let considered = 0
+
+  for (const entry of jaimini.argala) {
+    if (entry.type !== 'primary') continue // v1: primary argala only
+    if (!primary.has(entry.targetHouse)) continue
+
+    // Recover the argala offset (2/4/11) and check for a neutralizing virodha.
+    const offset = ((entry.argalaFrom - entry.targetSign + 12) % 12) + 1
+    const neutralized = virodha.some(
+      (v) =>
+        v.targetSign === entry.targetSign &&
+        v.neutralizes === offset &&
+        (v.counterPlanets?.length ?? 0) > 0
+    )
+    if (neutralized) continue
+
+    for (const planet of entry.argalaPlanets) {
+      if (ARGALA_BENEFICS.has(planet)) { net += 1; considered++ }
+      else if (ARGALA_MALEFICS.has(planet)) { net -= 1; considered++ }
+    }
+  }
+
+  if (considered === 0) return { ok: false, reason: 'no un-neutralized argala on domain primary houses' }
+  return { ok: true, normalized: clamp(0.5 + net * 0.12, 0, 1), value: net }
+}
+
+const KENDRA_HOUSES = new Set([1, 4, 7, 10])
+
+/**
+ * Divisional Chart Strength — the D10-class gap closer. Domain knowledge names ONE
+ * varga (domainWeights.primaryDivision) as PRIMARY for the domain (career: D10,
+ * marriage: D9, health: D30, wealth/cashflow: D2, property: D4). Reads, WITHIN that
+ * varga's own house-numbering from its own lagna: (a) the dignity of the varga's
+ * domain-house lord, (b) the varga lagna-lord's own dignity (overall varga strength),
+ * (c) whether the domain-house lord sits in a varga kendra, (d) how many of the
+ * running MD/AD/PD lords occupy a varga kendra (activation). Every sub-signal is
+ * centered at 0.5 = neutral so none floors/ceilings the blend.
+ */
+function factorDivisionalChartStrength(
+  mdLord: string,
+  adLord: string,
+  pdLord: string,
+  chartData: ScoringChartData,
+  domainWeights: DomainScoringWeights
+): FactorResult {
+  const chart = chartData.divisionalCharts?.find((d) => d.division === domainWeights.primaryDivision)
+  if (!chart) return { ok: false, reason: `primary divisional chart D${domainWeights.primaryDivision} not available` }
+  const vargaLagnaSign = chart.lagnaSignNumber
+  if (!vargaLagnaSign) return { ok: false, reason: 'varga lagna sign missing' }
+  const vargaPlanets = chart.planets
+  if (!vargaPlanets || vargaPlanets.length === 0) return { ok: false, reason: 'varga planets missing' }
+
+  // (a) Domain-house lord's dignity + kendra occupancy, within the varga.
+  const houseFindings: Array<{ house: number; lord: string; dignity: string; vargaHouse: number | null }> = []
+  let dignitySum = 0
+  let dignityCount = 0
+  let lordInKendra = false
+
+  for (const h of domainWeights.primaryHouses) {
+    const sign = houseToSign(h, vargaLagnaSign)
+    const lord = SIGN_LORDS[sign]
+    const lp = vargaPlanets.find((p) => p.planet === lord)
+    if (!lp) { houseFindings.push({ house: h, lord, dignity: 'unknown', vargaHouse: null }); continue }
+    const otherSigns = vargaPlanets.filter((p) => p.planet !== lord).map((p) => p.signNumber)
+    const label = getDignityLabel(lord, lp.signNumber, otherSigns)
+    dignitySum += dignityToNormalized(label)
+    dignityCount++
+    if (KENDRA_HOUSES.has(lp.house)) lordInKendra = true
+    houseFindings.push({ house: h, lord, dignity: label, vargaHouse: lp.house })
+  }
+  if (dignityCount === 0) return { ok: false, reason: 'domain-house lord not resolvable within varga' }
+  const subHouseLordDignity = dignitySum / dignityCount
+
+  // (b) Varga lagna-lord's own dignity — overall varga strength/stature.
+  // Label computed ONCE and reused for both the normalized score and the
+  // displayed value, so the breakdown always shows the dignity that was scored.
+  const vargaLagnaLord = SIGN_LORDS[vargaLagnaSign]
+  const llp = vargaPlanets.find((p) => p.planet === vargaLagnaLord)
+  const vargaLagnaLordLabel = llp
+    ? getDignityLabel(vargaLagnaLord, llp.signNumber, vargaPlanets.filter((p) => p.planet !== vargaLagnaLord).map((p) => p.signNumber))
+    : null
+  const subLagnaLordDignity = vargaLagnaLordLabel ? dignityToNormalized(vargaLagnaLordLabel) : 0.5
+
+  // (c) Domain-house lord in a varga kendra.
+  const subKendraLord = lordInKendra ? 1.0 : 0.5
+
+  // (d) Dasha-lord activation — how many of MD/AD/PD occupy a varga kendra.
+  const dashaKendraCount = [mdLord, adLord, pdLord].filter((lord) => {
+    const lp = vargaPlanets.find((p) => p.planet === lord)
+    return lp != null && KENDRA_HOUSES.has(lp.house)
+  }).length
+  const subActivation = 0.5 + (dashaKendraCount / 3) * 0.5
+
+  const normalized = clamp(
+    0.35 * subHouseLordDignity + 0.25 * subLagnaLordDignity + 0.2 * subKendraLord + 0.2 * subActivation,
+    0, 1
+  )
+  return {
+    ok: true,
+    normalized,
+    value: {
+      division: domainWeights.primaryDivision,
+      vargaLagnaLord,
+      vargaLagnaLordDignity: vargaLagnaLordLabel ?? 'unknown',
+      houses: houseFindings,
+      dashaLordsInVargaKendra: dashaKendraCount,
+    },
+  }
+}
+
+/**
+ * Rashi Drishti — Jaimini whole-sign aspect. Reads the precomputed 36-edge
+ * RASHI_ASPECT_MATRIX (engine/compute/relationships.ts, movable↔fixed / dual↔dual
+ * sign-aspect scheme) and checks whether any running lord's OWN OCCUPIED SIGN casts
+ * a rashi-aspect onto a domain primary house. Distinct from graha drishti (planet
+ * aspect, already used for transits in domainHouseActivation) — this is sign-level.
+ * MD/AD/PD priority mirrors karakaRole/naturalKaraka's existing convention.
+ */
+function factorRashiDrishti(
+  mdLord: string,
+  adLord: string,
+  pdLord: string,
+  chartData: ScoringChartData,
+  domainWeights: DomainScoringWeights
+): FactorResult {
+  const rashiAspects = chartData.relationships?.rashiAspects
+  if (!Array.isArray(rashiAspects) || rashiAspects.length === 0) {
+    return { ok: false, reason: 'relationships.rashiAspects not available' }
+  }
+  const planets = chartData.planets
+  if (!planets) return { ok: false, reason: 'planets not available' }
+
+  const primary = new Set(domainWeights.primaryHouses)
+  const lords: Array<{ name: string; w: number }> = [
+    { name: mdLord, w: 1.0 },
+    { name: adLord, w: 0.8 },
+    { name: pdLord, w: 0.65 },
+  ]
+
+  let best: number | null = null
+  const detail: Array<{ lord: string; toHouses: number[] }> = []
+  for (const { name, w } of lords) {
+    const p = planets.find((pl) => pl.planet === name)
+    if (!p) continue
+    const hits = rashiAspects.filter((e) => e.fromSignNumber === p.signNumber && primary.has(e.toHouse))
+    if (hits.length === 0) continue
+    detail.push({ lord: name, toHouses: [...new Set(hits.map((h) => h.toHouse))] })
+    if (best === null || w > best) best = w
+  }
+
+  if (best === null) return { ok: true, normalized: 0.5, value: 'no rashi-drishti onto domain primary houses' }
+  return { ok: true, normalized: best, value: detail }
+}
+
+/**
+ * Build a sign-lord dispositor chain for one planet (parallels
+ * nakshatraDispositor's chain-following, but through RASHI/sign lords, not
+ * nakshatra lords). chain[0] = the lord of the sign the planet occupies, chain[1] =
+ * that lord's own sign-lord, etc. Terminates on: no lord found, own-sign (self),
+ * a repeat (cycle guard), or a node (Rahu/Ketu own no sign — SIGN_LORDS has no
+ * entry mapping to them, so the chain simply cannot continue past one).
+ */
+function buildSignDispositorChain(
+  planet: string,
+  planets: NonNullable<ScoringChartData['planets']>,
+  maxDepth = 3
+): string[] {
+  const chain: string[] = []
+  let current = planet
+  const seen = new Set<string>([planet])
+  for (let i = 0; i < maxDepth; i++) {
+    const p = planets.find((pl) => pl.planet === current)
+    if (!p) break
+    const lord = SIGN_LORDS[p.signNumber]
+    if (!lord) break // node (Rahu/Ketu) — owns no sign, chain cannot continue
+    // Skip an adjacent duplicate: an own-sign terminal is its own dispositor, and
+    // re-pushing it would render e.g. ['Mars','Venus','Venus'] in the breakdown.
+    if (chain[chain.length - 1] !== lord) chain.push(lord)
+    if (lord === current || seen.has(lord)) break // own-sign or cycle — self-terminates
+    seen.add(lord)
+    current = lord
+  }
+  return chain
+}
+
+/**
+ * Rashi Dispositor Chain — the "does the chain of rulers governing where the dasha
+ * lord sits eventually lead into a domain house" lens. Distinct from houseOwnership
+ * (the dasha lord's OWN placement/ownership) and from nakshatraDispositor (the
+ * NAKSHATRA-lord thread) — this follows pure sign-lordship depth-first, up to 3
+ * levels, and rewards/penalizes by how early the chain reaches a domain house.
+ */
+function factorRashiDispositorChain(
+  mdLord: string,
+  adLord: string,
+  pdLord: string,
+  chartData: ScoringChartData,
+  domainWeights: DomainScoringWeights
+): FactorResult {
+  const planets = chartData.planets
+  if (!planets) return { ok: false, reason: 'planets not available for rashiDispositorChain' }
+  const lagnaSign = deriveLagnaSign(planets)
+  if (lagnaSign == null) return { ok: false, reason: 'cannot derive lagna for rashiDispositorChain' }
+
+  const primary = new Set(domainWeights.primaryHouses)
+  const malefic = new Set([...domainWeights.maleficHouses, 6, 8, 12])
+  const lordWeights = [0.4, 0.35, 0.25] // MD/AD/PD influence — mirrors nakshatraDispositor
+  const depthBonus = [0.2, 0.12, 0.06]
+
+  let weightedSum = 0
+  let weightUsed = 0
+  const detail: Array<{ lord: string; chain: string[]; hitDepth: number; n: number }> = []
+
+  ;[mdLord, adLord, pdLord].forEach((lord, i) => {
+    const chain = buildSignDispositorChain(lord, planets)
+    let hitDepth = -1
+    let maleficHit = false
+    for (let d = 0; d < chain.length; d++) {
+      const dispositor = chain[d]
+      const dp = planets.find((pl) => pl.planet === dispositor)
+      if (!dp) continue
+      const houses = new Set<number>([dp.house])
+      for (const [sn, l] of Object.entries(SIGN_LORDS)) {
+        if (l === dispositor) houses.add(signToHouse(Number(sn), lagnaSign))
+      }
+      const hs = [...houses]
+      if (hs.some((h) => primary.has(h))) {
+        hitDepth = d
+        maleficHit = hs.some((h) => malefic.has(h))
+        break
+      }
+    }
+    const n = hitDepth === -1 ? 0.5 : (maleficHit ? 0.5 - depthBonus[hitDepth] : 0.5 + depthBonus[hitDepth])
+    weightedSum += n * lordWeights[i]
+    weightUsed += lordWeights[i]
+    detail.push({ lord, chain, hitDepth, n })
+  })
+
+  if (weightUsed === 0) return { ok: false, reason: 'no lords resolvable for rashiDispositorChain' }
+  return { ok: true, normalized: clamp(weightedSum / weightUsed, 0, 1), value: detail }
+}
+
 // ─── Core scorer (tasks 4.1c) ─────────────────────────────────────────
 
 /**
@@ -723,6 +1091,19 @@ function _scorePeriod(
   apply('domainHouseActivation', factorDomainHouseActivation(transitEntry, domainWeights, chartData))
   apply('mdAdRelationship', factorMdAdRelationship(mdLord, adLord, chartData))
   apply('natalHouseStrength', factorNatalHouseStrength(chartData, domainWeights))
+
+  // 3 depth factors (Track 1a)
+  apply('nakshatraDispositor', factorNakshatraDispositor(
+    [mdAnnot.nakshatraLord, adAnnot.nakshatraLord, pdAnnot.nakshatraLord], chartData, domainWeights))
+  apply('dashaLordBav', factorDashaLordBav([mdLord, adLord, pdLord], chartData, domainWeights))
+  apply('argalaOnDomainHouse', factorArgalaOnDomainHouse(chartData, domainWeights))
+
+  // 3 Rashi-layer factors (Track 1c) — D10-class varga strength, Jaimini whole-sign
+  // aspect, and a sign-lordship dispositor CHAIN (distinct from the flat houseOwnership
+  // snapshot and from the nakshatra-lord chain).
+  apply('divisionalChartStrength', factorDivisionalChartStrength(mdLord, adLord, pdLord, chartData, domainWeights))
+  apply('rashiDrishti', factorRashiDrishti(mdLord, adLord, pdLord, chartData, domainWeights))
+  apply('rashiDispositorChain', factorRashiDispositorChain(mdLord, adLord, pdLord, chartData, domainWeights))
 
   // Final score
   let score: number

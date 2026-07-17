@@ -352,6 +352,8 @@ separate from the 18-agent wave pipeline.
 │                          |done|failed|cancelled           │       └──────────────────────┘
 │    periodSlice     JSONB? DashaSlice[] — Step 0a output   │
 │    transitOverlay  JSONB? TransitOverlay[] — Step 0b output│
+│    foundationOutput JSONB? FoundationOutput — Step 0e      │
+│                          (natal sub-agents; null=pre-feat) │
 │    contextSummary  TEXT?  ~500-token follow-up summary    │
 │    errorMessage    TEXT?  failure reason (when failed)    │
 │    overrideApplied BOOL   true if symptom gate bypassed   │
@@ -374,6 +376,9 @@ separate from the 18-agent wave pipeline.
   lord annotations and yoga activations baked in — computed before any LLM call.
 - `transitOverlay` stores Saturn/Jupiter/Rahu/Ketu positions at each AD boundary in
   the requested window, plus BAV scores, Sade Sati phase, and ashtamaShani flags.
+- `foundationOutput` (Track 2) stores the merged natal foundation sub-agent outputs
+  (planets/nakshatra/upagraha/BAV), computed once per (chart, domain) at Step 0e and
+  injected into DA-1/DA-3; `null` on runs created before the feature.
 - `da1Output` is enriched post-LLM with `transitContext` and `lordAnnotations` merged
   back onto each `period_analysis` entry (pipeline-side join, not LLM responsibility).
 - `errorMessage` enables the SSE route to surface the real failure reason without

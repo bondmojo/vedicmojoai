@@ -34,7 +34,7 @@ function annot(planet: string, opts: Partial<PeriodLordAnnotation> = {}): Period
     sign: '',
     house: opts.house ?? 1,
     nakshatra: '',
-    nakshatraLord: '',
+    nakshatraLord: opts.nakshatraLord ?? '',
     subLord: '',
     retrograde: false,
     combust: false,
@@ -452,6 +452,15 @@ describe('Reduced confidence tracks primary-factor omissions (Property 19)', () 
         { planet: 'Moon',  strengthRatio: 1.1, beneficRatio: 0.6 },
       ], strengthRanking: [], computedAt: '' } as unknown as ScoringChartData['shadbala'],
       bhavaBala: null,
+      // D10 present so divisionalChartStrength (primary for career) doesn't also omit —
+      // this test is specifically about a SECONDARY-only omission (bhavaBala).
+      divisionalCharts: [{
+        division: 10, name: 'Dashamsa', shortName: 'D10', lagna: 'Aries', lagnaSignNumber: 1, lagnaDegreee: 0,
+        planets: [
+          { planet: 'Saturn', sign: 'Capricorn', signNumber: 10, house: 10, retrograde: false },
+          { planet: 'Mars',   sign: 'Aries',      signNumber: 1,  house: 1,  retrograde: false },
+        ],
+      }] as unknown as ScoringChartData['divisionalCharts'],
     }
     const overlay: TransitOverlay = {
       adStart: '2024-01-01', adLord: 'Venus',
@@ -471,5 +480,306 @@ describe('Reduced confidence tracks primary-factor omissions (Property 19)', () 
     expect(breakdown.reducedConfidence).toBe(false)
     // silence unused
     void w
+  })
+})
+
+// ─── Track 1a depth factors ──────────────────────────────────────────
+
+function sliceWithNakLords(
+  md: string, ad: string, pd: string,
+  nak: { md?: string; ad?: string; pd?: string }
+): DashaSlice {
+  const s = makeSlice(md, ad, pd)
+  s.lordAnnotations.mdLord.nakshatraLord = nak.md ?? ''
+  s.lordAnnotations.adLord.nakshatraLord = nak.ad ?? ''
+  s.lordAnnotations.pdLord.nakshatraLord = nak.pd ?? ''
+  return s
+}
+
+/** Minimal JaiminiGeometry with the argala/virodha arrays the scorer reads. */
+function mkJaimini(
+  argala: Array<{ targetSign: number; targetHouse: number; argalaFrom: number; argalaPlanets: string[]; type: 'primary' | 'secondary' }>,
+  virodha: Array<{ targetSign: number; counterFrom: number; counterPlanets: string[]; neutralizes: number }> = []
+): NonNullable<ScoringChartData['jaimini']> {
+  return {
+    argala: argala.map((a) => ({ ...a, kind: 'argala' as const })),
+    virodhaArgala: virodha,
+    yogiPoint: { longitude: 0, signNumber: 1, nakshatra: '', yogiPlanet: '' },
+    avayogiPoint: { longitude: 0, signNumber: 1, nakshatra: '', avayogiPlanet: '' },
+    specialLagnaAspects: [],
+    lordRelationshipMap: [],
+    computedAt: '',
+  }
+}
+
+describe('nakshatraDispositor factor (Track 1a)', () => {
+  it('boosts to 1.0 when a dispositor cleanly occupies the primary house (no dusthana ownership)', () => {
+    const w = resolveDomainWeights('career') // primaryHouses [10]; career dusthana-owner drags
+    // Aries lagna. Sun at H10 (primary) owns only Leo→H5 (neither benefic nor malefic) → clean primary hit.
+    const chart: ScoringChartData = {
+      category: 'career',
+      planets: [
+        { planet: 'Sun', signNumber: 10, house: 10, longitude: 275, latitude: 0, speed: 1, retrograde: false, sign: 'Capricorn', degreeInSign: 5 },
+      ] as ScoringChartData['planets'],
+    }
+    const slice = sliceWithNakLords('Moon', 'Venus', 'Mars', { md: 'Sun' })
+    const { breakdown } = scorePeriod(slice, chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'nakshatraDispositor')
+    expect(f).toBeDefined()
+    expect(f!.normalized).toBe(1)
+  })
+
+  it('gives a MIXED score when the dispositor occupies the primary house but owns a dusthana', () => {
+    const w = resolveDomainWeights('career')
+    // Aries chart: Mars occupies H10 (primary) but owns Scorpio→H8 (dusthana) → 0.65, not 1.0.
+    const slice = sliceWithNakLords('Sun', 'Venus', 'Moon', { md: 'Mars' })
+    const { breakdown } = scorePeriod(slice, ariesChart(), null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'nakshatraDispositor')!
+    expect(f.normalized).toBe(0.65)
+  })
+
+  it('handles a NODE dispositor (Ketu) via occupancy only — never NaN', () => {
+    const w = resolveDomainWeights('career')
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      planets: [
+        ...(ariesChart().planets ?? []),
+        { planet: 'Ketu', signNumber: 10, house: 10, longitude: 275, latitude: 0, speed: -0.05, retrograde: true, sign: 'Capricorn', degreeInSign: 5 },
+      ] as ScoringChartData['planets'],
+    }
+    const slice = sliceWithNakLords('Sun', 'Venus', 'Moon', { md: 'Ketu' })
+    const { breakdown } = scorePeriod(slice, chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'nakshatraDispositor')
+    expect(f).toBeDefined()
+    expect(Number.isNaN(f!.normalized)).toBe(false)
+    expect(f!.normalized).toBe(1) // Ketu occupies H10 (primary) → occupancy hit
+  })
+
+  it('omits (ok:false) on a paste-path chart with no planets', () => {
+    const w = resolveDomainWeights('career')
+    const emptyChart: ScoringChartData = { category: 'career' }
+    const slice = sliceWithNakLords('Sun', 'Venus', 'Moon', { md: 'Mars' })
+    const { breakdown } = scorePeriod(slice, emptyChart, null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'nakshatraDispositor')).toBe(true)
+    expect(breakdown.factors.some((f) => f.factor === 'nakshatraDispositor')).toBe(false)
+  })
+})
+
+describe('dashaLordBav factor (Track 1a)', () => {
+  it('reads a running lord\'s own BAV bindus in the domain primary house (sign-indexed via lagna)', () => {
+    const w = resolveDomainWeights('career') // primaryHouses [10]; Aries lagna → H10 = Capricorn (sign 10, idx 9)
+    const sunBav = new Array(12).fill(4) as number[]
+    sunBav[9] = 8 // Capricorn bindu spiked
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      ashtakavarga: { sav: new Array(12).fill(28), bav: { Sun: sunBav }, savTotal: 336 },
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'dashaLordBav')
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(8)      // only Sun has a bav array → avg = 8
+    expect(f!.normalized).toBe(1) // 8/8
+  })
+
+  it('OMITS for node dasha lords (Rahu/Ketu have no BAV) — never NaN', () => {
+    const w = resolveDomainWeights('career')
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      ashtakavarga: { sav: new Array(12).fill(28), bav: { Sun: new Array(12).fill(4) }, savTotal: 336 },
+    }
+    const { breakdown } = scorePeriod(makeSlice('Rahu', 'Ketu', 'Rahu'), chart, null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'dashaLordBav')).toBe(true)
+    expect(breakdown.factors.some((f) => f.factor === 'dashaLordBav')).toBe(false)
+  })
+})
+
+describe('argalaOnDomainHouse factor (Track 1a)', () => {
+  it('boosts on un-neutralized benefic argala on the primary house', () => {
+    const w = resolveDomainWeights('career') // primaryHouses [10]
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      jaimini: mkJaimini([
+        { targetSign: 10, targetHouse: 10, argalaFrom: 11, argalaPlanets: ['Jupiter'], type: 'primary' },
+      ]),
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'argalaOnDomainHouse')
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(1)                    // net +1 (one benefic)
+    expect(f!.normalized).toBeCloseTo(0.62, 5)  // 0.5 + 1*0.12
+  })
+
+  it('drags on malefic argala', () => {
+    const w = resolveDomainWeights('career')
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      jaimini: mkJaimini([
+        { targetSign: 10, targetHouse: 10, argalaFrom: 11, argalaPlanets: ['Saturn'], type: 'primary' },
+      ]),
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'argalaOnDomainHouse')!
+    expect(f.value).toBe(-1)
+    expect(f.normalized).toBeCloseTo(0.38, 5)
+  })
+
+  it('is neutralized by a matching virodha argala → omitted', () => {
+    const w = resolveDomainWeights('career')
+    // argala offset for targetSign 10 from argalaFrom 11 = ((11-10+12)%12)+1 = 2; virodha neutralizes 2.
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      jaimini: mkJaimini(
+        [{ targetSign: 10, targetHouse: 10, argalaFrom: 11, argalaPlanets: ['Jupiter'], type: 'primary' }],
+        [{ targetSign: 10, counterFrom: 12, counterPlanets: ['Saturn'], neutralizes: 2 }],
+      ),
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'argalaOnDomainHouse')).toBe(true)
+  })
+
+  it('omits when jaimini is absent (wiring guard — the factor depends on the piped column)', () => {
+    const w = resolveDomainWeights('career')
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), ariesChart(), null, w)
+    expect(breakdown.factors.some((f) => f.factor === 'argalaOnDomainHouse')).toBe(false)
+    expect(breakdown.omissions.some((o) => o.factor === 'argalaOnDomainHouse')).toBe(true)
+  })
+})
+
+// ─── Track 1c: Rashi layer (D10-class varga strength, whole-sign aspect, chain) ──
+
+describe('divisionalChartStrength factor (Track 1c)', () => {
+  it('scores high when the varga domain-house lord is exalted, in a kendra, and a dasha lord activates the varga', () => {
+    const w = resolveDomainWeights('career') // primaryDivision 10, primaryHouses [10]
+    // D10 lagna = Aries (sign 1) → house10-from-varga-lagna = sign 10 (Capricorn), lord Saturn.
+    // Saturn placed in Libra (its exaltation) at varga-house 7 (a kendra).
+    // MD lord Sun placed in varga house 1 (a kendra) → dasha-lord activation.
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      divisionalCharts: [{
+        division: 10, name: 'Dashamsa', shortName: 'D10', lagna: 'Aries', lagnaSignNumber: 1, lagnaDegreee: 0,
+        planets: [
+          { planet: 'Saturn', sign: 'Libra', signNumber: 7, house: 7, retrograde: false },
+          { planet: 'Sun',    sign: 'Aries', signNumber: 1, house: 1, retrograde: false },
+        ],
+      }] as unknown as ScoringChartData['divisionalCharts'],
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'divisionalChartStrength')
+    expect(f).toBeDefined()
+    // 0.35*exalted(1.0) + 0.25*unresolvable-lagna-lord(0.5) + 0.2*kendraLord(1.0) + 0.2*activation(0.5+(1/3)*0.5)
+    expect(f!.normalized).toBeCloseTo(0.8083, 3)
+    expect((f!.value as { dashaLordsInVargaKendra: number }).dashaLordsInVargaKendra).toBe(1)
+  })
+
+  it('omits when the domain primaryDivision varga is present in the array but a different division', () => {
+    const w = resolveDomainWeights('career') // wants D10
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      divisionalCharts: [{
+        division: 9, name: 'Navamsa', shortName: 'D9', lagna: 'Aries', lagnaSignNumber: 1, lagnaDegreee: 0,
+        planets: [{ planet: 'Saturn', sign: 'Libra', signNumber: 7, house: 7, retrograde: false }],
+      }] as unknown as ScoringChartData['divisionalCharts'],
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'divisionalChartStrength')).toBe(true)
+  })
+
+  it('omits when divisionalCharts is entirely absent (paste-path chart) — never throws', () => {
+    const w = resolveDomainWeights('career')
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), ariesChart(), null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'divisionalChartStrength')).toBe(true)
+    expect(breakdown.factors.some((f) => f.factor === 'divisionalChartStrength')).toBe(false)
+  })
+})
+
+describe('rashiDrishti factor (Track 1c)', () => {
+  it('normalizes to the MD weight (1.0) when the MD lord\'s occupied sign casts a rashi-aspect onto the primary house', () => {
+    const w = resolveDomainWeights('career') // primaryHouses [10]
+    // ariesChart(): Sun at signNumber 1. Fabricate one rashi-aspect edge Aries(1)→house10.
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      relationships: {
+        aspects: [], conjunctions: [], grahaYuddha: [], mutualReception: [], stelliums: [],
+        combustion: [], avastha: [], gandanta: [], sandhi: [], upagrahaPlacements: [], houseLords: {}, computedAt: '',
+        rashiAspects: [
+          { fromSign: 'Aries', fromSignNumber: 1, fromHouse: 1, toSign: 'Capricorn', toSignNumber: 10, toHouse: 10, toPlanets: [], type: 'movable_to_fixed' },
+        ],
+      } as unknown as ScoringChartData['relationships'],
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'rashiDrishti')
+    expect(f).toBeDefined()
+    expect(f!.normalized).toBe(1.0) // Sun is MD lord → MD weight
+  })
+
+  it('returns neutral 0.5 (ok:true, not omitted) when no running lord aspects the primary house', () => {
+    const w = resolveDomainWeights('career')
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      relationships: {
+        aspects: [], conjunctions: [], grahaYuddha: [], mutualReception: [], stelliums: [],
+        combustion: [], avastha: [], gandanta: [], sandhi: [], upagrahaPlacements: [], houseLords: {}, computedAt: '',
+        rashiAspects: [
+          { fromSign: 'Aries', fromSignNumber: 1, fromHouse: 1, toSign: 'Taurus', toSignNumber: 2, toHouse: 2, toPlanets: [], type: 'movable_to_fixed' },
+        ],
+      } as unknown as ScoringChartData['relationships'],
+    }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'rashiDrishti')!
+    expect(f.normalized).toBe(0.5)
+  })
+
+  it('omits when relationships.rashiAspects is absent', () => {
+    const w = resolveDomainWeights('career')
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), ariesChart(), null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'rashiDrishti')).toBe(true)
+    expect(breakdown.factors.some((f) => f.factor === 'rashiDrishti')).toBe(false)
+  })
+})
+
+describe('rashiDispositorChain factor (Track 1c)', () => {
+  it('rewards the chain reaching a primary house at depth 0 (dasha lord\'s own sign-lord occupies it)', () => {
+    const w = resolveDomainWeights('career') // primaryHouses [10]; Aries lagna
+    // MD lord Moon in Libra (house 7) → sign-lord Venus. Venus itself occupies house 10.
+    const chart: ScoringChartData = {
+      category: 'career',
+      planets: [
+        { planet: 'Moon',  signNumber: 7,  house: 7,  longitude: 185, latitude: 0, speed: 13, retrograde: false, sign: 'Libra',     degreeInSign: 5 },
+        { planet: 'Venus', signNumber: 10, house: 10, longitude: 275, latitude: 0, speed: 1,  retrograde: false, sign: 'Capricorn', degreeInSign: 5 },
+      ] as ScoringChartData['planets'],
+    }
+    const { breakdown } = scorePeriod(makeSlice('Moon', 'Jupiter', 'Saturn'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'rashiDispositorChain')
+    expect(f).toBeDefined()
+    // MD hits at depth0, non-malefic (0.5+0.2=0.7); AD/PD absent from planets → chain=[] → n=0.5 each.
+    expect(f!.normalized).toBeCloseTo(0.58, 5)
+    const detail = f!.value as Array<{ lord: string; chain: string[]; hitDepth: number }>
+    expect(detail[0].hitDepth).toBe(0)
+    // chain builds the full path (Venus's own sign-lord Saturn too) — hitDepth 0 means the
+    // SEARCH stopped at chain[0]='Venus', not that the chain itself was truncated there.
+    expect(detail[0].chain).toEqual(['Venus', 'Saturn'])
+  })
+
+  it('handles a NODE dasha lord (Rahu) as the chain STARTING planet without NaN or throwing', () => {
+    const w = resolveDomainWeights('career')
+    const chart: ScoringChartData = {
+      ...ariesChart(),
+      planets: [
+        ...(ariesChart().planets ?? []),
+        { planet: 'Rahu', signNumber: 3, house: 3, longitude: 65, latitude: 0, speed: -0.05, retrograde: true, sign: 'Gemini', degreeInSign: 5 },
+      ] as ScoringChartData['planets'],
+    }
+    const { breakdown } = scorePeriod(makeSlice('Rahu', 'Venus', 'Moon'), chart, null, w)
+    const f = breakdown.factors.find((x) => x.factor === 'rashiDispositorChain')
+    expect(f).toBeDefined()
+    expect(Number.isNaN(f!.normalized)).toBe(false)
+  })
+
+  it('omits when planets is absent', () => {
+    const w = resolveDomainWeights('career')
+    const emptyChart: ScoringChartData = { category: 'career' }
+    const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), emptyChart, null, w)
+    expect(breakdown.omissions.some((o) => o.factor === 'rashiDispositorChain')).toBe(true)
+    expect(breakdown.factors.some((f) => f.factor === 'rashiDispositorChain')).toBe(false)
   })
 })

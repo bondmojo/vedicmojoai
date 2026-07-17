@@ -13,9 +13,10 @@ import { prisma } from '@/lib/db'
 import { readPromptFile } from '@/engine/llm'
 import { sliceDashaTree } from './slicer'
 import { buildTransitOverlay } from './transitOverlay'
-import { extractCategoryData, toScoringChartData } from './extractor'
-import { getDomainAgentSpec } from './registry'
+import { extractCategoryData, toScoringChartData, pickScoringRawChart } from './extractor'
+import { getDomainAgentSpec, FOUNDATION_AGENT_CATALOGUE } from './registry'
 import { callAgentJson } from './agentJson'
+import { runFoundationStage, buildFoundationSection } from './foundation'
 import { scorePeriod, identifyPeaks, resolveDomainWeights } from './scoring'
 import type {
   DurationPipelineInput,
@@ -29,6 +30,7 @@ import type {
   PeriodAnalysis,
   ScoredDashaSlice,
   PeakPeriod,
+  FoundationOutput,
 } from '@/lib/durationTypes'
 
 // ─── Cooperative cancellation ────────────────────────────────────────
@@ -271,13 +273,7 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
     // Step 0d: Deterministic scoring — runs BEFORE DA-1 so engine verdicts
     // are authoritative context for DA-1 (compute-first contract).
     const domainWeights = resolveDomainWeights(category)
-    const scoringChartData = toScoringChartData(categoryData, {
-      shadbala: chart.shadbala,
-      bhavaBala: chart.bhavaBala,
-      karakas: chart.karakas,
-      ashtakavarga: chart.ashtakavarga,
-      planets: chart.planets,
-    })
+    const scoringChartData = toScoringChartData(categoryData, pickScoringRawChart(chart))
 
     // Build an overlay index keyed by AD start for O(1) lookup per period
     const overlayByAdStart = new Map(transitOverlay.map((o) => [o.adStart, o]))
@@ -302,6 +298,51 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
       scoredSlices.map((s) => ({ period: s, result: { score: s.score, breakdown: s.scoreBreakdown } }))
     )
 
+    let totalTokenIn = 0
+    let totalTokenOut = 0
+    let totalCostUsd = 0
+
+    // Step 0e: Foundation sub-agents — natal structural context (Track 2).
+    // Runs once per (chart, domain) before DA-1; enrichment only (failures are
+    // swallowed, absent-data agents skipped). Persisted so DA-3/resume/SSE can read it.
+    let foundationSection = ''
+    if (domainSpec.foundationAgents.length > 0) {
+      await throwIfCancelled(analysisId)
+      emitEvent({ type: 'agent_start', agent_id: 'FOUNDATION', timestamp: new Date().toISOString() })
+      const foundationConfigs = await prisma.modelConfig.findMany({
+        where: { waveId: { in: domainSpec.foundationAgents.map((id) => FOUNDATION_AGENT_CATALOGUE[id].modelWaveId) } },
+      })
+      const foundationResult = await runFoundationStage({
+        category,
+        foundationAgents: domainSpec.foundationAgents,
+        inputs: {
+          planets: categoryData.planets,
+          divisionalCharts: categoryData.divisionalCharts,
+          nakshatras: categoryData.nakshatras,
+          nakshatraRelationships: (categoryData as { nakshatraRelationships?: unknown }).nakshatraRelationships,
+          upagrahas: chart.upagrahas,
+          ashtakavarga: categoryData.ashtakavarga,
+          lagnaSignNumber: natalLagnaSign,
+        },
+        models: { resolveModel, resolveProvider, apiKey },
+        configByWaveId: new Map(foundationConfigs.map((c) => [c.waveId, c])),
+      })
+      foundationSection = buildFoundationSection(foundationResult.foundationOutput)
+      totalTokenIn += foundationResult.tokenIn
+      totalTokenOut += foundationResult.tokenOut
+      totalCostUsd += foundationResult.costUsd
+      await prisma.durationAnalysis.update({
+        where: { id: analysisId },
+        data: { foundationOutput: foundationResult.foundationOutput as any, totalTokenIn, totalTokenOut, totalCostUsd },
+      })
+      emitEvent({
+        type: 'agent_complete',
+        agent_id: 'FOUNDATION',
+        data: { tokenIn: foundationResult.tokenIn, tokenOut: foundationResult.tokenOut, costUsd: foundationResult.costUsd },
+        timestamp: new Date().toISOString(),
+      })
+    }
+
     // 5. Step 1: DA-1 Domain Analyser — batched so the per-call output stays
     // within maxTokens regardless of range length. Each batch gets only its
     // own slices + the transit overlays for the ADs it touches.
@@ -314,9 +355,6 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
       batches.push(scoredSlices.slice(i, i + DA1_BATCH_SIZE))
     }
 
-    let totalTokenIn = 0
-    let totalTokenOut = 0
-    let totalCostUsd = 0
     const batchOutputs: DA1Output[] = []
 
     for (let i = 0; i < batches.length; i++) {
@@ -330,7 +368,8 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
         batchOverlay,
         userQuestion,
         truncated,
-        { index: i + 1, count: batches.length }
+        { index: i + 1, count: batches.length },
+        foundationSection
       )
       const result = await callAgentJson<DA1Output>(
         {
@@ -465,7 +504,8 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
       undefined, // no context summary on first run
       scoredSlices,
       peakStress,
-      peakFavorable
+      peakFavorable,
+      foundationSection
     )
     const da3Response = await callAgentJson<DA3Output>(
       {
@@ -595,7 +635,8 @@ export async function resumeDurationPipeline(
     const da1Output = analysis.da1Output as unknown as DA1Output
     const da2Output = analysis.da2Output as unknown as DA2Output | null
 
-    // Reconstruct category data
+    // Reconstruct category data — use the FULL column set (matches the main path,
+    // so DA-3's chart data is identical on first-run and resume).
     const categoryData = extractCategoryData(
       {
         planets: chart.planets,
@@ -606,12 +647,25 @@ export async function resumeDurationPipeline(
         jaimini: chart.jaimini,
         ashtakavarga: chart.ashtakavarga,
         dashaTree: chart.dashaTree,
+        bhavaBala: chart.bhavaBala,
+        arudhaPadas: chart.arudhaPadas,
+        specialLagnas: chart.specialLagnas,
+        karakas: chart.karakas,
+        upagrahas: chart.upagrahas,
       },
       analysis.category as import('@/lib/durationTypes').DurationCategory
     )
 
-    // Reconstruct the period slice (needed for context summary)
+    // Reconstruct the period slice (needed for context summary + engine verdicts)
     const periodSlice = (analysis.periodSlice as unknown as ScoredDashaSlice[]) ?? []
+    const { peakStress, peakFavorable } = identifyPeaks(
+      periodSlice.map((s) => ({ period: s, result: { score: s.score, breakdown: s.scoreBreakdown } }))
+    )
+
+    // Re-inject the persisted natal foundation context (Track 2) into DA-3.
+    const foundationSection = buildFoundationSection(
+      analysis.foundationOutput as unknown as FoundationOutput | null
+    )
 
     // 4. Build DA-3 prompt with override preamble
     const da3PromptTemplate = await readPromptFile('duration_da3_future_analyser.md')
@@ -628,7 +682,11 @@ export async function resumeDurationPipeline(
         da2Output,
         analysis.userQuestion ?? undefined,
         conversationHistory,
-        undefined // no context summary on first DA-3 call
+        undefined, // no context summary on first DA-3 call
+        periodSlice,
+        peakStress,
+        peakFavorable,
+        foundationSection
       )
 
     // 5. Call DA-3 (lenient parse + one retry; throws after retry fails)
@@ -740,12 +798,20 @@ function buildDA1Prompt(
   transitOverlay: TransitOverlay[],
   userQuestion?: string,
   truncated = false,
-  batch?: { index: number; count: number }
+  batch?: { index: number; count: number },
+  foundationSection = ''
 ): { cachedPrefix: string; prompt: string } {
   const { dashaTree: _omitted, ...chartForPrompt } = categoryData
   // Compact JSON (no indent) — lossless, but ~20-40% fewer input tokens than
-  // pretty-printed. Models parse minified JSON identically.
-  const cachedPrefix = ['--- CHART DATA ---', JSON.stringify(chartForPrompt), '', ''].join('\n')
+  // pretty-printed. Models parse minified JSON identically. The foundation section
+  // is constant across batches, so it lives in the cached prefix (paid for once).
+  const cachedPrefix = [
+    '--- CHART DATA ---',
+    JSON.stringify(chartForPrompt),
+    '',
+    ...(foundationSection ? [foundationSection, ''] : []),
+    '',
+  ].join('\n')
 
   const parts: string[] = []
   if (truncated) {
@@ -821,12 +887,18 @@ function buildDA3Prompt(
   contextSummary?: string,
   scoredSlices?: ScoredDashaSlice[],
   peakStress?: PeakPeriod[],
-  peakFavorable?: PeakPeriod[]
+  peakFavorable?: PeakPeriod[],
+  foundationSection = ''
 ): string {
   const parts: string[] = []
   parts.push('--- CHART DATA ---')
   parts.push(JSON.stringify(categoryData))
   parts.push('')
+  // Natal foundation context (Track 2) — DA-3 sees it directly, not just via DA-1 prose.
+  if (foundationSection) {
+    parts.push(foundationSection)
+    parts.push('')
+  }
   // Use context summary for history depth > 2, otherwise full DA-1 output
   if (contextSummary && conversationHistory.length > 2) {
     parts.push('--- CONTEXT SUMMARY ---')

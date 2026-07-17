@@ -8,7 +8,7 @@
  * data mapping lives in DOMAIN_AGENT_REGISTRY (registry.ts), not here.
  *
  *   ALL categories → planets, nakshatras, relationships, ashtakavarga, dashaTree,
- *                    nakshatraRelationships (computed on-demand), bhavaBala,
+ *                    nakshatraRelationships (computed on-demand), bhavaBala, upagrahas,
  *                    ishtaKashta (from shadbala), declared domain special points
  *   per category   → + extraColumns (shadbala/jaimini) + divisionalCharts
  *                      (spec.divisions, e.g. career = D9 + D10)
@@ -35,6 +35,9 @@ import type {
   AshtakavargaResult,
   PlanetPosition,
   NakshatraInfo,
+  JaiminiGeometry,
+  DivisionalChart,
+  RelationshipGeometry,
 } from '@/engine/compute/types'
 import { getDomainAgentSpec } from './registry'
 import { DOMAIN_SCORING_WEIGHTS } from './scoringWeights'
@@ -212,8 +215,9 @@ export function extractCategoryData(
     relationships: chart.relationships,
     ashtakavarga:  chart.ashtakavarga,
     dashaTree:     chart.dashaTree,
-    // null/empty bhavaBala indicates the column was attempted but absent
+    // null/empty bhavaBala/upagrahas indicates the column was attempted but absent
     bhavaBala:     chart.bhavaBala ?? null,
+    upagrahas:     chart.upagrahas ?? null,
     specialPoints,
   }
 
@@ -245,15 +249,37 @@ export function extractCategoryData(
  *
  * Called in the pipeline after extractCategoryData — Step 0d.
  */
+/** The raw chart columns the scoring engine reads (typed access, not the prompt payload). */
+export interface ScoringRawChart {
+  shadbala?: unknown
+  bhavaBala?: unknown
+  karakas?: unknown
+  ashtakavarga?: unknown
+  planets?: unknown
+  jaimini?: unknown
+}
+
+/**
+ * Pick the exact column subset the scorer needs from a UnifiedChart row.
+ *
+ * Use this at EVERY toScoringChartData call site (pipeline + /api/timeline) so the
+ * two paths cannot silently diverge — a new scoring input added here reaches both
+ * the LLM pipeline and the deterministic MCP path in one edit.
+ */
+export function pickScoringRawChart(chart: ScoringRawChart): ScoringRawChart {
+  return {
+    shadbala:     chart.shadbala,
+    bhavaBala:    chart.bhavaBala,
+    karakas:      chart.karakas,
+    ashtakavarga: chart.ashtakavarga,
+    planets:      chart.planets,
+    jaimini:      chart.jaimini,
+  }
+}
+
 export function toScoringChartData(
   categoryData: ExtendedCategoryChartData,
-  rawChart: {
-    shadbala?: unknown
-    bhavaBala?: unknown
-    karakas?: unknown
-    ashtakavarga?: unknown
-    planets?: unknown
-  }
+  rawChart: ScoringRawChart
 ): ScoringChartData {
   return {
     category: categoryData.category,
@@ -262,6 +288,12 @@ export function toScoringChartData(
     karakas:     (rawChart.karakas as CharaKaraka[] | null | undefined) ?? null,
     ashtakavarga: (rawChart.ashtakavarga as AshtakavargaResult | null | undefined) ?? null,
     planets:     (rawChart.planets as PlanetPosition[] | null | undefined) ?? null,
+    jaimini:     (rawChart.jaimini as JaiminiGeometry | null | undefined) ?? null,
+    // Already domain-filtered / always-present base columns on categoryData — sourced from
+    // extractCategoryData, which both call sites (pipeline + /api/timeline) already run before
+    // toScoringChartData, so no new rawChart plumbing or dual-call-site risk here.
+    divisionalCharts: (categoryData.divisionalCharts as DivisionalChart[] | null | undefined) ?? null,
+    relationships:    (categoryData.relationships as RelationshipGeometry | null | undefined) ?? null,
     specialPoints: categoryData.specialPoints,
   }
 }

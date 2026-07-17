@@ -61,6 +61,13 @@ const modelConfigs: ModelSeed[] = [
   { waveId: 'DA-2', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.0, maxTokens: 8192, promptVersion: 'v1.0' },
   // DA-3 emits a per-AD forecast; give it reasoning-model headroom too.
   { waveId: 'DA-3', modelId: 'claude-sonnet-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 16384, promptVersion: 'v1.0' },
+
+  // Duration foundation sub-agents (Track 2) — cheap, natal-static facet readers that run
+  // ONCE per (chart, domain) before DA-1. Haiku tier: short summary + key_findings only.
+  { waveId: 'FOUND-PLANETS',   modelId: 'claude-haiku-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 2048, promptVersion: 'v1.0' },
+  { waveId: 'FOUND-NAKSHATRA', modelId: 'claude-haiku-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 2048, promptVersion: 'v1.0' },
+  { waveId: 'FOUND-UPAGRAHA',  modelId: 'claude-haiku-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 2048, promptVersion: 'v1.0' },
+  { waveId: 'FOUND-BAV',       modelId: 'claude-haiku-4-5', provider: 'anthropic', temperature: 0.3, maxTokens: 2048, promptVersion: 'v1.0' },
 ]
 
 async function main() {
