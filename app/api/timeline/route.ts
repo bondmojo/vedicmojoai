@@ -22,6 +22,8 @@ import { extractCategoryData, toScoringChartData, pickScoringRawChart } from '@/
 import { scorePeriod, identifyPeaks } from '@/engine/durationAnalysis/scoring'
 import { resolveDomainWeights, WEIGHTS_VERSION } from '@/engine/durationAnalysis/scoringWeights'
 import { buildPeriodInsights } from '@/engine/durationAnalysis/periodInsights'
+import { getDomainAgentSpec } from '@/engine/durationAnalysis/registry'
+import { computeSingleDivisionalChart } from '@/engine/compute/divisional'
 import type { DurationCategory, ScoredDashaSlice, TransitOverlay, PeriodInsights, DomainContext } from '@/lib/durationTypes'
 
 // ─── Input Validation ────────────────────────────────────────────────
@@ -83,6 +85,36 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // ── Backfill missing divisional charts for older charts ─────────────
+  // Charts saved before D5/D6/D24/D60 were added won't have those entries.
+  // Recompute any missing divisions on the fly from stored planet data.
+  let divisionalCharts = chart.divisionalCharts as unknown[]
+  if (Array.isArray(divisionalCharts) && chart.source === 'compute') {
+    const spec = getDomainAgentSpec(category as DurationCategory)
+    const storedDivisions = new Set(
+      divisionalCharts
+        .filter((e): e is Record<string, unknown> => typeof e === 'object' && e !== null)
+        .map((e) => e['division'] as number)
+    )
+    const missing = spec.divisions.filter((d) => !storedDivisions.has(d))
+
+    if (missing.length > 0 && Array.isArray(chart.planets)) {
+      const lagnaLong = Number(chart.lagnaLongitude)
+      const planets = chart.planets as Array<{ planet: string; longitude: number; signNumber: number; retrograde?: boolean; [k: string]: unknown }>
+      for (const div of missing) {
+        const computed = computeSingleDivisionalChart(planets as any, lagnaLong, div)
+        if (computed) {
+          divisionalCharts = [...divisionalCharts, computed]
+        }
+      }
+      // Persist the backfilled charts so this doesn't repeat every request
+      prisma.unifiedChart.update({
+        where: { id: unifiedChartId },
+        data: { divisionalCharts: divisionalCharts as any },
+      }).catch(() => { /* non-critical — next request will recompute again */ })
+    }
+  }
+
   // ── Step 0a: Period slice (MD→AD→PD overlapping the range) ─────────
   const { slices: periodSlice, truncated } = sliceDashaTree(
     chart.dashaTree,
@@ -133,7 +165,7 @@ export async function POST(request: NextRequest) {
       nakshatras: chart.nakshatras,
       relationships: chart.relationships,
       shadbala: chart.shadbala,
-      divisionalCharts: chart.divisionalCharts,
+      divisionalCharts: divisionalCharts,
       jaimini: chart.jaimini,
       ashtakavarga: chart.ashtakavarga,
       dashaTree: chart.dashaTree,

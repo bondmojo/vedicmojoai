@@ -78,6 +78,11 @@ export default function DurationComputationPage() {
   const [category, setCategory] = useState<DurationCategory>('career')
   const [selectedPeriod, setSelectedPeriod] = useState<SelectedPeriod | null>(null)
 
+  // Custom date range override
+  const [useCustomDates, setUseCustomDates] = useState(false)
+  const [customDateFrom, setCustomDateFrom] = useState('')
+  const [customDateTo, setCustomDateTo] = useState('')
+
   // Analyse submission
   const [analysing, setAnalysing] = useState(false)
   const [analyseError, setAnalyseError] = useState<string | null>(null)
@@ -127,10 +132,16 @@ export default function DurationComputationPage() {
   }, [unifiedChartId])
 
   const selectedChart = charts.find((c) => c.id === unifiedChartId)
-  const spanTooLong = selectedPeriod ? spanDays(selectedPeriod.dateFrom, selectedPeriod.dateTo) > MAX_SPAN_DAYS : false
+
+  // Resolve effective date range: custom override takes priority when active + valid
+  const effectiveDateFrom = useCustomDates && customDateFrom ? customDateFrom : selectedPeriod?.dateFrom ?? ''
+  const effectiveDateTo = useCustomDates && customDateTo ? customDateTo : selectedPeriod?.dateTo ?? ''
+  const hasDates = Boolean(effectiveDateFrom && effectiveDateTo)
+  const spanTooLong = hasDates ? spanDays(effectiveDateFrom, effectiveDateTo) > MAX_SPAN_DAYS : false
+  const datesInvalid = hasDates && effectiveDateFrom >= effectiveDateTo
 
   async function handleAnalyse() {
-    if (!unifiedChartId || !selectedPeriod || spanTooLong) return
+    if (!unifiedChartId || !hasDates || spanTooLong || datesInvalid) return
     setAnalysing(true)
     setAnalyseError(null)
     setResult(null)
@@ -140,8 +151,8 @@ export default function DurationComputationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           unifiedChartId,
-          dateFrom: selectedPeriod.dateFrom,
-          dateTo: selectedPeriod.dateTo,
+          dateFrom: effectiveDateFrom,
+          dateTo: effectiveDateTo,
           category,
           includeCategoryData: true,
         }),
@@ -232,19 +243,64 @@ export default function DurationComputationPage() {
               )}
             </div>
 
+            {/* Custom Date Range Override */}
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useCustomDates}
+                  onChange={(e) => setUseCustomDates(e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                Custom date range
+              </label>
+              {useCustomDates && (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <label htmlFor="date-from" className="block text-xs text-muted-foreground mb-1">From</label>
+                    <input
+                      id="date-from"
+                      type="date"
+                      value={customDateFrom}
+                      onChange={(e) => setCustomDateFrom(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="date-to" className="block text-xs text-muted-foreground mb-1">To</label>
+                    <input
+                      id="date-to"
+                      type="date"
+                      value={customDateTo}
+                      onChange={(e) => setCustomDateTo(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+              {useCustomDates && !customDateFrom && !customDateTo && selectedPeriod && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Leave empty to use the dasha-derived range ({selectedPeriod.dateFrom} → {selectedPeriod.dateTo}).
+                </p>
+              )}
+              {datesInvalid && (
+                <p className="mt-1.5 text-xs text-destructive">From date must be before To date.</p>
+              )}
+            </div>
+
             {/* Analyse */}
             <div>
               <Button
                 type="button"
                 onClick={handleAnalyse}
-                disabled={!unifiedChartId || !selectedPeriod || spanTooLong || analysing}
+                disabled={!unifiedChartId || !hasDates || spanTooLong || datesInvalid || analysing}
               >
                 {analysing ? 'Analysing…' : 'Analyse'}
               </Button>
               {spanTooLong && (
                 <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-                  This Mahadasha spans more than 10 years — drill into an Antardasha (or
-                  Pratyantardasha) above to narrow the range before analysing.
+                  The selected range spans more than 10 years — narrow it to under 10 years
+                  before analysing.
                 </p>
               )}
               {analyseError && (

@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import ChartSummaryTab from './components/ChartSummaryTab'
 import ChartGrid from './components/ChartGrid'
 import PlanetTable from './components/PlanetTable'
 import NakshatraTable from './components/NakshatraTable'
@@ -28,9 +29,10 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import PageHeader from './components/PageHeader'
 
-type Tab = 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
+type Tab = 'summary' | 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
 
 const TABS: { key: Tab; label: string }[] = [
+  { key: 'summary',     label: 'Summary' },
   { key: 'charts',       label: 'Divisional Charts' },
   { key: 'planets',      label: 'Planets' },
   { key: 'nakshatras',   label: 'Nakshatras' },
@@ -80,7 +82,7 @@ export default function ComputePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]   = useState<string | null>(null)
   const [result, setResult] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>('charts')
+  const [activeTab, setActiveTab] = useState<Tab>('summary')
 
   // Save chart state
   const [saving, setSaving] = useState(false)
@@ -95,7 +97,6 @@ export default function ComputePage() {
   // Saved charts list state
   const [savedCharts, setSavedCharts] = useState<SavedChartSummary[]>([])
   const [loadingCharts, setLoadingCharts] = useState(false)
-  const [showSavedCharts, setShowSavedCharts] = useState(false)
   const [loadingChart, setLoadingChart] = useState<string | null>(null)
 
   // Load saved charts list (UnifiedChart — the canonical store)
@@ -139,7 +140,7 @@ export default function ComputePage() {
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Computation failed'); return }
       setResult(data)
-      setActiveTab('charts')
+      setActiveTab('summary')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error')
     } finally {
@@ -275,26 +276,13 @@ export default function ComputePage() {
       }
 
       setResult(computed)
-      setActiveTab('charts')
-      setShowSavedCharts(false)
+      setActiveTab('summary')
       setSaveMessage(null)
       setError(null)
     } catch (err) {
       setError('Failed to load chart')
     } finally {
       setLoadingChart(null)
-    }
-  }
-
-  async function handleDeleteChart(chartId: string) {
-    if (!confirm('Delete this chart? This also removes its AI analyses and duration analyses.')) return
-    try {
-      const res = await fetch(`/api/unified-charts/${chartId}`, { method: 'DELETE' })
-      if (res.ok) {
-        fetchSavedCharts()
-      }
-    } catch {
-      // Silently fail
     }
   }
 
@@ -306,73 +294,32 @@ export default function ComputePage() {
             title="Chart Computation"
             subtitle="Compute a Vedic chart from birth data, then save, analyse, or export it."
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSavedCharts(!showSavedCharts)}
-          >
-            {showSavedCharts ? 'Hide' : 'Load'} Saved Charts
-            {savedCharts.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs">
-                {savedCharts.length}
-              </span>
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select
+              value=""
+              onValueChange={(chartId) => { if (chartId) handleLoadChart(chartId) }}
+            >
+              <SelectTrigger className="w-[240px] h-9 text-sm">
+                <SelectValue placeholder={
+                  loadingCharts
+                    ? 'Loading charts…'
+                    : loadingChart
+                      ? 'Loading…'
+                      : savedCharts.length > 0
+                        ? 'Load Saved Chart'
+                        : 'No saved charts'
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                {savedCharts.map((chart) => (
+                  <SelectItem key={chart.id} value={chart.id}>
+                    {chart.name} ({chart.lagna})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-
-        {/* Saved Charts Panel */}
-        {showSavedCharts && (
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <h2 className="text-lg font-semibold mb-3 text-ink">Saved Charts</h2>
-              {loadingCharts ? (
-                <p className="text-muted-foreground text-sm">Loading...</p>
-              ) : savedCharts.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No saved charts yet. Compute a chart and click Save.</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {savedCharts.map((chart) => (
-                    <div
-                      key={chart.id}
-                      className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 hover:border-primary/40 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-ink truncate">{chart.name}</span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
-                            {chart.lagna}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded ${chart.source === 'compute' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-400'}`}>
-                            {chart.source}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Born {new Date(chart.birthDatetime).toISOString().slice(0, 16).replace('T', ' ')} UTC · saved {new Date(chart.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          onClick={() => handleLoadChart(chart.id)}
-                          disabled={loadingChart === chart.id}
-                        >
-                          {loadingChart === chart.id ? 'Loading...' : 'Load'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteChart(chart.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {/* Input Form */}
         <Card className="mb-8">
@@ -526,6 +473,19 @@ export default function ComputePage() {
               ))}
             </div>
 
+            {activeTab === 'summary' && (
+              <ChartSummaryTab
+                planets={result.chart.planets}
+                nakshatras={result.chart.nakshatras}
+                divisionalCharts={result.chart.divisionalCharts}
+                charaKarakas={result.chart.charaKarakas}
+                upagrahas={result.chart.upagrahas}
+                specialLagnas={result.chart.specialLagnas}
+                arudhaPadas={result.chart.arudhaPadas}
+                shadbala={result.chart.shadbala}
+                lagna={result.chart.lagna}
+              />
+            )}
             {activeTab === 'charts' && (
               <ChartGrid
                 charts={result.chart.divisionalCharts}
