@@ -353,21 +353,49 @@ function planetChipClass(benefic: boolean): string {
     : 'bg-red-900 text-red-200 border-red-700'
 }
 
+// MD/AD/PD get distinct accent colours so the eye can tell the three cards
+// apart at a glance without reading the tiny level label first.
+const LEVEL_STYLE: Record<string, { bar: string; pill: string }> = {
+  MD: { bar: 'border-l-indigo-500', pill: 'bg-indigo-900 text-indigo-200 border-indigo-700' },
+  AD: { bar: 'border-l-teal-500', pill: 'bg-teal-900 text-teal-200 border-teal-700' },
+  PD: { bar: 'border-l-fuchsia-500', pill: 'bg-fuchsia-900 text-fuchsia-200 border-fuchsia-700' },
+}
+const DEFAULT_LEVEL_STYLE = { bar: 'border-l-gray-600', pill: 'bg-gray-800 text-gray-300 border-gray-700' }
+
+/** One-line "what does this lord actually do" summary — the takeaway before the detail. */
+function driverSnapshot(driver: LordDriver): string {
+  const bits: string[] = []
+  const primaryOwned = driver.owns.filter((h) => h.role === 'primary').length
+  if (driver.owns.length > 0) {
+    bits.push(`owns ${driver.owns.length} house${driver.owns.length > 1 ? 's' : ''}${primaryOwned ? ` (${primaryOwned} primary)` : ''}`)
+  }
+  const domainAspectCount = driver.aspectsCast.filter((a) => a.ontoDomain).length + driver.rashiDrishtiOnDomain.length
+  if (domainAspectCount > 0) bits.push(`${domainAspectCount} domain aspect${domainAspectCount > 1 ? 's' : ''}`)
+  if (driver.combust) bits.push('combust')
+  if (driver.retrograde) bits.push('retrograde')
+  if (driver.karakaRole || driver.isNaturalKaraka) bits.push(driver.karakaRole ?? 'karaka')
+  return bits.length > 0 ? bits.join(' · ') : 'no major domain drivers this period'
+}
+
 function LordCard({ driver }: { driver: LordDriver }) {
   const color = PLANET_COLORS[driver.lord] ?? 'text-ink'
+  const levelStyle = LEVEL_STYLE[driver.level] ?? DEFAULT_LEVEL_STYLE
   const domainAspects = driver.aspectsCast.filter((a) => a.ontoDomain)
+  const hasDetail = driver.vargas.length > 0 || driver.nakshatra || driver.nakshatraChain.length > 0 ||
+    driver.starExchangeWith || driver.conjunctWith.length > 0 || driver.parivartanaWith
+
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-3 space-y-2">
+    <div className={`h-full rounded-lg border border-gray-700 border-l-4 ${levelStyle.bar} bg-gray-900/40 p-3 flex flex-col`}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-500 uppercase tracking-wide">{driver.level}</span>
-          <span className={`text-sm font-semibold ${color}`}>{driver.lord}</span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${levelStyle.pill}`}>{driver.level}</span>
+          <span className={`text-base font-semibold truncate ${color}`}>{driver.lord}</span>
           {driver.dignity && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 capitalize">{driver.dignity}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 capitalize shrink-0">{driver.dignity}</span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {driver.karakaRole && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-900 text-indigo-200 border border-indigo-700">{driver.karakaRole}</span>
           )}
@@ -379,129 +407,146 @@ function LordCard({ driver }: { driver: LordDriver }) {
 
       {/* Condition flags */}
       {(driver.retrograde || driver.combust || driver.cazimi) && (
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex gap-1 flex-wrap mt-1.5">
           {driver.retrograde && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">Retrograde</span>}
           {driver.combust && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900 text-red-200 border border-red-800">Combust</span>}
           {driver.cazimi && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900 text-amber-200 border border-amber-800">Cazimi</span>}
         </div>
       )}
 
-      {/* Control */}
-      <div>
-        <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Controls</div>
-        {driver.owns.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {driver.owns.map((h) => <HouseChip key={h.house} h={h} />)}
-          </div>
-        ) : (
-          <span className="text-xs text-gray-600">— (node owns no sign)</span>
-        )}
-        {driver.occupies && (
-          <div className="mt-1 text-[11px] text-gray-400">
-            Sits in <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(driver.occupies.role)}`}>{ordinal(driver.occupies.house)} {driver.occupies.sign}</span>
-          </div>
-        )}
-      </div>
+      {/* Snapshot — the one-line takeaway */}
+      <p className="text-[11px] text-gray-400 italic mt-1.5 pb-2 border-b border-gray-800">{driverSnapshot(driver)}</p>
 
-      {/* Drishti */}
-      <div>
-        <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Drishti (aspects)</div>
-        {domainAspects.length > 0 && (
-          <div className="text-[11px] text-gray-300">
-            Casts onto domain:{' '}
-            {domainAspects.map((a, i) => (
-              <span key={i} className={`inline-block mr-1 mb-1 px-1.5 py-0.5 rounded border ${roleChipClass(a.toRole)}`}>
-                {ordinal(a.toHouse)} {a.toSign}{a.toPlanets.length ? ` · ${a.toPlanets.join('/')}` : ''}
-              </span>
-            ))}
-          </div>
-        )}
-        {driver.rashiDrishtiOnDomain.length > 0 && (
-          <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
-            Rashi-drishti →
-            {driver.rashiDrishtiOnDomain.map((h) => (
-              <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
-            ))}
-          </div>
-        )}
-        {driver.aspectsReceived.length > 0 && (
-          <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
-            Aspected by:
-            {driver.aspectsReceived.map((a, i) => (
-              <span key={i} className={`px-1.5 py-0.5 rounded border ${planetChipClass(a.benefic)}`}>{a.from}</span>
-            ))}
-          </div>
-        )}
-        {domainAspects.length === 0 && driver.rashiDrishtiOnDomain.length === 0 && driver.aspectsReceived.length === 0 && (
-          <span className="text-xs text-gray-600">no domain-relevant aspects</span>
-        )}
-      </div>
-
-      {/* Vargas — control + drishti within the domain's other divisional charts
-          (e.g. D9/D10 for career, D6/D9 for health) — houses counted from that
-          varga's own lagna. */}
-      {driver.vargas.length > 0 && (
+      {/* Core: Control + Drishti — always visible, this is what a period "does" */}
+      <div className="mt-2 space-y-2.5">
         <div>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Vargas</div>
-          <div className="space-y-1">
-            {driver.vargas.map((v) => (
-              <div key={v.division} className="text-[11px] text-gray-300">
-                <span className="text-gray-500">{v.name.split(' — ')[0]}</span>
-                {v.occupies && (
-                  <span className="ml-1">
-                    sits <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(v.occupies.role)}`}>{ordinal(v.occupies.house)} {v.occupies.sign}</span>
-                  </span>
-                )}
-                {v.owns.length > 0 && (
-                  <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
-                    owns {v.owns.map((h) => <HouseChip key={h.house} h={h} />)}
-                  </span>
-                )}
-                {v.aspectsOntoPrimary.length > 0 && (
-                  <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
-                    → aspects
-                    {v.aspectsOntoPrimary.map((h) => (
-                      <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
-                    ))}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Nakshatra */}
-      <div>
-        <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Nakshatra</div>
-        <div className="text-[11px] text-gray-300">
-          {driver.nakshatra || '—'}
-          {driver.nakshatraLord && <span className="text-gray-500"> · lord {driver.nakshatraLord}</span>}
-          {driver.subLord && <span className="text-gray-500"> · sub {driver.subLord}</span>}
-        </div>
-        {driver.nakshatraChain.length > 0 && (
-          <div className="text-[11px] text-gray-400 mt-0.5">Star chain: {driver.nakshatraChain.join(' → ')}</div>
-        )}
-        {driver.starExchangeWith && (
-          <div className="text-[11px] text-gray-400 mt-0.5">
-            Star exchange with <span className="px-1.5 py-0.5 rounded border bg-emerald-900 text-emerald-200 border-emerald-700">{driver.starExchangeWith}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Association */}
-      {(driver.conjunctWith.length > 0 || driver.parivartanaWith) && (
-        <div>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Association</div>
-          {driver.conjunctWith.length > 0 && (
-            <div className="text-[11px] text-gray-300">Conjunct: {driver.conjunctWith.join(', ')}</div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Controls</div>
+          {driver.owns.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {driver.owns.map((h) => <HouseChip key={h.house} h={h} />)}
+            </div>
+          ) : (
+            <span className="text-xs text-gray-600">— (node owns no sign)</span>
           )}
-          {driver.parivartanaWith && (
-            <div className="text-[11px] text-gray-400 flex items-center gap-1">
-              Parivartana with <span className="px-1.5 py-0.5 rounded border bg-emerald-900 text-emerald-200 border-emerald-700">{driver.parivartanaWith}</span>
+          {driver.occupies && (
+            <div className="mt-1 text-[11px] text-gray-400">
+              Sits in <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(driver.occupies.role)}`}>{ordinal(driver.occupies.house)} {driver.occupies.sign}</span>
             </div>
           )}
         </div>
+
+        <div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Drishti (aspects)</div>
+          {domainAspects.length > 0 && (
+            <div className="text-[11px] text-gray-300">
+              Casts onto domain:{' '}
+              {domainAspects.map((a, i) => (
+                <span key={i} className={`inline-block mr-1 mb-1 px-1.5 py-0.5 rounded border ${roleChipClass(a.toRole)}`}>
+                  {ordinal(a.toHouse)} {a.toSign}{a.toPlanets.length ? ` · ${a.toPlanets.join('/')}` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+          {driver.rashiDrishtiOnDomain.length > 0 && (
+            <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
+              Rashi-drishti →
+              {driver.rashiDrishtiOnDomain.map((h) => (
+                <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
+              ))}
+            </div>
+          )}
+          {driver.aspectsReceived.length > 0 && (
+            <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
+              Aspected by:
+              {driver.aspectsReceived.map((a, i) => (
+                <span key={i} className={`px-1.5 py-0.5 rounded border ${planetChipClass(a.benefic)}`}>{a.from}</span>
+              ))}
+            </div>
+          )}
+          {domainAspects.length === 0 && driver.rashiDrishtiOnDomain.length === 0 && driver.aspectsReceived.length === 0 && (
+            <span className="text-xs text-gray-600">no domain-relevant aspects</span>
+          )}
+        </div>
+      </div>
+
+      {/* Detail: Vargas / Nakshatra / Association — progressive disclosure so the
+          card leads with what matters (control + drishti) instead of an equally-
+          weighted wall of five sections. */}
+      {hasDetail && (
+        <details className="mt-2.5 pt-2 border-t border-gray-800 group">
+          <summary className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold cursor-pointer select-none list-none flex items-center gap-1 hover:text-gray-300">
+            <span className="inline-block transition-transform group-open:rotate-90">▸</span>
+            More detail — vargas, nakshatra, association
+          </summary>
+          <div className="mt-2 space-y-2.5">
+            {/* Vargas — control + drishti within the domain's other divisional charts
+                (e.g. D9/D10 for career, D6/D9 for health) — houses counted from that
+                varga's own lagna. */}
+            {driver.vargas.length > 0 && (
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Vargas</div>
+                <div className="space-y-1">
+                  {driver.vargas.map((v) => (
+                    <div key={v.division} className="text-[11px] text-gray-300">
+                      <span className="text-gray-500">{v.name.split(' — ')[0]}</span>
+                      {v.occupies && (
+                        <span className="ml-1">
+                          sits <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(v.occupies.role)}`}>{ordinal(v.occupies.house)} {v.occupies.sign}</span>
+                        </span>
+                      )}
+                      {v.owns.length > 0 && (
+                        <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
+                          owns {v.owns.map((h) => <HouseChip key={h.house} h={h} />)}
+                        </span>
+                      )}
+                      {v.aspectsOntoPrimary.length > 0 && (
+                        <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
+                          → aspects
+                          {v.aspectsOntoPrimary.map((h) => (
+                            <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nakshatra */}
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Nakshatra</div>
+              <div className="text-[11px] text-gray-300">
+                {driver.nakshatra || '—'}
+                {driver.nakshatraLord && <span className="text-gray-500"> · lord {driver.nakshatraLord}</span>}
+                {driver.subLord && <span className="text-gray-500"> · sub {driver.subLord}</span>}
+              </div>
+              {driver.nakshatraChain.length > 0 && (
+                <div className="text-[11px] text-gray-400 mt-0.5">Star chain: {driver.nakshatraChain.join(' → ')}</div>
+              )}
+              {driver.starExchangeWith && (
+                <div className="text-[11px] text-gray-400 mt-0.5">
+                  Star exchange with <span className="px-1.5 py-0.5 rounded border bg-emerald-900 text-emerald-200 border-emerald-700">{driver.starExchangeWith}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Association */}
+            {(driver.conjunctWith.length > 0 || driver.parivartanaWith) && (
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Association</div>
+                {driver.conjunctWith.length > 0 && (
+                  <div className="text-[11px] text-gray-300">Conjunct: {driver.conjunctWith.join(', ')}</div>
+                )}
+                {driver.parivartanaWith && (
+                  <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                    Parivartana with <span className="px-1.5 py-0.5 rounded border bg-emerald-900 text-emerald-200 border-emerald-700">{driver.parivartanaWith}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
       )}
     </div>
   )
@@ -631,7 +676,7 @@ function PeriodDrivers({
       )}
 
       {insights?.lords && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
           {insights.lords.map((d) => <LordCard key={d.level} driver={d} />)}
         </div>
       )}
