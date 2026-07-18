@@ -21,22 +21,35 @@ interface DashaTree {
   mahadashas: DashaPeriod[]
 }
 
-// Moon/Rahu use `neutral` (not `gray`/`slate`, which flip between light/dark
-// theme via CSS vars — see tailwind.config.ts) so their literal white badge
-// text stays legible in both themes.
+// Planet colors for the timeline bar — using subtle, brand-aligned tones
+// that harmonize with the indigo+gold palette. These are background colors
+// for the bar segments, so they need to work with white text overlaid.
 const PLANET_COLORS: Record<string, string> = {
-  Sun: 'bg-orange-600',
+  Sun: 'bg-[rgb(var(--color-planet-sun))]',
   Moon: 'bg-neutral-400',
-  Mars: 'bg-red-600',
-  Mercury: 'bg-green-600',
-  Jupiter: 'bg-yellow-500',
-  Venus: 'bg-pink-500',
-  Saturn: 'bg-blue-800',
-  Rahu: 'bg-neutral-600',
-  Ketu: 'bg-purple-700',
+  Mars: 'bg-[rgb(var(--color-planet-mars))]',
+  Mercury: 'bg-[rgb(var(--color-planet-mercury))]',
+  Jupiter: 'bg-[rgb(var(--color-planet-jupiter))]',
+  Venus: 'bg-[rgb(var(--color-planet-venus))]',
+  Saturn: 'bg-[rgb(var(--color-planet-saturn))]',
+  Rahu: 'bg-neutral-500',
+  Ketu: 'bg-[rgb(var(--color-planet-ketu))]',
 }
 
 const FALLBACK_COLOR = 'bg-neutral-600'
+
+// Planet dot colors for list items (lighter shade visible on dark backgrounds)
+const PLANET_DOT: Record<string, string> = {
+  Sun: 'bg-planet-sun',
+  Moon: 'bg-planet-moon',
+  Mars: 'bg-planet-mars',
+  Mercury: 'bg-planet-mercury',
+  Jupiter: 'bg-planet-jupiter',
+  Venus: 'bg-planet-venus',
+  Saturn: 'bg-planet-saturn',
+  Rahu: 'bg-planet-rahu',
+  Ketu: 'bg-planet-ketu',
+}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -117,10 +130,15 @@ export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
           {currentMDIndex >= 0 && (
             <div className="text-right">
               <span className="text-xs text-gray-400">Current:</span>
-              <span className="ml-2 text-sm font-medium text-indigo-400">
+              <span className="ml-2 text-sm font-medium text-brand-400">
                 {dashaTree.mahadashas[currentMDIndex].lord} MD
                 {currentADIndex >= 0 &&
                   ` / ${dashaTree.mahadashas[currentMDIndex].antardashas?.[currentADIndex]?.lord} AD`}
+                {currentADIndex >= 0 && (() => {
+                  const pds = dashaTree.mahadashas[currentMDIndex].antardashas?.[currentADIndex]?.pratyantardashas
+                  const pdIdx = pds?.findIndex((pd) => isActive(pd.start, pd.end, now))
+                  return pdIdx != null && pdIdx >= 0 ? ` / ${pds![pdIdx].lord} PD` : ''
+                })()}
               </span>
             </div>
           )}
@@ -165,32 +183,37 @@ export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
           return (
             <div
               key={i}
-              className={`rounded-lg border transition-colors ${isCurrent ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-700 bg-gray-800/30'}`}
+              className={`rounded-lg border transition-colors ${isCurrent ? 'border-brand-500 bg-brand-900/10' : 'border-gray-700 bg-gray-800/30'}`}
             >
               <button
                 onClick={() => { setExpandedMD(isExpanded ? null : i); setExpandedAD(null) }}
                 className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-700/20 rounded-lg transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${PLANET_COLORS[md.lord] ?? FALLBACK_COLOR}`} />
+                  <div className={`w-3 h-3 rounded-full ${PLANET_DOT[md.lord] ?? FALLBACK_COLOR}`} />
                   <span className="font-medium text-sm text-ink">{md.lord} Mahadasha</span>
                   {isCurrent && (
-                    <span className="text-xs text-indigo-400 font-medium px-2 py-0.5 rounded-full bg-indigo-900/30 border border-indigo-700">
+                    <span className="text-xs text-brand-300 font-medium px-2 py-0.5 rounded-full bg-brand-900/30 border border-brand-700">
                       CURRENT
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-gray-400">
-                  {formatDateShort(md.start)} → {formatDateShort(md.end)}
-                  <span className="ml-2 text-gray-500">
-                    ({(md.duration_days / 365.2425).toFixed(1)}y)
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span>
+                    {formatDateShort(md.start)} → {formatDateShort(md.end)}
+                    <span className="ml-2 text-gray-500">
+                      ({(md.duration_days / 365.2425).toFixed(1)}y)
+                    </span>
                   </span>
+                  <svg className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </button>
 
               {/* Antardasha expansion */}
               {isExpanded && md.antardashas && (
-                <div className="px-4 pb-4 space-y-1 border-l-2 border-gray-700/60 ml-3 sm:ml-6">
+                <div className="px-4 pb-4 space-y-1 border-l-2 border-brand-700/40 ml-3 sm:ml-6">
                   {md.antardashas.map((ad, j) => {
                     const isCurrentAD = isCurrent && j === currentADIndex
                     const isADExpanded = expandedAD === j
@@ -199,20 +222,25 @@ export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
                       <div key={j} className="pl-3">
                         <button
                           onClick={() => setExpandedAD(isADExpanded ? null : j)}
-                          className={`w-full rounded px-3 py-2 flex items-center justify-between text-xs transition-colors ${isCurrentAD ? 'bg-indigo-900/30 border border-indigo-700' : 'hover:bg-gray-700/40'}`}
+                          className={`w-full rounded px-3 py-2 flex items-center justify-between text-xs transition-colors ${isCurrentAD ? 'bg-brand-900/30 border border-brand-700' : 'hover:bg-gray-700/40'}`}
                         >
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${PLANET_COLORS[ad.lord] ?? FALLBACK_COLOR}`} />
+                            <div className={`w-2 h-2 rounded-full ${PLANET_DOT[ad.lord] ?? FALLBACK_COLOR}`} />
                             <span className="text-ink">{md.lord}-{ad.lord}</span>
                             {isCurrentAD && (
-                              <span className="text-indigo-400 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-900/30">
+                              <span className="text-brand-300 text-[10px] px-1.5 py-0.5 rounded-full bg-brand-900/30">
                                 active
                               </span>
                             )}
                           </div>
-                          <span className="text-gray-500">
-                            {formatDateShort(ad.start)} → {formatDateShort(ad.end)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">
+                              {formatDateShort(ad.start)} → {formatDateShort(ad.end)}
+                            </span>
+                            <svg className={`w-3 h-3 text-gray-500 transition-transform ${isADExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
                         </button>
 
                         {/* Pratyantar expansion */}
@@ -223,9 +251,16 @@ export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
                               return (
                                 <div
                                   key={k}
-                                  className={`flex items-center justify-between px-3 py-1 text-[10px] rounded ${isCurrentPD ? 'bg-indigo-900/20 text-indigo-300' : 'text-gray-500'}`}
+                                  className={`flex items-center justify-between px-3 py-1.5 text-[10px] rounded ${isCurrentPD ? 'bg-gold-900/30 border border-gold-700/50 text-gold-300' : 'text-gray-500'}`}
                                 >
-                                  <span>{md.lord}-{ad.lord}-{pd.lord}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span>{md.lord}-{ad.lord}-{pd.lord}</span>
+                                    {isCurrentPD && (
+                                      <span className="text-gold-300 text-[9px] px-1.5 py-0.5 rounded-full bg-gold-900/40 font-medium">
+                                        active
+                                      </span>
+                                    )}
+                                  </div>
                                   <span>{formatDateShort(pd.start)} → {formatDateShort(pd.end)}</span>
                                 </div>
                               )

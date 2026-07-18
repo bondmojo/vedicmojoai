@@ -127,11 +127,41 @@ export default function NorthIndianChart({
   // Sign number occupying a house
   const houseSign = (h: number) => ((chart.lagnaSignNumber - 1 + h - 1) % 12) + 1
 
-  // Sign label sits between the cell centroid and the chart center (inner tip)
-  const signLabelPos = (h: number): [number, number] => {
-    const [cx, cy] = CELL[h]
-    return [cx + (M - cx) * 0.42, cy + (M - cy) * 0.42]
+  // Sign number label positions — placed at the VERTEX (corner) of each
+  // triangle cell that is farthest from the chart center, so numbers never
+  // overlap with planet/nakshatra content (which clusters at the centroid).
+  // For rhombus houses, placed at the inner diamond vertex closest to center.
+  //
+  // Triangle vertex positions (outer corners):
+  //   H2:  shares corner (0,0) with H3 — place near top-left corner
+  //   H3:  shares corner (0,0) with H2 — place near top-left corner
+  //   H5:  shares corner (0,480) with H6
+  //   H6:  shares corner (0,480) with H5
+  //   H8:  shares corner (480,480) with H9
+  //   H9:  shares corner (480,480) with H8
+  //   H11: shares corner (480,0) with H12
+  //   H12: shares corner (480,0) with H11
+  //
+  // Each pair shares a corner, so offset slightly along the edge they own.
+  const PAD = 22 // padding from outer edge
+  const SIGN_POS: Record<number, [number, number]> = {
+    // Rhombus houses: at the diamond vertex (inner tip toward center)
+    1:  [M, PAD + 10],        // top diamond vertex area
+    4:  [PAD + 10, M],        // left diamond vertex area
+    7:  [M, S - PAD - 10],    // bottom diamond vertex area
+    10: [S - PAD - 10, M],    // right diamond vertex area
+    // Triangle houses: at the outer corner vertex of each triangle
+    2:  [PAD + 40, PAD],         // near (0,0) corner, offset along top edge
+    3:  [PAD, PAD + 40],         // near (0,0) corner, offset along left edge
+    5:  [PAD, S - PAD - 40],     // near (0,480) corner, offset along left edge
+    6:  [PAD + 40, S - PAD],     // near (0,480) corner, offset along bottom edge
+    8:  [S - PAD - 40, S - PAD], // near (480,480) corner, offset along bottom edge
+    9:  [S - PAD, S - PAD - 40], // near (480,480) corner, offset along right edge
+    11: [S - PAD, PAD + 40],     // near (480,0) corner, offset along right edge
+    12: [S - PAD - 40, PAD],     // near (480,0) corner, offset along top edge
   }
+
+  const signLabelPos = (h: number): [number, number] => SIGN_POS[h]
 
   return (
     <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
