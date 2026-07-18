@@ -12,10 +12,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { DurationCategory } from '@/lib/durationTypes'
 import DashaPeriodPicker, { SelectedPeriod } from '@/app/components/DashaPeriodPicker'
 import DurationComputationResults, { TimelineResponse } from '@/app/components/DurationComputationResults'
+import PageHeader from '@/app/components/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 interface UnifiedChartSummary {
   id: string
@@ -150,119 +160,99 @@ export default function DurationComputationPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 bg-gray-950 text-gray-100">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold">Duration Analyser</h1>
-            <p className="mt-1 text-gray-400 text-sm">
-              Deterministic period computation — no LLM, no cost. Pick a chart, a dasha
-              period, and a life domain to see every computed chart for that window.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/duration-analysis"
-              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-violet-500 hover:text-violet-300 transition-colors"
-            >
-              Duration Analysis (AI)
-            </Link>
-            <Link
-              href="/"
-              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-indigo-500 hover:text-ink transition-colors"
-            >
-              Chart Computation
-            </Link>
-          </div>
-        </div>
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <PageHeader
+          title="Duration Analyser"
+          subtitle="Deterministic period computation — no LLM, no cost. Pick a chart, a dasha period, and a life domain to see every computed chart for that window."
+        />
 
-        <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-6 space-y-6">
-          {/* Chart Picker */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">
-              Chart <span className="text-red-400">*</span>
-            </label>
-            {loadingCharts ? (
-              <div className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-gray-500 text-sm">
-                Loading charts…
-              </div>
-            ) : chartLoadError ? (
-              <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded px-3 py-2">
-                {chartLoadError}
-              </div>
-            ) : (
-              <select
-                value={unifiedChartId}
-                onChange={(e) => setUnifiedChartId(e.target.value)}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="">— select a chart —</option>
-                {charts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.lagna})
-                  </option>
-                ))}
-              </select>
-            )}
-            {!loadingCharts && !chartLoadError && charts.length === 0 && (
-              <p className="mt-1 text-xs text-gray-500">No charts found. Compute or paste a chart first.</p>
-            )}
-          </div>
-
-          {/* Analysis Type */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Analysis Type</label>
-            <div className="flex flex-wrap gap-2">
-              {ANALYSIS_TYPES.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setCategory(key)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                    category === key
-                      ? 'bg-indigo-600 border-indigo-500 text-white'
-                      : 'bg-gray-900 border-gray-600 text-gray-300 hover:border-indigo-500 hover:text-ink'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+        <Card>
+          <CardContent className="p-6 space-y-6">
+            {/* Chart Picker */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Chart <span className="text-destructive">*</span>
+              </label>
+              {loadingCharts ? (
+                <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-muted-foreground text-sm">
+                  Loading charts…
+                </div>
+              ) : chartLoadError ? (
+                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
+                  {chartLoadError}
+                </div>
+              ) : (
+                <Select value={unifiedChartId} onValueChange={setUnifiedChartId}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="— select a chart —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {charts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} ({c.lagna})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!loadingCharts && !chartLoadError && charts.length === 0 && (
+                <p className="mt-1.5 text-xs text-muted-foreground">No charts found. Compute or paste a chart first.</p>
+              )}
             </div>
-          </div>
 
-          {/* Period Picker */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Analysis Duration (Dasha Period)</label>
-            {loadingDashaTree ? (
-              <div className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-gray-500 text-sm">
-                Loading dasha tree…
+            {/* Analysis Type */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Analysis Type</label>
+              <div className="inline-flex flex-wrap gap-1 rounded-md border border-border bg-muted/40 p-1">
+                {ANALYSIS_TYPES.map(({ key, label }) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    size="sm"
+                    variant={category === key ? 'default' : 'ghost'}
+                    className={cn('rounded-sm', category !== key && 'text-muted-foreground')}
+                    onClick={() => setCategory(key)}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
-            ) : (
-              <DashaPeriodPicker dashaTree={dashaTree} onSelect={setSelectedPeriod} />
-            )}
-          </div>
+            </div>
 
-          {/* Analyse */}
-          <div>
-            <button
-              type="button"
-              onClick={handleAnalyse}
-              disabled={!unifiedChartId || !selectedPeriod || spanTooLong || analysing}
-              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {analysing ? 'Analysing…' : 'Analyse'}
-            </button>
-            {spanTooLong && (
-              <p className="mt-2 text-sm text-amber-400">
-                This Mahadasha spans more than 10 years — drill into an Antardasha (or
-                Pratyantardasha) above to narrow the range before analysing.
-              </p>
-            )}
-            {analyseError && (
-              <p className="mt-2 text-sm text-red-400">{analyseError}</p>
-            )}
-          </div>
-        </div>
+            {/* Period Picker */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Analysis Duration (Dasha Period)</label>
+              {loadingDashaTree ? (
+                <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-muted-foreground text-sm">
+                  Loading dasha tree…
+                </div>
+              ) : (
+                <DashaPeriodPicker dashaTree={dashaTree} onSelect={setSelectedPeriod} />
+              )}
+            </div>
+
+            {/* Analyse */}
+            <div>
+              <Button
+                type="button"
+                onClick={handleAnalyse}
+                disabled={!unifiedChartId || !selectedPeriod || spanTooLong || analysing}
+              >
+                {analysing ? 'Analysing…' : 'Analyse'}
+              </Button>
+              {spanTooLong && (
+                <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+                  This Mahadasha spans more than 10 years — drill into an Antardasha (or
+                  Pratyantardasha) above to narrow the range before analysing.
+                </p>
+              )}
+              {analyseError && (
+                <p className="mt-2 text-sm text-destructive">{analyseError}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {result && selectedChart && (
           <div className="mt-8">

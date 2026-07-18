@@ -8,6 +8,8 @@ import { useState } from 'react'
 import NorthIndianChart from './NorthIndianChart'
 import SouthIndianChart from './SouthIndianChart'
 import type { ChartData } from './chartTypes'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 type ChartStyle = 'north' | 'south'
 
@@ -51,62 +53,66 @@ export default function ChartGrid({
   const [style, setStyle] = useState<ChartStyle>('north')
 
   return (
-    <div>
-      {/* Style Toggle */}
-      <div className="flex items-center gap-3 mb-5">
-        <span className="text-sm text-gray-400">Chart Style:</span>
-        <div className="inline-flex rounded-lg border border-gray-600 overflow-hidden">
-          <button
-            onClick={() => setStyle('north')}
-            className={`px-4 py-1.5 text-xs font-medium transition-colors ${
-              style === 'north' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-ink'
-            }`}
-          >
-            North Indian
-          </button>
-          <button
-            onClick={() => setStyle('south')}
-            className={`px-4 py-1.5 text-xs font-medium transition-colors ${
-              style === 'south' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-ink'
-            }`}
-          >
-            South Indian
-          </button>
+    <Card>
+      <CardContent className="p-5">
+        {/* Style Toggle */}
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-sm text-muted-foreground">Chart Style:</span>
+          <div className="inline-flex rounded-lg border border-border overflow-hidden">
+            <Button
+              type="button"
+              size="sm"
+              variant={style === 'north' ? 'default' : 'ghost'}
+              className="rounded-none"
+              onClick={() => setStyle('north')}
+            >
+              North Indian
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={style === 'south' ? 'default' : 'ghost'}
+              className="rounded-none"
+              onClick={() => setStyle('south')}
+            >
+              South Indian
+            </Button>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            <span className="text-amber-500">■</span> Arudha &nbsp;
+            <span className="text-fuchsia-500">■</span> Special Lagnas &nbsp;
+            <span className="text-gray-400">■</span> Upagrahas
+          </span>
         </div>
-        <span className="text-xs text-gray-600">
-          <span className="text-amber-400">■</span> Arudha &nbsp;
-          <span className="text-fuchsia-400">■</span> Special Lagnas &nbsp;
-          <span className="text-gray-400">■</span> Upagrahas
-        </span>
-      </div>
-      <div className="mb-4 text-[11px] text-gray-500">
-        (Ab) retrograde &nbsp;·&nbsp; Ab++ exalted &nbsp;·&nbsp; Ab+ own/moolatrikona
-        &nbsp;·&nbsp; Ab- great enemy &nbsp;·&nbsp; Ab-- debilitated &nbsp;·&nbsp; Ab^ vargottama
-      </div>
+        <div className="mb-4 text-[11px] text-muted-foreground">
+          (Ab) retrograde &nbsp;·&nbsp; Ab++ exalted &nbsp;·&nbsp; Ab+ own/moolatrikona
+          &nbsp;·&nbsp; Ab- great enemy &nbsp;·&nbsp; Ab-- debilitated &nbsp;·&nbsp; Ab^ vargottama
+        </div>
 
-      {/* Chart Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {charts.map((chart) => {
-          const isD1 = chart.division === 1
-          const chartData: ChartData = {
-            lagna: chart.lagna,
-            lagnaSignNumber: chart.lagnaSignNumber,
-            division: chart.division,
-            name: chart.name,
-            shortName: chart.shortName,
-            planets: chart.planets,
-            arudhaPadas: chart.arudhaPadas ?? (isD1 ? arudhaPadas : undefined),
-            specialLagnas: chart.specialLagnas ?? (isD1 ? specialLagnas : undefined),
-            upagrahas: chart.upagrahas ?? (isD1 ? upagrahas : undefined),
-          }
+        {/* Chart Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {charts.map((chart) => {
+            const isD1 = chart.division === 1
+            const chartData: ChartData = {
+              lagna: chart.lagna,
+              lagnaSignNumber: chart.lagnaSignNumber,
+              division: chart.division,
+              name: chart.name,
+              shortName: chart.shortName,
+              planets: chart.planets,
+              arudhaPadas: chart.arudhaPadas ?? (isD1 ? arudhaPadas : undefined),
+              specialLagnas: chart.specialLagnas ?? (isD1 ? specialLagnas : undefined),
+              upagrahas: chart.upagrahas ?? (isD1 ? upagrahas : undefined),
+            }
 
-          return style === 'north' ? (
-            <NorthIndianChart key={chart.shortName} chart={chartData} size={340} />
-          ) : (
-            <SouthIndianChart key={chart.shortName} chart={chartData} size={340} />
-          )
-        })}
-      </div>
-    </div>
+            return style === 'north' ? (
+              <NorthIndianChart key={chart.shortName} chart={chartData} size={340} />
+            ) : (
+              <SouthIndianChart key={chart.shortName} chart={chartData} size={340} />
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

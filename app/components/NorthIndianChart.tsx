@@ -134,7 +134,7 @@ export default function NorthIndianChart({
   }
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800/30 p-3">
+    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-ink">{chart.shortName} — {chart.name}</h3>
         <span className="text-xs text-gray-500">Lagna: {chart.lagna}</span>
@@ -144,10 +144,10 @@ export default function NorthIndianChart({
         className="block mx-auto" style={{ maxWidth: '100%', aspectRatio: '1 / 1' }}
         preserveAspectRatio="xMidYMid meet">
 
-        <rect width={S} height={S} fill="#111827" rx={4} />
+        <rect width={S} height={S} className="fill-white dark:fill-[#111827]" rx={4} />
 
         {LINES.map((d, i) => (
-          <path key={i} d={d} stroke="#374151" strokeWidth={1.5} fill="none" />
+          <path key={i} d={d} className="stroke-neutral-200 dark:stroke-[#374151]" strokeWidth={1.5} fill="none" />
         ))}
 
         {/* Sign numbers (small, faded, at inner tip of each house) */}

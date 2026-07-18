@@ -8,6 +8,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
+import { badgeVariants } from '@/components/ui/badge'
 
 interface DashaPeriod {
   lord: string
@@ -29,20 +31,22 @@ export interface SelectedPeriod {
   label: string
 }
 
-// Moon/Rahu use `neutral` (not the theme-mirrored `gray`/`slate` scales) so
-// their badge stays legible in both light and dark mode — see DashaTimeline.tsx.
-const PLANET_COLORS: Record<string, string> = {
-  Sun: 'bg-orange-600',
-  Moon: 'bg-neutral-400',
-  Mars: 'bg-red-600',
-  Mercury: 'bg-green-600',
-  Jupiter: 'bg-yellow-500',
-  Venus: 'bg-pink-500',
-  Saturn: 'bg-blue-800',
-  Rahu: 'bg-neutral-600',
-  Ketu: 'bg-purple-700',
+// Soft pastel badge colors per planet — light-mode-first, with dark-mode
+// variants so the pills stay legible when the app is toggled to dark theme.
+// Uses standalone Tailwind palettes (not the app's inverted `gray`/`slate`
+// scales) so the pastel intent isn't flipped by theme inversion.
+const PLANET_PASTEL: Record<string, string> = {
+  Sun: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900',
+  Moon: 'bg-neutral-100 text-neutral-700 border-neutral-200 dark:bg-neutral-800/60 dark:text-neutral-300 dark:border-neutral-700',
+  Mars: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900',
+  Mercury: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-900',
+  Jupiter: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900',
+  Venus: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-900',
+  Saturn: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900',
+  Rahu: 'bg-neutral-200 text-neutral-800 border-neutral-300 dark:bg-neutral-700/60 dark:text-neutral-200 dark:border-neutral-600',
+  Ketu: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900',
 }
-const FALLBACK_COLOR = 'bg-neutral-600'
+const FALLBACK_PASTEL = 'bg-neutral-100 text-neutral-700 border-neutral-200 dark:bg-neutral-800/60 dark:text-neutral-300 dark:border-neutral-700'
 
 function toDateInputValue(iso: string): string {
   return iso.slice(0, 10)
@@ -56,12 +60,29 @@ function formatDateShort(dateStr: string): string {
   })
 }
 
-function periodButtonClass(selected: boolean): string {
-  return `px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${
-    selected
-      ? 'bg-indigo-600 border-indigo-500 text-white'
-      : 'bg-gray-900 border-gray-600 text-gray-300 hover:border-indigo-500 hover:text-ink'
-  }`
+function PlanetPill({
+  lord,
+  selected,
+  onClick,
+}: {
+  lord: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        badgeVariants({ variant: 'outline' }),
+        PLANET_PASTEL[lord] ?? FALLBACK_PASTEL,
+        'cursor-pointer font-medium',
+        selected && 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+      )}
+    >
+      {lord}
+    </button>
+  )
 }
 
 export default function DashaPeriodPicker({
@@ -84,7 +105,7 @@ export default function DashaPeriodPicker({
 
   if (!dashaTree?.mahadashas?.length) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4 text-sm text-gray-500">
+      <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
         Select a chart above to pick a dasha period.
       </div>
     )
@@ -131,38 +152,22 @@ export default function DashaPeriodPicker({
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Mahadasha (MD)</label>
+        <label className="block text-xs text-muted-foreground mb-1.5">Mahadasha (MD)</label>
         <div className="flex flex-wrap gap-1.5">
           {dashaTree.mahadashas.map((m, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => selectMD(i)}
-              className={periodButtonClass(mdIndex === i)}
-            >
-              <span className={`w-2 h-2 rounded-full ${PLANET_COLORS[m.lord] ?? FALLBACK_COLOR}`} />
-              {m.lord}
-            </button>
+            <PlanetPill key={i} lord={m.lord} selected={mdIndex === i} onClick={() => selectMD(i)} />
           ))}
         </div>
       </div>
 
       {md?.antardashas && md.antardashas.length > 0 && (
         <div>
-          <label className="block text-xs text-gray-400 mb-1">
+          <label className="block text-xs text-muted-foreground mb-1.5">
             Antardasha (AD) — within {md.lord} MD
           </label>
           <div className="flex flex-wrap gap-1.5">
             {md.antardashas.map((a, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => selectAD(i)}
-                className={periodButtonClass(adIndex === i)}
-              >
-                <span className={`w-2 h-2 rounded-full ${PLANET_COLORS[a.lord] ?? FALLBACK_COLOR}`} />
-                {a.lord}
-              </button>
+              <PlanetPill key={i} lord={a.lord} selected={adIndex === i} onClick={() => selectAD(i)} />
             ))}
           </div>
         </div>
@@ -170,27 +175,19 @@ export default function DashaPeriodPicker({
 
       {ad?.pratyantardashas && ad.pratyantardashas.length > 0 && (
         <div>
-          <label className="block text-xs text-gray-400 mb-1">
+          <label className="block text-xs text-muted-foreground mb-1.5">
             Pratyantardasha (PD) — within {md!.lord}-{ad.lord} AD, optional
           </label>
           <div className="flex flex-wrap gap-1.5">
             {ad.pratyantardashas.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => selectPD(i)}
-                className={periodButtonClass(pdIndex === i)}
-              >
-                <span className={`w-2 h-2 rounded-full ${PLANET_COLORS[p.lord] ?? FALLBACK_COLOR}`} />
-                {p.lord}
-              </button>
+              <PlanetPill key={i} lord={p.lord} selected={pdIndex === i} onClick={() => selectPD(i)} />
             ))}
           </div>
         </div>
       )}
 
       {selectedPeriod && (
-        <div className="rounded-lg border border-indigo-700 bg-indigo-900/70 px-3 py-2 text-xs text-indigo-100">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground">
           Selected: {md!.lord} MD{ad ? ` / ${ad.lord} AD` : ''}{pd ? ` / ${pd.lord} PD` : ''}
           {' — '}
           {formatDateShort(selectedPeriod.start)} → {formatDateShort(selectedPeriod.end)}

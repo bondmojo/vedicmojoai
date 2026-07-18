@@ -5,7 +5,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import ChartGrid from './components/ChartGrid'
 import PlanetTable from './components/PlanetTable'
 import NakshatraTable from './components/NakshatraTable'
@@ -17,6 +16,17 @@ import TransitsView from './components/TransitsView'
 import PindaStrengthView from './components/PindaStrengthView'
 import VarshaphalView from './components/VarshaphalView'
 import CopyForAIPanel from './components/CopyForAIPanel'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Card, CardContent } from '@/components/ui/card'
+import PageHeader from './components/PageHeader'
 
 type Tab = 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
 
@@ -289,233 +299,228 @@ export default function ComputePage() {
   }
 
   return (
-    <main className="min-h-screen p-6 bg-gray-950 text-gray-100">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Chart Computation</h1>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/unified-charts"
-              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-amber-500 hover:text-amber-300 transition-colors"
-            >
-              Insert JSON
-            </Link>
-            <Link
-              href="/duration-analysis"
-              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-violet-500 hover:text-violet-300 transition-colors"
-            >
-              Duration Analysis (AI)
-            </Link>
-            <Link
-              href="/duration-computation"
-              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-400 hover:border-teal-500 hover:text-teal-300 transition-colors"
-            >
-              Duration Analyser (Free)
-            </Link>
-            <button
-              onClick={() => setShowSavedCharts(!showSavedCharts)}
-              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:border-indigo-500 hover:text-ink transition-colors"
-            >
-              {showSavedCharts ? 'Hide' : 'Load'} Saved Charts
-              {savedCharts.length > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-indigo-600/50 text-xs">
-                  {savedCharts.length}
-                </span>
-              )}
-            </button>
-          </div>
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <PageHeader
+            title="Chart Computation"
+            subtitle="Compute a Vedic chart from birth data, then save, analyse, or export it."
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSavedCharts(!showSavedCharts)}
+          >
+            {showSavedCharts ? 'Hide' : 'Load'} Saved Charts
+            {savedCharts.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs">
+                {savedCharts.length}
+              </span>
+            )}
+          </Button>
         </div>
 
         {/* Saved Charts Panel */}
         {showSavedCharts && (
-          <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800/50 p-4">
-            <h2 className="text-lg font-semibold mb-3">Saved Charts</h2>
-            {loadingCharts ? (
-              <p className="text-gray-400 text-sm">Loading...</p>
-            ) : savedCharts.length === 0 ? (
-              <p className="text-gray-500 text-sm">No saved charts yet. Compute a chart and click Save.</p>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {savedCharts.map((chart) => (
-                  <div
-                    key={chart.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-900/50 px-4 py-3 hover:border-indigo-500/50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-ink truncate">{chart.name}</span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">
-                          {chart.lagna}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${chart.source === 'compute' ? 'bg-cyan-900/50 text-cyan-400' : 'bg-purple-900/50 text-purple-400'}`}>
-                          {chart.source}
-                        </span>
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <h2 className="text-lg font-semibold mb-3 text-ink">Saved Charts</h2>
+              {loadingCharts ? (
+                <p className="text-muted-foreground text-sm">Loading...</p>
+              ) : savedCharts.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No saved charts yet. Compute a chart and click Save.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {savedCharts.map((chart) => (
+                    <div
+                      key={chart.id}
+                      className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 hover:border-primary/40 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium text-ink truncate">{chart.name}</span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
+                            {chart.lagna}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${chart.source === 'compute' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-400'}`}>
+                            {chart.source}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Born {new Date(chart.birthDatetime).toISOString().slice(0, 16).replace('T', ' ')} UTC · saved {new Date(chart.createdAt).toLocaleDateString()}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        Born {new Date(chart.birthDatetime).toISOString().slice(0, 16).replace('T', ' ')} UTC · saved {new Date(chart.createdAt).toLocaleDateString()}
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          onClick={() => handleLoadChart(chart.id)}
+                          disabled={loadingChart === chart.id}
+                        >
+                          {loadingChart === chart.id ? 'Loading...' : 'Load'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteChart(chart.id)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <button
-                        onClick={() => handleLoadChart(chart.id)}
-                        disabled={loadingChart === chart.id}
-                        className="rounded px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-                      >
-                        {loadingChart === chart.id ? 'Loading...' : 'Load'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteChart(chart.id)}
-                        className="rounded px-3 py-1.5 text-xs font-medium bg-red-900 text-red-300 hover:bg-red-800 border border-red-800 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="mb-8 rounded-lg border border-gray-700 bg-gray-800/50 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Name (optional)</label>
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
-                placeholder="Client name" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Date of Birth *</label>
-              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Time of Birth *</label>
-              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required step="1"
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Timezone *</label>
-              <select value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none">
-                {TIMEZONES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Latitude * <span className="text-gray-600">(±90, 7 decimals)</span></label>
-              <input type="number" step="0.0000001" min="-90" max="90" value={form.latitude}
-                onChange={(e) => setForm({ ...form, latitude: e.target.value })} required placeholder="28.6139000"
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none font-mono" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Longitude * <span className="text-gray-600">(±180, 7 decimals)</span></label>
-              <input type="number" step="0.0000001" min="-180" max="180" value={form.longitude}
-                onChange={(e) => setForm({ ...form, longitude: e.target.value })} required placeholder="77.2090000"
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none font-mono" />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">
-                Sunrise Convention
-                <span className="ml-1 text-gray-600 font-normal">for BL · HL · GL · VL · PL</span>
-              </label>
-              <select
-                value={form.sunriseMode}
-                onChange={(e) => setForm({ ...form, sunriseMode: e.target.value as 'precise' | 'jhora' })}
-                className="w-full rounded-lg bg-gray-900 border border-gray-600 px-3 py-2 text-ink focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="precise">Precise — real astronomical sunrise</option>
-                <option value="jhora">JHora compatible — fixed 6:00 AM local</option>
-              </select>
-              {form.sunriseMode === 'jhora' && (
-                <p className="mt-1 text-xs text-amber-500">
-                  JHora mode uses a fixed 6 AM sunrise. Matches Jagannatha Hora output but is less accurate.
-                </p>
-              )}
-            </div>
-          </div>
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Name (optional)</label>
+                  <Input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Client name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Date of Birth *</label>
+                  <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Time of Birth *</label>
+                  <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required step="1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Timezone *</label>
+                  <Select value={form.timezone} onValueChange={(v) => setForm({ ...form, timezone: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEZONES.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Latitude * <span className="text-muted-foreground/70">(±90, 7 decimals)</span></label>
+                  <Input type="number" step="0.0000001" min="-90" max="90" value={form.latitude}
+                    onChange={(e) => setForm({ ...form, latitude: e.target.value })} required placeholder="28.6139000"
+                    className="font-mono" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Longitude * <span className="text-muted-foreground/70">(±180, 7 decimals)</span></label>
+                  <Input type="number" step="0.0000001" min="-180" max="180" value={form.longitude}
+                    onChange={(e) => setForm({ ...form, longitude: e.target.value })} required placeholder="77.2090000"
+                    className="font-mono" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Sunrise Convention
+                    <span className="ml-1 text-muted-foreground/70 font-normal">for BL · HL · GL · VL · PL</span>
+                  </label>
+                  <Select
+                    value={form.sunriseMode}
+                    onValueChange={(v) => setForm({ ...form, sunriseMode: v as 'precise' | 'jhora' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="precise">Precise — real astronomical sunrise</SelectItem>
+                      <SelectItem value="jhora">JHora compatible — fixed 6:00 AM local</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.sunriseMode === 'jhora' && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                      JHora mode uses a fixed 6 AM sunrise. Matches Jagannatha Hora output but is less accurate.
+                    </p>
+                  )}
+                </div>
+              </div>
 
-          <div className="mt-4 flex items-center gap-4 flex-wrap">
-            <button type="submit" disabled={loading}
-              className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {loading ? 'Computing...' : 'Compute Chart'}
-            </button>
+              <div className="mt-4 flex items-center gap-4 flex-wrap">
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Computing...' : 'Compute Chart'}
+                </Button>
 
-            {/* Save Chart Button */}
-            {result && (
-              <button
-                type="button"
-                onClick={handleSaveChart}
-                disabled={saving}
-                className="rounded-lg border border-emerald-600 bg-emerald-900 px-5 py-2.5 text-sm font-semibold text-emerald-400 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {saving ? 'Saving...' : 'Save Chart'}
-              </button>
-            )}
-
-            {/* Run AI Analysis Button */}
-            {result && (
-              <button
-                type="button"
-                onClick={handleRunAnalysis}
-                disabled={analyzeSaving}
-                className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {analyzeSaving ? 'Preparing...' : 'Run AI Analysis'}
-              </button>
-            )}
-
-            {/* Copy for AI Button */}
-            {result && (
-              <button
-                type="button"
-                onClick={() => setShowCopyPanel(true)}
-                className="rounded-lg border border-violet-600 bg-violet-900 px-5 py-2.5 text-sm font-semibold text-violet-300 hover:bg-violet-800 transition-colors"
-              >
-                Copy for AI
-              </button>
-            )}
-
-            {/* Save feedback */}
-            {saveMessage && (
-              <span className={`text-sm ${saveMessage.includes('failed') ? 'text-red-400' : 'text-emerald-400'}`}>
-                {saveMessage}
-              </span>
-            )}
-
-            {result && (
-              <span className="text-sm text-gray-400">
-                Lagna: <strong className="text-ink">{result.chart.lagna}</strong> ({result.chart.lagnaDegreeInSign.toFixed(2)}°)
-                {' '}| Ayanamsa: {result.chart.ayanamsa.toFixed(4)}°
-                {' '}| Sunrise: <span className={result.chart.sunriseMode === 'jhora' ? 'text-amber-400' : 'text-emerald-400'}>
-                  {result.chart.sunriseMode === 'jhora' ? 'JHora 6AM' : 'Precise'}
-                </span>
-                {result.chart.transits?.sadeSati?.active && (
-                  <span className="ml-3 text-amber-400 font-medium">⚠ Sade Sati Active</span>
+                {/* Save Chart Button */}
+                {result && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSaveChart}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving...' : 'Save Chart'}
+                  </Button>
                 )}
-              </span>
-            )}
-          </div>
 
-          {error && (
-            <div className="mt-3 text-sm text-red-400 bg-red-900/20 border border-red-800 rounded px-3 py-2">{error}</div>
-          )}
-        </form>
+                {/* Run AI Analysis Button */}
+                {result && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleRunAnalysis}
+                    disabled={analyzeSaving}
+                  >
+                    {analyzeSaving ? 'Preparing...' : 'Run AI Analysis'}
+                  </Button>
+                )}
+
+                {/* Copy for AI Button */}
+                {result && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCopyPanel(true)}
+                  >
+                    Copy for AI
+                  </Button>
+                )}
+
+                {/* Save feedback */}
+                {saveMessage && (
+                  <span className={`text-sm ${saveMessage.includes('failed') ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {saveMessage}
+                  </span>
+                )}
+
+                {result && (
+                  <span className="text-sm text-muted-foreground">
+                    Lagna: <strong className="text-ink">{result.chart.lagna}</strong> ({result.chart.lagnaDegreeInSign.toFixed(2)}°)
+                    {' '}| Ayanamsa: {result.chart.ayanamsa.toFixed(4)}°
+                    {' '}| Sunrise: <span className={result.chart.sunriseMode === 'jhora' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                      {result.chart.sunriseMode === 'jhora' ? 'JHora 6AM' : 'Precise'}
+                    </span>
+                    {result.chart.transits?.sadeSati?.active && (
+                      <span className="ml-3 text-amber-600 dark:text-amber-400 font-medium">⚠ Sade Sati Active</span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {error && (
+                <div className="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded px-3 py-2">{error}</div>
+              )}
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Results */}
         {result && (
           <div>
             {/* Tab Navigation */}
-            <div className="flex flex-wrap gap-0.5 mb-6 border-b border-gray-700">
+            <div className="flex flex-wrap gap-0.5 mb-6 border-b border-border">
               {TABS.map((tab) => (
                 <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === tab.key ? 'border-indigo-500 text-ink' : 'border-transparent text-gray-400 hover:text-gray-200'
+                    activeTab === tab.key ? 'border-primary text-ink' : 'border-transparent text-muted-foreground hover:text-ink'
                   }`}>
                   {tab.label}
                   {tab.key === 'transits' && result.chart.transits?.sadeSati?.active && (
-                    <span className="ml-1 text-amber-400">⚠</span>
+                    <span className="ml-1 text-amber-500">⚠</span>
                   )}
                 </button>
               ))}

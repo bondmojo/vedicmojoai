@@ -106,8 +106,8 @@ function SignCell({
       <rect
         x={cx} y={cy}
         width={CELL_SIZE} height={CELL_SIZE}
-        fill="#111827"
-        stroke={isLagna ? '#6366f1' : '#374151'}
+        className={`fill-white dark:fill-[#111827] ${isLagna ? '' : 'stroke-neutral-200 dark:stroke-[#374151]'}`}
+        stroke={isLagna ? '#6366f1' : undefined}
         strokeWidth={isLagna ? 2 : 1}
       />
       {/* Sign name */}
@@ -148,7 +148,7 @@ export default function SouthIndianChart({
   size?: number
 }) {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800/30 p-3">
+    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-ink">
           {chart.shortName} — {chart.name}
@@ -162,14 +162,14 @@ export default function SouthIndianChart({
         className="block mx-auto"
         style={{ maxWidth: '100%' }}
       >
-        <rect width={GRID_SIZE} height={GRID_SIZE} fill="#111827" />
+        <rect width={GRID_SIZE} height={GRID_SIZE} className="fill-white dark:fill-[#111827]" />
         {/* Center 4 empty cells */}
         {[[1,1],[1,2],[2,1],[2,2]].map(([r, c]) => (
           <rect
             key={`empty-${r}-${c}`}
             x={c * CELL_SIZE} y={r * CELL_SIZE}
             width={CELL_SIZE} height={CELL_SIZE}
-            fill="#0f172a" stroke="#1f2937" strokeWidth={1}
+            className="fill-neutral-50 dark:fill-[#0f172a] stroke-neutral-200 dark:stroke-[#1f2937]" strokeWidth={1}
           />
         ))}
         {/* Sign cells */}

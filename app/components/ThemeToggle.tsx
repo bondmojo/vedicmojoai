@@ -17,7 +17,7 @@ export default function ThemeToggle() {
   if (!mounted) {
     return (
       <span
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border"
         aria-hidden="true"
       />
     )
@@ -31,7 +31,7 @@ export default function ThemeToggle() {
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:border-indigo-500 hover:text-ink transition-colors"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-ink transition-colors"
     >
       {isDark ? (
         // Sun icon (click to go light)

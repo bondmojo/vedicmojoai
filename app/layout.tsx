@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "./components/ThemeProvider";
-import ThemeToggle from "./components/ThemeToggle";
+import AppNav from "./components/AppNav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,11 +21,9 @@ export default function RootLayout({
     // <html> before hydration; without this, React warns about the
     // server/client class mismatch that is expected and harmless here.
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-background text-foreground`}>
         <ThemeProvider>
-          <div className="fixed top-4 right-4 z-40">
-            <ThemeToggle />
-          </div>
+          <AppNav />
           {children}
         </ThemeProvider>
       </body>

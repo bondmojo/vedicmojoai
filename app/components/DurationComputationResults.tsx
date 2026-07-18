@@ -14,6 +14,20 @@ import ChartGrid from './ChartGrid'
 import PlanetTable from './PlanetTable'
 import NakshatraTable from './NakshatraTable'
 import AshtakavargaView from './AshtakavargaView'
+import { Card } from '@/components/ui/card'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+import {
+  PLANET_COLORS,
+  planetColorClass,
+  LEVEL_STYLE,
+  DEFAULT_LEVEL_STYLE,
+  SADE_SATI_STYLE,
+  roleChipClass,
+  intensityBadgeClass,
+  planetChipClass,
+  shadbalaGrade,
+} from '@/lib/brandColors'
 import type {
   PeriodInsights,
   LordDriver,
@@ -22,12 +36,6 @@ import type {
   HouseRole,
   TaggedHouse,
 } from '@/lib/durationTypes'
-
-const PLANET_COLORS: Record<string, string> = {
-  Sun: 'text-orange-400', Moon: 'text-slate-300', Mars: 'text-red-400',
-  Mercury: 'text-green-400', Jupiter: 'text-yellow-400', Venus: 'text-pink-400',
-  Saturn: 'text-blue-400', Rahu: 'text-gray-400', Ketu: 'text-purple-400',
-}
 
 // Human labels for the deterministic scoring engine's 21 ScoringFactorKey values
 // (see lib/durationTypes.ts ScoringFactorKey / engine/durationAnalysis/scoring.ts).
@@ -53,12 +61,6 @@ const FACTOR_LABELS: Record<string, string> = {
   divisionalChartStrength: 'Divisional Chart Strength',
   rashiDrishti: 'Rashi Aspect (Drishti)',
   rashiDispositorChain: 'Rashi Dispositor Chain',
-}
-
-const SADE_SATI_STYLE: Record<string, string> = {
-  rising: 'border-amber-600 bg-amber-900 text-amber-200',
-  peak: 'border-red-600 bg-red-900 text-red-200',
-  setting: 'border-blue-600 bg-blue-900 text-blue-200',
 }
 
 interface DashaLeg { lord: string; start: string; end: string }
@@ -174,29 +176,8 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
-function roleChipClass(role: HouseRole): string {
-  switch (role) {
-    case 'primary': return 'bg-amber-900 text-amber-200 border-amber-700'
-    case 'benefic': return 'bg-emerald-900 text-emerald-200 border-emerald-700'
-    case 'malefic': return 'bg-red-900 text-red-200 border-red-700'
-    default: return 'bg-gray-800 text-gray-300 border-gray-700'
-  }
-}
-
-function intensityBadgeClass(intensity: string, favorable: boolean): string {
-  if (favorable) return 'text-green-300 bg-green-900 border-green-700'
-  if (intensity === 'high') return 'text-red-300 bg-red-900 border-red-700'
-  return 'text-amber-300 bg-amber-900 border-amber-700'
-}
-
 function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function shadbalaGrade(ratio: number): { label: string; className: string } {
-  if (ratio >= 1) return { label: 'Strong', className: 'text-green-300 bg-green-900 border-green-700' }
-  if (ratio >= 0.75) return { label: 'Average', className: 'text-yellow-300 bg-yellow-900 border-yellow-700' }
-  return { label: 'Weak', className: 'text-red-300 bg-red-900 border-red-700' }
 }
 
 function formatFactorValue(value: unknown): string {
@@ -235,26 +216,24 @@ function UpagrahaTable({ upagrahas }: { upagrahas: Upagraha[] }) {
         <h3 className="text-sm font-semibold text-ink">Upagrahas</h3>
         <p className="text-xs text-gray-500 mt-0.5">Shadow sub-points (Gulika, Mandi, …)</p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs text-gray-400 border-b border-gray-700">
-              <th className="px-4 py-2 text-left">Upagraha</th>
-              <th className="px-4 py-2 text-left">Sign</th>
-              <th className="px-4 py-2 text-center">House</th>
-            </tr>
-          </thead>
-          <tbody>
-            {upagrahas.map((u) => (
-              <tr key={u.abbr} className="border-b border-gray-800 last:border-0">
-                <td className="px-4 py-2 text-ink">{u.name ?? u.abbr} <span className="text-gray-500">({u.abbr})</span></td>
-                <td className="px-4 py-2 text-gray-300">{u.sign ?? '—'}</td>
-                <td className="px-4 py-2 text-center text-gray-300">{u.house}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Upagraha</TableHead>
+            <TableHead>Sign</TableHead>
+            <TableHead className="text-center">House</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {upagrahas.map((u) => (
+            <TableRow key={u.abbr}>
+              <TableCell className="py-2 text-ink">{u.name ?? u.abbr} <span className="text-muted-foreground">({u.abbr})</span></TableCell>
+              <TableCell className="py-2 text-muted-foreground">{u.sign ?? '—'}</TableCell>
+              <TableCell className="py-2 text-center text-muted-foreground">{u.house}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -267,34 +246,32 @@ function ShadbalaTable({ shadbala }: { shadbala: ShadbalResult }) {
         <h3 className="text-sm font-semibold text-ink">Shadbala</h3>
         <p className="text-xs text-gray-500 mt-0.5">Six-fold planetary strength (Rupas)</p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs text-gray-400 border-b border-gray-700">
-              <th className="px-4 py-2 text-left">Planet</th>
-              <th className="px-4 py-2 text-right">Total (Rupas)</th>
-              <th className="px-4 py-2 text-right">Ratio</th>
-              <th className="px-4 py-2 text-left">Grade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shadbala.planets.map((p) => {
-              const ratio = ratioByPlanet.get(p.planet) ?? 0
-              const grade = shadbalaGrade(ratio)
-              return (
-                <tr key={p.planet} className="border-b border-gray-800 last:border-0">
-                  <td className={`px-4 py-2 font-medium ${PLANET_COLORS[p.planet] ?? 'text-ink'}`}>{p.planet}</td>
-                  <td className="px-4 py-2 text-right text-gray-300 font-mono">{p.components.total.toFixed(2)}</td>
-                  <td className="px-4 py-2 text-right text-gray-300 font-mono">{ratio.toFixed(2)}</td>
-                  <td className="px-4 py-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${grade.className}`}>{grade.label}</span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Planet</TableHead>
+            <TableHead className="text-right">Total (Rupas)</TableHead>
+            <TableHead className="text-right">Ratio</TableHead>
+            <TableHead>Grade</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {shadbala.planets.map((p) => {
+            const ratio = ratioByPlanet.get(p.planet) ?? 0
+            const grade = shadbalaGrade(ratio)
+            return (
+              <TableRow key={p.planet}>
+                <TableCell className={`py-2 font-medium ${PLANET_COLORS[p.planet] ?? 'text-ink'}`}>{p.planet}</TableCell>
+                <TableCell className="py-2 text-right text-muted-foreground font-mono">{p.components.total.toFixed(2)}</TableCell>
+                <TableCell className="py-2 text-right text-muted-foreground font-mono">{ratio.toFixed(2)}</TableCell>
+                <TableCell className="py-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${grade.className}`}>{grade.label}</span>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -306,26 +283,24 @@ function BhavaBalaTable({ bhavaBala }: { bhavaBala: BhavaBalaResult }) {
         <h3 className="text-sm font-semibold text-ink">Bhava Bala</h3>
         <p className="text-xs text-gray-500 mt-0.5">Per-house strength</p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs text-gray-400 border-b border-gray-700">
-              <th className="px-4 py-2 text-left">House</th>
-              <th className="px-4 py-2 text-right">Total</th>
-              <th className="px-4 py-2 text-right">Rupas</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bhavaBala.houses.map((h) => (
-              <tr key={h.house} className="border-b border-gray-800 last:border-0">
-                <td className="px-4 py-2 text-ink">House {h.house}</td>
-                <td className="px-4 py-2 text-right text-gray-300 font-mono">{h.total.toFixed(2)}</td>
-                <td className="px-4 py-2 text-right text-gray-300 font-mono">{h.rupas.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>House</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="text-right">Rupas</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {bhavaBala.houses.map((h) => (
+            <TableRow key={h.house}>
+              <TableCell className="py-2 text-ink">House {h.house}</TableCell>
+              <TableCell className="py-2 text-right text-muted-foreground font-mono">{h.total.toFixed(2)}</TableCell>
+              <TableCell className="py-2 text-right text-muted-foreground font-mono">{h.rupas.toFixed(2)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -345,7 +320,7 @@ function DomainContextHeader({ ctx }: { ctx: DomainContext }) {
         <span className="flex items-center gap-1">
           Key house{ctx.primaryHouses.length > 1 ? 's' : ''}:
           {ctx.primaryHouses.map((h) => (
-            <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
+            <span key={h} className="px-1.5 py-0.5 rounded border bg-role-primary-bg text-role-primary-text border-role-primary-border">{ordinal(h)}</span>
           ))}
         </span>
         <span>Primary varga: <span className="text-ink font-medium">D{ctx.primaryDivision}</span></span>
@@ -358,22 +333,6 @@ function DomainContextHeader({ ctx }: { ctx: DomainContext }) {
     </div>
   )
 }
-
-/** Solid chip for a planet, coloured benefic (emerald) / malefic (red) — theme-safe. */
-function planetChipClass(benefic: boolean): string {
-  return benefic
-    ? 'bg-emerald-900 text-emerald-200 border-emerald-700'
-    : 'bg-red-900 text-red-200 border-red-700'
-}
-
-// MD/AD/PD get distinct accent colours so the eye can tell the three cards
-// apart at a glance without reading the tiny level label first.
-const LEVEL_STYLE: Record<string, { bar: string; pill: string }> = {
-  MD: { bar: 'border-l-indigo-500', pill: 'bg-indigo-900 text-indigo-200 border-indigo-700' },
-  AD: { bar: 'border-l-teal-500', pill: 'bg-teal-900 text-teal-200 border-teal-700' },
-  PD: { bar: 'border-l-fuchsia-500', pill: 'bg-fuchsia-900 text-fuchsia-200 border-fuchsia-700' },
-}
-const DEFAULT_LEVEL_STYLE = { bar: 'border-l-gray-600', pill: 'bg-gray-800 text-gray-300 border-gray-700' }
 
 /** One-line "what does this lord actually do" summary — the takeaway before the detail. */
 function driverSnapshot(driver: LordDriver): string {
@@ -398,7 +357,7 @@ function LordCard({ driver }: { driver: LordDriver }) {
     driver.starExchangeWith || driver.conjunctWith.length > 0 || driver.parivartanaWith
 
   return (
-    <div className={`h-full rounded-lg border border-gray-700 border-l-4 ${levelStyle.bar} bg-gray-900/40 p-3 flex flex-col`}>
+    <div className={`h-full ${levelStyle.bar} p-4 flex flex-col`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -410,10 +369,10 @@ function LordCard({ driver }: { driver: LordDriver }) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {driver.karakaRole && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-900 text-indigo-200 border border-indigo-700">{driver.karakaRole}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-period-md/20 text-period-md border border-period-md/40">{driver.karakaRole}</span>
           )}
           {driver.isNaturalKaraka && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-900 text-emerald-200 border border-emerald-700">karaka</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-role-benefic-bg text-role-benefic-text border border-role-benefic-border">karaka</span>
           )}
         </div>
       </div>
@@ -422,8 +381,8 @@ function LordCard({ driver }: { driver: LordDriver }) {
       {(driver.retrograde || driver.combust || driver.cazimi) && (
         <div className="flex gap-1 flex-wrap mt-1.5">
           {driver.retrograde && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">Retrograde</span>}
-          {driver.combust && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900 text-red-200 border border-red-800">Combust</span>}
-          {driver.cazimi && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900 text-amber-200 border border-amber-800">Cazimi</span>}
+          {driver.combust && <span className="text-[10px] px-1.5 py-0.5 rounded bg-unfavorable-muted text-unfavorable border border-unfavorable/40">Combust</span>}
+          {driver.cazimi && <span className="text-[10px] px-1.5 py-0.5 rounded bg-cautionary-muted text-cautionary border border-cautionary/40">Cazimi</span>}
         </div>
       )}
 
@@ -464,7 +423,7 @@ function LordCard({ driver }: { driver: LordDriver }) {
             <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
               Rashi-drishti →
               {driver.rashiDrishtiOnDomain.map((h) => (
-                <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
+                <span key={h} className="px-1.5 py-0.5 rounded border bg-role-primary-bg text-role-primary-text border-role-primary-border">{ordinal(h)}</span>
               ))}
             </div>
           )}
@@ -516,7 +475,7 @@ function LordCard({ driver }: { driver: LordDriver }) {
                         <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
                           → aspects
                           {v.aspectsOntoPrimary.map((h) => (
-                            <span key={h} className="px-1.5 py-0.5 rounded border bg-amber-900 text-amber-200 border-amber-700">{ordinal(h)}</span>
+                            <span key={h} className="px-1.5 py-0.5 rounded border bg-role-primary-bg text-role-primary-text border-role-primary-border">{ordinal(h)}</span>
                           ))}
                         </span>
                       )}
@@ -539,7 +498,7 @@ function LordCard({ driver }: { driver: LordDriver }) {
               )}
               {driver.starExchangeWith && (
                 <div className="text-[11px] text-gray-400 mt-0.5">
-                  Star exchange with <span className="px-1.5 py-0.5 rounded border bg-emerald-900 text-emerald-200 border-emerald-700">{driver.starExchangeWith}</span>
+                  Star exchange with <span className="px-1.5 py-0.5 rounded border bg-role-benefic-bg text-role-benefic-text border-role-benefic-border">{driver.starExchangeWith}</span>
                 </div>
               )}
             </div>
@@ -553,7 +512,7 @@ function LordCard({ driver }: { driver: LordDriver }) {
                 )}
                 {driver.parivartanaWith && (
                   <div className="text-[11px] text-gray-400 flex items-center gap-1">
-                    Parivartana with <span className="px-1.5 py-0.5 rounded border bg-emerald-900 text-emerald-200 border-emerald-700">{driver.parivartanaWith}</span>
+                    Parivartana with <span className="px-1.5 py-0.5 rounded border bg-role-benefic-bg text-role-benefic-text border-role-benefic-border">{driver.parivartanaWith}</span>
                   </div>
                 )}
               </div>
@@ -609,23 +568,23 @@ function TransitCallouts({ overlay }: { overlay: TransitOverlayRow }) {
         </div>
       )}
       {overlay.ashtamaShani && (
-        <div className="rounded-lg border border-red-700 bg-red-900 px-3 py-2 text-xs font-medium text-red-200">
+        <div className="rounded-lg border border-sade-sati-peak-border bg-sade-sati-peak-bg px-3 py-2 text-xs font-medium text-sade-sati-peak-text">
           Ashtama Shani — Saturn in 8th from natal Moon
         </div>
       )}
       {overlay.kantakaShani && (
-        <div className="rounded-lg border border-orange-700 bg-orange-900 px-3 py-2 text-xs font-medium text-orange-200">
+        <div className="rounded-lg border border-sade-sati-rising-border bg-sade-sati-rising-bg px-3 py-2 text-xs font-medium text-sade-sati-rising-text">
           Kantaka Shani — Saturn in 4th from natal Moon
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-gray-700 bg-gray-900/40 px-3 py-2 text-xs">
-          <span className="text-blue-400 font-medium">Saturn</span>
+          <span className="text-planet-saturn font-medium">Saturn</span>
           <span className="text-gray-400"> transit — House {overlay.saturn.houseFromLagna} from Lagna</span>
           {overlay.saturn.retrograde && <span className="text-gray-500"> (retrograde)</span>}
         </div>
         <div className="rounded-lg border border-gray-700 bg-gray-900/40 px-3 py-2 text-xs">
-          <span className="text-yellow-400 font-medium">Jupiter</span>
+          <span className="text-planet-jupiter font-medium">Jupiter</span>
           <span className="text-gray-400"> transit — House {overlay.jupiter.houseFromLagna} from Lagna</span>
           {overlay.jupiter.retrograde && <span className="text-gray-500"> (retrograde)</span>}
         </div>
@@ -638,24 +597,28 @@ function FactorBreakdown({ factors }: { factors: ScoreFactorContribution[] }) {
   const top = [...factors].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
   if (top.length === 0) return null
   return (
-    <details className="rounded-lg border border-gray-700 overflow-hidden">
-      <summary className="bg-gray-800/50 px-4 py-3 border-b border-gray-700 cursor-pointer text-sm font-semibold text-ink">
-        Full scoring-factor breakdown
-      </summary>
-      <div className="divide-y divide-gray-800">
-        {top.map((f, i) => (
-          <div key={i} className="flex items-center justify-between px-4 py-2 text-xs gap-3">
-            <div className="min-w-0">
-              <div className="text-ink font-medium">{FACTOR_LABELS[f.factor] ?? f.factor}</div>
-              <div className="text-gray-500 truncate">{formatFactorValue(f.value)}</div>
-            </div>
-            <span className={`shrink-0 font-mono px-2 py-0.5 rounded ${f.contribution >= 0 ? 'text-green-300 bg-green-900' : 'text-red-300 bg-red-900'}`}>
-              {f.contribution >= 0 ? '+' : ''}{f.contribution.toFixed(1)}
-            </span>
+    <Accordion type="single" collapsible className="rounded-lg border border-gray-700 overflow-hidden">
+      <AccordionItem value="factors" className="border-none">
+        <AccordionTrigger className="bg-gray-800/50 px-4 py-3 text-sm font-semibold text-ink hover:no-underline">
+          Full scoring-factor breakdown
+        </AccordionTrigger>
+        <AccordionContent className="pb-0">
+          <div className="divide-y divide-gray-800 border-t border-gray-700">
+            {top.map((f, i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-2 text-xs gap-3">
+                <div className="min-w-0">
+                  <div className="text-ink font-medium">{FACTOR_LABELS[f.factor] ?? f.factor}</div>
+                  <div className="text-gray-500 truncate">{formatFactorValue(f.value)}</div>
+                </div>
+                <span className={`shrink-0 font-mono px-2 py-0.5 rounded ${f.contribution >= 0 ? 'text-favorable bg-favorable-muted' : 'text-unfavorable bg-unfavorable-muted'}`}>
+                  {f.contribution >= 0 ? '+' : ''}{f.contribution.toFixed(1)}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </details>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   )
 }
 
@@ -689,9 +652,11 @@ function PeriodDrivers({
       )}
 
       {insights?.lords && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
-          {insights.lords.map((d) => <LordCard key={d.level} driver={d} />)}
-        </div>
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+            {insights.lords.map((d) => <LordCard key={d.level} driver={d} />)}
+          </div>
+        </Card>
       )}
 
       {overlay && <TransitCallouts overlay={overlay} />}
@@ -757,7 +722,7 @@ export default function DurationComputationResults({
                 type="button"
                 onClick={() => setSelectedIdx(i)}
                 className={`w-full flex items-center justify-between px-4 py-2 text-xs text-left transition-colors ${
-                  i === selectedIdx ? 'bg-indigo-900/60' : 'hover:bg-gray-800/40'
+                  i === selectedIdx ? 'bg-brand-900/60' : 'hover:bg-gray-800/40'
                 }`}
               >
                 <span className="text-ink">{p.md.lord}-{p.ad.lord}-{p.pd.lord}</span>

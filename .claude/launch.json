@@ -5,8 +5,8 @@
       "name": "vedicmojoai-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3000,
-      "autoPort": false
+      "port": 3001,
+      "autoPort": true
     }
   ]
 }

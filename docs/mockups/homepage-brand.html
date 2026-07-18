@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VedicMojoAI — Homepage Brand Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-body: #0F0F14;
+      --bg-card: rgba(30, 27, 75, 0.3);
+      --indigo-hero: #5D6AF1;
+      --indigo-accent: #4338CA;
+      --gold-highlight: #D9A11C;
+      --gold-cta: #F5BD2C;
+      --gray-900: #111827;
+      --gray-800: #1F2937;
+      --gray-700: #374151;
+      --gray-400: #9CA3AF;
+      --white: #FFFFFF;
+      --red-500: #EF4444;
+      --sun: #FB923C;
+      --moon: #CBD5E1;
+      --mars: #F87171;
+      --mercury: #4ADE80;
+      --jupiter: #FACC15;
+      --venus: #F472B6;
+      --saturn: #60A5FA;
+      --rahu: #9CA3AF;
+      --ketu: #C084FC;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-body);
+      color: var(--white);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ==================== NAVIGATION ==================== */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 56px;
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .nav-brand svg {
+      width: 22px;
+      height: 22px;
+      color: var(--indigo-hero);
+    }
+
+    .nav-brand span {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--white);
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0 auto;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-400);
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--white);
+    }
+
+    .nav-links a.active {
+      color: var(--white);
+      background: rgba(93, 106, 241, 0.1);
+    }
+
+    .nav-right {
+      flex-shrink: 0;
+    }
+
+    .nav-right button {
+      background: none;
+      border: none;
+      color: var(--gray-400);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      transition: color 0.15s ease;
+    }
+
+    .nav-right button:hover {
+      color: var(--white);
+    }
+
+    .nav-right svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ==================== PAGE HEADER ==================== */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px 0 24px;
+    }
+
+    .page-header-text h1 {
+      font-size: 1.875rem;
+      font-weight: 600;
+      color: var(--white);
+      letter-spacing: -0.025em;
+    }
+
+    .page-header-text p {
+      font-size: 0.875rem;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(75, 85, 99, 0.8);
+      color: var(--gray-400);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-outline:hover {
+      border-color: var(--gray-400);
+      color: var(--white);
+    }
+
+    /* ==================== SAVED CHARTS ==================== */
+    .saved-charts {
+      border: 1px solid var(--gray-700);
+      border-radius: 12px;
+      background: rgba(31, 41, 55, 0.5);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .saved-charts h2 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 16px;
+    }
+
+    .chart-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(55, 65, 81, 0.4);
+    }
+
+    .chart-row:last-child {
+      border-bottom: none;
+    }
+
+    .chart-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chart-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--white);
+      min-width: 120px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .badge-lagna {
+      background: rgba(93, 106, 241, 0.15);
+      color: #A5B4FC;
+      border: 1px solid rgba(93, 106, 241, 0.3);
+    }
+
+    .badge-source {
+      background: rgba(217, 161, 28, 0.12);
+      color: var(--gold-cta);
+      border: 1px solid rgba(217, 161, 28, 0.3);
+    }
+
+    .chart-date {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-left: 8px;
+    }
+
+    .chart-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+    }
+
+    .btn-sm-indigo {
+      background: var(--indigo-accent);
+      color: var(--white);
+    }
+
+    .btn-sm-indigo:hover {
+      background: var(--indigo-hero);
+    }
+
+    .btn-sm-red {
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #FCA5A5;
+    }
+
+    .btn-sm-red:hover {
+      border-color: var(--red-500);
+      color: var(--red-500);
+    }
+
+    /* ==================== INPUT FORM ==================== */
+    .input-form {
+      border: 1px solid var(--gray-700);
+      border-radius: 16px;
+      background: rgba(31, 41, 55, 0.5);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-400);
+      margin-bottom: 6px;
+      letter-spacing: 0.01em;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      background: var(--gray-900);
+      border: 1px solid rgba(75, 85, 99, 0.8);
+      color: var(--white);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      padding: 9px 12px;
+      border-radius: 8px;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--indigo-hero);
+      box-shadow: 0 0 0 2px rgba(93, 106, 241, 0.2);
+    }
+
+    .form-group input.font-mono {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12px;
+    }
+
+    .form-group input::placeholder {
+      color: rgba(156, 163, 175, 0.5);
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: #4F46E5;
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--indigo-hero);
+      box-shadow: 0 4px 14px rgba(93, 106, 241, 0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(93, 106, 241, 0.4);
+      color: #A5B4FC;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--indigo-hero);
+      color: var(--white);
+    }
+
+    .btn-gold {
+      background: transparent;
+      border: 1px solid rgba(217, 161, 28, 0.4);
+      color: var(--gold-cta);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-gold:hover {
+      border-color: var(--gold-cta);
+      background: rgba(245, 189, 44, 0.05);
+      box-shadow: 0 0 16px rgba(245, 189, 44, 0.1);
+    }
+
+    .btn-gold svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(75, 85, 99, 0.6);
+      color: var(--gray-400);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--gray-400);
+      color: var(--white);
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-left: auto;
+    }
+
+    /* ==================== TAB BAR ==================== */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--gray-700);
+      margin-bottom: 24px;
+      overflow-x: auto;
+      gap: 0;
+    }
+
+    .tab-bar button {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--gray-400);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 12px 16px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .tab-bar button:hover {
+      color: var(--white);
+    }
+
+    .tab-bar button.active {
+      color: var(--white);
+      border-bottom-color: var(--indigo-hero);
+    }
+
+    /* ==================== CHART GRID ==================== */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      padding-bottom: 48px;
+    }
+
+    .chart-card {
+      border: 1px solid rgba(55, 65, 81, 0.5);
+      border-radius: 16px;
+      background: var(--bg-card);
+      padding: 20px;
+    }
+
+    .chart-card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #A5B4FC;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .chart-placeholder {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      background: rgba(30, 27, 75, 0.6);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .chart-placeholder::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(93, 106, 241, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(93, 106, 241, 0.06) 1px, transparent 1px);
+      background-size: 25% 25%;
+    }
+
+    /* Diamond shape for North Indian chart */
+    .chart-placeholder::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60%;
+      height: 60%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      border: 1px solid rgba(93, 106, 241, 0.2);
+    }
+
+    .planet-label {
+      position: absolute;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .planet-su { color: var(--sun); }
+    .planet-mo { color: var(--moon); }
+    .planet-ma { color: var(--mars); }
+    .planet-me { color: var(--mercury); }
+    .planet-ju { color: var(--jupiter); }
+    .planet-ve { color: var(--venus); }
+    .planet-sa { color: var(--saturn); }
+    .planet-ra { color: var(--rahu); }
+    .planet-ke { color: var(--ketu); }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+      .nav-links {
+        display: none;
+      }
+      .action-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .status-text {
+        margin-left: 0;
+        margin-top: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== NAVIGATION ==================== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="#" class="nav-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
+          <path d="M5 19l1 3 1-3-3-1 3-1z" opacity="0.6"/>
+          <path d="M19 16l0.5 1.5L21 18l-1.5 0.5L19 20l-0.5-1.5L17 18l1.5-0.5L19 16z" opacity="0.6"/>
+        </svg>
+        <span>VedicMojo</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#" class="active">Chart Compute</a>
+        <a href="#">Duration Analyser</a>
+        <a href="#">Duration AI</a>
+        <a href="#">Charts</a>
+        <a href="#">Reports</a>
+      </div>
+
+      <div class="nav-right">
+        <button aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- ==================== PAGE HEADER ==================== -->
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>Chart Computation</h1>
+        <p>Compute a Vedic chart from birth data, then save, analyse, or export it.</p>
+      </div>
+      <button class="btn-outline">Load Saved Charts</button>
+    </div>
+
+    <!-- ==================== SAVED CHARTS ==================== -->
+    <div class="saved-charts">
+      <h2>Saved Charts</h2>
+      <div class="chart-row">
+        <div class="chart-info">
+          <span class="chart-name">Mohit Joshi</span>
+          <span class="badge badge-lagna">Scorpio</span>
+          <span class="badge badge-source">compute</span>
+          <span class="chart-date">1992-03-15 • 05:30 IST</span>
+        </div>
+        <div class="chart-actions">
+          <button class="btn-sm btn-sm-indigo">Load</button>
+          <button class="btn-sm btn-sm-red">Delete</button>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-info">
+          <span class="chart-name">Priya Sharma</span>
+          <span class="badge badge-lagna">Gemini</span>
+          <span class="badge badge-source">compute</span>
+          <span class="chart-date">1988-11-22 • 14:15 IST</span>
+        </div>
+        <div class="chart-actions">
+          <button class="btn-sm btn-sm-indigo">Load</button>
+          <button class="btn-sm btn-sm-red">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== INPUT FORM ==================== -->
+    <div class="input-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" value="Mohit Joshi">
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" value="1992-03-15">
+        </div>
+        <div class="form-group">
+          <label>Time of Birth</label>
+          <input type="time" value="05:30">
+        </div>
+        <div class="form-group">
+          <label>Timezone</label>
+          <select>
+            <option selected>UTC+5:30 (IST)</option>
+            <option>UTC+0:00 (GMT)</option>
+            <option>UTC-5:00 (EST)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Latitude</label>
+          <input type="text" class="font-mono" placeholder="28.6139000" value="28.6139000">
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input type="text" class="font-mono" placeholder="77.2090000" value="77.2090000">
+        </div>
+        <div class="form-group">
+          <label>Sunrise Convention</label>
+          <select>
+            <option selected>Precise (Swiss Ephemeris)</option>
+            <option>Jhora (Traditional)</option>
+          </select>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn-primary">Compute Chart</button>
+        <button class="btn-secondary">Save Chart</button>
+        <button class="btn-gold">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
+          </svg>
+          Run AI Analysis
+        </button>
+        <button class="btn-ghost">Copy for AI</button>
+        <span class="status-text">Lagna: Scorpio (12.34°) | Ayanamsa: 24.1432°</span>
+      </div>
+    </div>
+
+    <!-- ==================== TAB BAR ==================== -->
+    <div class="tab-bar">
+      <button class="active">Divisional Charts</button>
+      <button>Planets</button>
+      <button>Nakshatras</button>
+      <button>Karakas</button>
+      <button>Ashtakavarga</button>
+      <button>Dasha</button>
+      <button>Chara Dasha</button>
+      <button>Transits</button>
+      <button>Pinda Strength</button>
+      <button>Varshaphal</button>
+    </div>
+
+    <!-- ==================== CHART CONTENT ==================== -->
+    <div class="chart-grid">
+      <!-- D1 Chart -->
+      <div class="chart-card">
+        <div class="chart-card-title">D1 — Rashi</div>
+        <div class="chart-placeholder">
+          <span class="planet-label planet-su" style="top: 12%; left: 42%;">Su</span>
+          <span class="planet-label planet-mo" style="top: 18%; left: 56%;">Mo</span>
+          <span class="planet-label planet-ma" style="top: 35%; left: 12%;">Ma</span>
+          <span class="planet-label planet-me" style="top: 25%; left: 30%;">Me</span>
+          <span class="planet-label planet-ju" style="top: 72%; left: 68%;">Ju</span>
+          <span class="planet-label planet-ve" style="top: 58%; left: 22%;">Ve</span>
+          <span class="planet-label planet-sa" style="top: 78%; left: 38%;">Sa</span>
+          <span class="planet-label planet-ra" style="top: 45%; left: 75%;">Ra</span>
+          <span class="planet-label planet-ke" style="top: 45%; left: 18%;">Ke</span>
+        </div>
+      </div>
+
+      <!-- D9 Chart -->
+      <div class="chart-card">
+        <div class="chart-card-title">D9 — Navamsha</div>
+        <div class="chart-placeholder">
+          <span class="planet-label planet-su" style="top: 65%; left: 55%;">Su</span>
+          <span class="planet-label planet-mo" style="top: 28%; left: 42%;">Mo</span>
+          <span class="planet-label planet-ma" style="top: 72%; left: 25%;">Ma</span>
+          <span class="planet-label planet-me" style="top: 15%; left: 65%;">Me</span>
+          <span class="planet-label planet-ju" style="top: 42%; left: 80%;">Ju</span>
+          <span class="planet-label planet-ve" style="top: 82%; left: 58%;">Ve</span>
+          <span class="planet-label planet-sa" style="top: 35%; left: 20%;">Sa</span>
+          <span class="planet-label planet-ra" style="top: 55%; left: 38%;">Ra</span>
+          <span class="planet-label planet-ke" style="top: 20%; left: 78%;">Ke</span>
+        </div>
+      </div>
+
+      <!-- D10 Chart -->
+      <div class="chart-card">
+        <div class="chart-card-title">D10 — Dashamsha</div>
+        <div class="chart-placeholder">
+          <span class="planet-label planet-su" style="top: 38%; left: 62%;">Su</span>
+          <span class="planet-label planet-mo" style="top: 55%; left: 32%;">Mo</span>
+          <span class="planet-label planet-ma" style="top: 18%; left: 48%;">Ma</span>
+          <span class="planet-label planet-me" style="top: 75%; left: 72%;">Me</span>
+          <span class="planet-label planet-ju" style="top: 22%; left: 25%;">Ju</span>
+          <span class="planet-label planet-ve" style="top: 68%; left: 45%;">Ve</span>
+          <span class="planet-label planet-sa" style="top: 48%; left: 82%;">Sa</span>
+          <span class="planet-label planet-ra" style="top: 82%; left: 22%;">Ra</span>
+          <span class="planet-label planet-ke" style="top: 12%; left: 72%;">Ke</span>
+        </div>
+      </div>
+
+      <!-- D4 Chart -->
+      <div class="chart-card">
+        <div class="chart-card-title">D4 — Chaturthamsha</div>
+        <div class="chart-placeholder">
+          <span class="planet-label planet-su" style="top: 48%; left: 45%;">Su</span>
+          <span class="planet-label planet-mo" style="top: 32%; left: 72%;">Mo</span>
+          <span class="planet-label planet-ma" style="top: 62%; left: 65%;">Ma</span>
+          <span class="planet-label planet-me" style="top: 22%; left: 35%;">Me</span>
+          <span class="planet-label planet-ju" style="top: 78%; left: 52%;">Ju</span>
+          <span class="planet-label planet-ve" style="top: 42%; left: 18%;">Ve</span>
+          <span class="planet-label planet-sa" style="top: 15%; left: 55%;">Sa</span>
+          <span class="planet-label planet-ra" style="top: 68%; left: 28%;">Ra</span>
+          <span class="planet-label planet-ke" style="top: 55%; left: 78%;">Ke</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
