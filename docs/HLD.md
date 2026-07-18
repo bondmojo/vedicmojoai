@@ -398,8 +398,8 @@ Three primitives:
 - **Tools** — deterministic data: discovery (`list_clients`, `get_client_chart`),
   compute (`compute_chart`, `compute_varshaphal`), focused extractors
   (`get_shadbala`, `get_divisional_chart`, `get_dasha_tree`, `get_active_dasha`,
-  `get_ashtakavarga`, `get_relationships`, `get_jaimini`, `get_bhava_bala`,
-  `get_transits` — each taking a stored `chartId` **or** raw `birthData`),
+  `get_chara_dasha`, `get_ashtakavarga`, `get_relationships`, `get_jaimini`,
+  `get_bhava_bala`, `get_transits` — each taking a stored `chartId` **or** raw `birthData`),
   timeline (`get_timeline_periods`, `get_domain_dataset`), knowledge
   (`list_knowledge`, `get_domain_knowledge`, `get_framework`), and read-only
   access to already-generated reports.

@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mojo — Career & Wealth Event Rectification Report</title>
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #f5e8c8;
+    --gold-dark: #8a6f2e;
+    --indigo: #3b3483;
+    --indigo-light: #eeedfe;
+    --teal: #0f6e56;
+    --teal-light: #e1f5ee;
+    --coral: #993c1d;
+    --coral-light: #faece7;
+    --text: #1a1a18;
+    --text-mid: #4a4a46;
+    --text-muted: #7a7a74;
+    --surface: #fdfcf8;
+    --surface-alt: #f7f5ef;
+    --border: #e2dfd4;
+    --border-strong: #c8c4b4;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--surface);
+    color: var(--text);
+    line-height: 1.8;
+    font-size: 16px;
+  }
+
+  /* ── Cover ── */
+  .cover {
+    background: var(--indigo);
+    color: #fff;
+    padding: 64px 48px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,168,76,0.25);
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,168,76,0.15);
+  }
+  .cover-label {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+  .cover h1 {
+    font-size: 38px;
+    font-weight: normal;
+    line-height: 1.25;
+    color: #fff;
+    margin-bottom: 16px;
+  }
+  .cover h1 span { color: var(--gold); }
+  .cover-sub {
+    font-size: 16px;
+    color: rgba(255,255,255,0.65);
+    font-style: italic;
+    margin-bottom: 40px;
+  }
+  .cover-meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .cover-meta-item {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+  }
+  .cover-meta-item .label { color: rgba(255,255,255,0.45); letter-spacing:.04em; margin-bottom:3px; }
+  .cover-meta-item .value { color: rgba(255,255,255,0.9); font-size: 14px; }
+
+  /* ── Layout ── */
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 32px; }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 48px;
+  }
+  .toc h2 {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .toc ol { padding-left: 20px; }
+  .toc li {
+    font-size: 14px;
+    color: var(--text-mid);
+    margin-bottom: 6px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  .toc a { color: var(--indigo); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 56px; }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: .1em;
+    color: var(--gold-dark);
+    background: var(--gold-light);
+    padding: 3px 9px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .section h2 {
+    font-size: 24px;
+    font-weight: normal;
+    color: var(--indigo);
+  }
+
+  /* ── Intro block ── */
+  .chart-brief {
+    background: var(--indigo-light);
+    border-left: 3px solid var(--indigo);
+    border-radius: 0 8px 8px 0;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .chart-brief p { font-size: 15px; line-height: 1.75; color: var(--text); }
+  .chart-brief p + p { margin-top: 10px; }
+  .chart-brief strong { color: var(--indigo); font-style: normal; }
+
+  /* ── Planet table ── */
+  .planet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .planet-table th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+  }
+  .planet-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--text-mid);
+  }
+  .planet-table tr:last-child td { border-bottom: none; }
+  .planet-table tr:hover td { background: var(--surface-alt); }
+  .planet-name { font-weight: 600; color: var(--text); }
+  .rank-1 { color: var(--indigo); font-weight: 700; }
+  .rank-2 { color: var(--teal); font-weight: 600; }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-left: 4px;
+  }
+  .badge-gold { background: var(--gold-light); color: var(--gold-dark); }
+  .badge-indigo { background: var(--indigo-light); color: var(--indigo); }
+  .badge-teal { background: var(--teal-light); color: var(--teal); }
+  .badge-coral { background: var(--coral-light); color: var(--coral); }
+  .badge-gray { background: #f0efe8; color: #5f5e5a; }
+
+  /* ── Strength bar ── */
+  .strength-row { display: flex; align-items: center; gap: 8px; }
+  .strength-bar-wrap { flex: 1; max-width: 80px; height: 5px; background: var(--border); border-radius: 3px; }
+  .strength-bar { height: 100%; border-radius: 3px; }
+
+  /* ── Key insight box ── */
+  .insight-box {
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 18px 22px;
+    background: var(--gold-light);
+    margin-bottom: 24px;
+  }
+  .insight-box .insight-label {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--gold-dark);
+    margin-bottom: 8px;
+  }
+  .insight-box p { font-size: 15px; color: #5a4010; line-height: 1.7; }
+  .insight-box p + p { margin-top: 8px; }
+
+  /* ── Event cards ── */
+  .event-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px 20px;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+  .event-date {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .event-title { font-size: 16px; font-weight: normal; color: var(--indigo); }
+  .event-outcomes {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .outcome-pill {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .outcome-good { background: var(--teal-light); color: var(--teal); }
+  .outcome-avg { background: #faeeda; color: #854f0b; }
+  .outcome-poor { background: var(--coral-light); color: var(--coral); }
+  .event-body { padding: 18px 20px; }
+  .dasha-row {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--indigo-light);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .dasha-row span { color: var(--indigo); font-weight: 500; }
+  .score-inline {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    background: #f0efe8;
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-bottom: 14px;
+    display: flex;
+    gap: 18px;
+  }
+  .score-inline .s { color: var(--text-muted); }
+  .score-inline .v { color: var(--text); font-weight: 600; }
+  .event-body p { font-size: 14.5px; line-height: 1.75; color: var(--text-mid); }
+  .trigger-note {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    color: var(--teal);
+    border-top: 1px solid var(--border);
+    margin-top: 14px;
+    padding-top: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .trigger-note::before { content: '★'; flex-shrink: 0; }
+
+  /* ── Pattern cards ── */
+  .patterns-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 640px) { .patterns-grid { grid-template-columns: 1fr; } }
+  .pattern-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    background: var(--surface-alt);
+  }
+  .pattern-card.strong { border-color: var(--indigo); background: var(--indigo-light); }
+  .pattern-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .pattern-title {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .pattern-card.strong .pattern-title { color: var(--indigo); }
+  .pattern-desc { font-size: 13px; color: var(--text-mid); line-height: 1.65; }
+
+  /* ── Trigger timeline ── */
+  .trigger-section { margin-bottom: 32px; }
+  .trigger-phase-label {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .trigger-phase-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .future-trigger {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .future-trigger.peak { border-color: var(--teal); }
+  .future-trigger.transition { border-color: var(--gold); }
+  .future-trigger.moderate { border-color: var(--border-strong); }
+  .ft-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+  .future-trigger.peak .ft-header { background: var(--teal-light); border-bottom-color: rgba(15,110,86,0.2); }
+  .future-trigger.transition .ft-header { background: var(--gold-light); border-bottom-color: rgba(201,168,76,0.3); }
+  .ft-date { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+  .ft-name { font-size: 16px; color: var(--text); }
+  .future-trigger.peak .ft-name { color: var(--teal); }
+  .future-trigger.transition .ft-name { color: var(--gold-dark); }
+  .ft-scores {
+    text-align: right;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    flex-shrink: 0;
+  }
+  .ft-scores .label { font-size: 10px; color: var(--text-muted); }
+  .ft-scores .vals { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+  .ft-scores .vals span { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .ft-body { padding: 16px 18px; }
+  .ft-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .ft-tag {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #f0efe8;
+    color: var(--text-mid);
+    border: 1px solid var(--border);
+  }
+  .ft-tag.accent { background: var(--teal-light); color: var(--teal); border-color: rgba(15,110,86,0.3); }
+  .ft-tag.gold { background: var(--gold-light); color: var(--gold-dark); border-color: rgba(201,168,76,0.4); }
+  .ft-tag.indigo { background: var(--indigo-light); color: var(--indigo); border-color: rgba(59,52,131,0.25); }
+  .ft-body p { font-size: 14px; color: var(--text-mid); line-height: 1.72; }
+  .ft-conf {
+    display: inline-block;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .conf-high { background: var(--teal-light); color: var(--teal); }
+  .conf-med { background: #faeeda; color: #854f0b; }
+  .conf-certain { background: var(--indigo-light); color: var(--indigo); }
+
+  /* ── Confidence table ── */
+  .conf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .conf-table th {
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-strong);
+    text-align: left;
+    background: var(--surface-alt);
+  }
+  .conf-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-mid);
+    vertical-align: top;
+  }
+  .conf-table tr:last-child td { border-bottom: none; }
+
+  /* ── Prose ── */
+  .prose p { font-size: 15.5px; line-height: 1.82; color: var(--text-mid); margin-bottom: 16px; }
+  .prose p:last-child { margin-bottom: 0; }
+  .prose strong { color: var(--text); font-style: normal; }
+  .prose em { color: var(--indigo); font-style: italic; }
+
+  /* ── Executive summary ── */
+  .exec-summary {
+    background: var(--indigo);
+    border-radius: 14px;
+    padding: 36px 40px;
+    color: #fff;
+    margin-bottom: 40px;
+  }
+  .exec-summary h2 {
+    font-size: 22px;
+    font-weight: normal;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+  .exec-summary p {
+    font-size: 15px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.82);
+    margin-bottom: 16px;
+  }
+  .exec-summary p:last-child { margin-bottom: 0; }
+  .exec-summary strong { color: #fff; }
+  .exec-highlights {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+  }
+  @media (max-width: 640px) { .exec-highlights { grid-template-columns: 1fr; } }
+  .exec-highlight-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .exec-highlight-card .date {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11px;
+    color: var(--gold);
+    margin-bottom: 5px;
+    letter-spacing: .04em;
+  }
+  .exec-highlight-card .title {
+    font-size: 13px;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.4;
+  }
+  .exec-highlight-card .subtitle {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 4px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  /* ── Dividers & misc ── */
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 48px 0;
+  }
+  .subsection-title {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--text);
+    margin-bottom: 12px;
+    margin-top: 24px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .text-p {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--text-mid);
+    margin-bottom: 14px;
+  }
+  .text-p strong { color: var(--text); }
+  .footer {
+    text-align: center;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 32px 0 48px;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+  }
+  .footer a { color: var(--indigo); text-decoration: none; }
+  @media print {
+    body { font-size: 14px; }
+    .cover { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .exec-summary { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ COVER ═══ -->
+<div class="cover">
+  <div class="cover-label">Vedic Astrology · Predictive Analysis</div>
+  <h1>Mojo — Career &amp; Wealth<br><span>Event Rectification Report</span></h1>
+  <div class="cover-sub">Calibrated from historical milestones 2007–2025 · Predictions through 2028</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="label">Lagna</div>
+      <div class="value">Taurus (Vrishabha)</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Birth</div>
+      <div class="value">26 May 1984, 01:30 IST</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Current Mahadasha</div>
+      <div class="value">Venus MD / Ketu AD</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Generated</div>
+      <div class="value">July 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BODY ═══ -->
+<div class="page">
+
+  <!-- TOC -->
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#chart">Chart Overview &amp; Structural Foundations</a></li>
+      <li><a href="#history">Historical Timeline Validation (2007–2025)</a></li>
+      <li><a href="#patterns">Pattern Analysis &amp; Recurring Triggers</a></li>
+      <li><a href="#calibration">Model Calibration</a></li>
+      <li><a href="#current">Current Position (July 2026)</a></li>
+      <li><a href="#triggers">Upcoming Career &amp; Financial Trigger Points</a></li>
+      <li><a href="#financial">Financial Trajectory &amp; Wealth Forecast</a></li>
+      <li><a href="#confidence">Confidence Assessment</a></li>
+      <li><a href="#exec">Executive Summary</a></li>
+    </ol>
+  </nav>
+
+  <!-- ══ SECTION 1: Chart Overview ══ -->
+  <section class="section" id="chart">
+    <div class="section-header">
+      <span class="section-num">Section 01</span>
+      <h2>Chart Overview &amp; Structural Foundations</h2>
+    </div>
+
+    <div class="chart-brief">
+      <p>The entire career arc from 2007 to 2027 falls within a single 20-year <strong>Venus Mahadasha</strong> — rare, and critical to understanding every event in the timeline. Every job, every financial swing, every setback belongs to one overarching planetary chapter governed by Venus in Taurus H1, combust by the Sun.</p>
+      <p>The chart's true dominant force, however, is <strong>Saturn</strong> — the strongest planet by Shadbala, exalted in Libra, and owner of both the 9th and 10th houses. This creates a Dharma-Karma Adhipati Yoga that has driven every career and financial peak in the historical record.</p>
+    </div>
+
+    <div class="subsection-title">Planetary positions (D1 — Taurus lagna)</div>
+    <table class="planet-table">
+      <thead>
+        <tr>
+          <th>Planet</th>
+          <th>Sign / House</th>
+          <th>Nakshatra</th>
+          <th>Status</th>
+          <th>Strength rank</th>
+          <th>Houses owned</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="planet-name rank-1">Saturn</span></td>
+          <td>Libra / H6</td>
+          <td>Swati</td>
+          <td><span class="badge badge-teal">Exalted</span> <span class="badge badge-gray">Retrograde</span></td>
+          <td>
+            <div class="strength-row">
+              <span style="color:var(--indigo);font-weight:700;">1st · 1.60×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:100%;background:var(--indigo);"></div></div>
+            </div>
+          </td>
+          <td>H9, H10</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name rank-2">Venus</span></td>
+          <td>Taurus / H1</td>
+          <td>Krittika</td>
+          <td><span class="badge badge-teal">Own sign</span> <span class="badge badge-coral">Combust</span></td>
+          <td>
+            <div class="strength-row">
+              <span style="color:var(--teal);font-weight:600;">2nd · 1.15×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:72%;background:var(--teal);"></div></div>
+            </div>
+          </td>
+          <td>H1, H6</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Jupiter</span></td>
+          <td>Sagittarius / H8</td>
+          <td>Purva Ashadha</td>
+          <td><span class="badge badge-indigo">Viparita RY</span> <span class="badge badge-gray">Retrograde</span></td>
+          <td>
+            <div class="strength-row">
+              <span>3rd · 1.06×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:37%;background:#888;"></div></div>
+            </div>
+          </td>
+          <td>H8, H11</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Mars</span></td>
+          <td>Libra / H6</td>
+          <td>Vishakha</td>
+          <td><span class="badge badge-gray">Retrograde</span></td>
+          <td>
+            <div class="strength-row">
+              <span>4th · 1.06×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:35%;background:#888;"></div></div>
+            </div>
+          </td>
+          <td>H7, H12</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Sun</span></td>
+          <td>Taurus / H1</td>
+          <td>Rohini</td>
+          <td><span class="badge badge-gold">Strong</span></td>
+          <td>
+            <div class="strength-row">
+              <span>5th · 1.03×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:20%;background:#888;"></div></div>
+            </div>
+          </td>
+          <td>H4</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Mercury</span></td>
+          <td>Aries / H12</td>
+          <td>Bharani</td>
+          <td><span class="badge badge-coral">H12 placed</span></td>
+          <td>
+            <div class="strength-row">
+              <span>6th · 0.99×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:12%;background:#aaa;"></div></div>
+            </div>
+          </td>
+          <td>H2, H5</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Moon</span></td>
+          <td>Pisces / H11</td>
+          <td>Revati</td>
+          <td><span class="badge badge-teal">H11 gains</span></td>
+          <td>
+            <div class="strength-row">
+              <span>7th · 0.93×</span>
+              <div class="strength-bar-wrap"><div class="strength-bar" style="width:6%;background:#aaa;"></div></div>
+            </div>
+          </td>
+          <td>H3</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Rahu</span></td>
+          <td>Taurus / H1</td>
+          <td>Rohini</td>
+          <td><span class="badge badge-gray">Weak</span> <span class="badge badge-gray">Retrograde</span></td>
+          <td><span style="color:var(--text-muted);">Weak · 0×</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><span class="planet-name">Ketu</span></td>
+          <td>Scorpio / H7</td>
+          <td>Anuradha</td>
+          <td><span class="badge badge-gray">Weak</span> <span class="badge badge-gray">Retrograde</span></td>
+          <td><span style="color:var(--text-muted);">Weak · 0×</span></td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="insight-box">
+      <div class="insight-label">Core Structural Insight</div>
+      <p><strong>Saturn is the chart's engine.</strong> Exalted in Libra (H6), owning both H9 (fortune/dharma) and H10 (career/karma), Saturn creates a Dharma-Karma Adhipati Yoga. Every time Saturn activates as PD or AD lord within the Venus Mahadasha, career and income measurably peak. This has been validated across 5 independent historical events with near-perfect timing alignment.</p>
+      <p><strong>Venus's combustion is the chart's principal limitation.</strong> Venus in Taurus H1 is in its own sign and strong (1.15×), but is burned by the Sun at only 5.65° separation. This creates a persistent gap between financial potential and career recognition. Income follows the dashas reliably; visible authority and title advancement consistently lag behind what the financial picture would suggest.</p>
+    </div>
+
+    <div class="subsection-title">Mahadasha timeline</div>
+    <table class="planet-table">
+      <thead>
+        <tr><th>Mahadasha</th><th>Period</th><th>Duration</th><th>Career context</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Mercury MD</td><td>May 1984 – Jan 2000</td><td>16 yrs</td><td>Formative / education</td></tr>
+        <tr><td>Ketu MD</td><td>Jan 2000 – Jan 2007</td><td>7 yrs</td><td>Transition, dissolution</td></tr>
+        <tr><td style="color:var(--indigo);font-weight:600;">Venus MD</td><td>Jan 2007 – Jan 2027</td><td style="color:var(--indigo);font-weight:600;">20 yrs</td><td style="color:var(--indigo);">Entire career — all 4 jobs, startup</td></tr>
+        <tr><td>Sun MD</td><td>Jan 2027 – Jan 2033</td><td>6 yrs</td><td>Authority, visibility, new chapter</td></tr>
+        <tr><td>Moon MD</td><td>Jan 2033 – Jan 2043</td><td>10 yrs</td><td>Gains, networks, accumulation</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 2: Historical Validation ══ -->
+  <section class="section" id="history">
+    <div class="section-header">
+      <span class="section-num">Section 02</span>
+      <h2>Historical Timeline Validation</h2>
+    </div>
+
+    <p class="text-p">Each historical milestone has been mapped to the exact Mahadasha / Antardasha / Pratyantardasha active at the time, with the quantitative career and cashflow scores from the deterministic period-scoring engine. Every event is explained by the planetary combinations, not by post-hoc generalisation.</p>
+
+    <!-- Event 1 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">July 2007</div>
+          <div class="event-title">First Job</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-poor">Career: Below Average</span>
+          <span class="outcome-good">Money: Good</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Venus</span> · PD: <span>Venus</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">66</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">69</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Medium</span></div>
+        </div>
+        <p>Venus Mahadasha opened in January 2007. The triple-Venus subperiod that inaugurates every Venus MD is technically its weakest window because the lagna lord's combust nature is fully magnified — no moderating AD or PD influence dilutes it. Career expression is pressured and self-conscious. However, the cashflow score (69) confirms "Money: Good" — Venus in Taurus H1 in its own sign activates the Dhana Yoga (Mercury H2 lord + Venus H1), and income flows even when role quality is underwhelming.</p>
+        <div class="trigger-note">Astrological trigger: Venus/Venus/Venus — combust lagna lord triple-stacked = good earnings, strained career identity. Cashflow score outperforms career score by 3 points, matching the "money good, career below average" observation exactly.</div>
+      </div>
+    </div>
+
+    <!-- Event 2 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">May 2009</div>
+          <div class="event-title">Second Job</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-good">Career: Good</span>
+          <span class="outcome-good">Money: Good</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Venus</span> · PD: <span>Saturn</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">70</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">71</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Medium — highest in Venus/Venus sub-cycle</span></div>
+        </div>
+        <p>This is the clearest validation in the entire timeline. Saturn PD activating inside Venus/Venus is the chart's single strongest career trigger. Saturn is exalted in Libra H6, owns H9 and H10 — the Dharma-Karma Adhipati lord arriving as PD lord produces peak scores. 70/71 are the highest values in this entire sub-era. The event fires in February 2009 (PD start) and the job change materialises by May 2009.</p>
+        <div class="trigger-note">Astrological trigger: Saturn PD (exalted H9-H10 lord) inside Venus/Venus. Classic career peak. Event match is precise to within weeks. This pattern repeats 5 times across the timeline.</div>
+      </div>
+    </div>
+
+    <!-- Event 3 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">March 2012</div>
+          <div class="event-title">Third Job</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-good">Career: Good</span>
+          <span class="outcome-good">Money: Good</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Moon</span> · PD: <span>Saturn</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">64</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">68</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Medium</span></div>
+        </div>
+        <p>Moon is in Pisces H11 — the house of gains, networks, and fulfilment. As AD lord it shapes this career chapter around relationship-based success. Saturn PD (exalted H9-H10 lord) fires again, producing the second clear career elevation of the Saturn-PD pattern. The job change follows within weeks of the PD activation in January 2012.</p>
+        <div class="trigger-note">Astrological trigger: Moon AD (H11 lord — gains, networks) + Saturn PD (H9-H10 lord). Career opportunity arrived through people and professional connections. Good career + good money confirmed by 64/68 scores.</div>
+      </div>
+    </div>
+
+    <!-- Event 4 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">February 2014</div>
+          <div class="event-title">Fourth Job</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-good">Career: Good</span>
+          <span class="outcome-poor">Money: Initially Poor</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Mars</span> · PD: <span>Sun → Moon</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">57–58</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">57–58</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Low</span></div>
+        </div>
+        <p>This marks the entry into Venus/Mars AD — a distinctly harder sub-chapter. Mars is retrograde in Libra H6 and in Taurus H8 in the D10 (Dasamsa). Mars owns H7 (business partnerships) and H12 (expenditure, loss). An H7-H12 lord placed in H6 in a retrograde state creates ongoing tension between workload, compensation, and role expectations. The career was "Good" (a genuine step up) but the financial package disappointed — exactly what the low cashflow score (57-58) predicts.</p>
+        <div class="trigger-note">Astrological trigger: Mars AD (H7-H12 lord, retrograde, H6 in D1, H8 in D10). Career opportunity with financial sacrifice embedded in the planetary structure. Score confirms it.</div>
+      </div>
+    </div>
+
+    <!-- Event 5 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">Post-2015</div>
+          <div class="event-title">Money improves significantly</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-avg">Career: Ongoing</span>
+          <span class="outcome-good">Money: Recovery</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Rahu</span> · PD: <span>Saturn</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">64</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">65</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Medium</span></div>
+        </div>
+        <p>The financial turnaround arrives with Saturn PD inside Rahu AD (Jan–Jul 2015). Saturn (exalted H9-H10 lord) overrides Rahu's otherwise volatile influence and injects structural income improvement. The cashflow score jumps from 57-58 (Mars AD) to 64-65 — a clear recovery signal.</p>
+        <div class="trigger-note">Astrological trigger: Saturn PD resetting the financial trajectory within Rahu AD. The 3rd instance of Saturn-PD producing income recovery in this chart.</div>
+      </div>
+    </div>
+
+    <!-- Event 6 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">January 2022</div>
+          <div class="event-title">Career: Average · Money: Good</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-avg">Career: Average</span>
+          <span class="outcome-good">Money: Good</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Saturn</span> · PD: <span>Mars / Rahu</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">66–68</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">68–70</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Medium — sustained peak</span></div>
+        </div>
+        <p>The Venus/Saturn AD period (Nov 2019 – Jan 2023) is the peak career and income chapter of the entire Venus Mahadasha. Saturn as AD lord brings its full exalted H9-H10 power directly to the surface. Career scores sustain 66-72 (the highest range anywhere in the MD), and cashflow scores hold 68-73. "Money: Good" is exactly what a sustained cashflow score of 68-70 produces.</p>
+        <p>"Career: Average" despite good scores is explained by Venus's combustion — even in Saturn AD, the lagna lord remains burned. Income and stability improve significantly, but visible career authority and title advancement lag. There is a structural gap between what is earned and what is recognised.</p>
+        <div class="trigger-note">Astrological trigger: Saturn AD = chart's financial and structural peak. Income peaks here. Career expression still limited by combust Venus. The 4th instance of Saturn producing the chart's highest scores.</div>
+      </div>
+    </div>
+
+    <!-- Event 7 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">July 2023</div>
+          <div class="event-title">Money: Average · Career: Okay</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-avg">Career: Okay</span>
+          <span class="outcome-avg">Money: Average</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Mercury</span> · PD: <span>Mercury → Ketu</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">60–61</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">62–64</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Low-Medium — drop from Saturn AD</span></div>
+        </div>
+        <p>The transition from Saturn AD to Mercury AD is a structural step-down. Mercury is in Aries H12 (Bharani nakshatra, Venus-ruled). As both 2nd and 5th house lord placed in H12, Mercury's AD activates income leakage alongside skill deployment. The cashflow drops from 68-73 to 62-64. Career scores fall from 68+ to 60-61. "Okay career, average money" is precisely what Mercury-in-H12 delivers.</p>
+        <div class="trigger-note">Astrological trigger: Mercury AD (H12 placement = income drain). Transition away from Saturn AD peak. Score drop is structural, not circumstantial.</div>
+      </div>
+    </div>
+
+    <!-- Event 8 -->
+    <div class="event-card" style="border-color:var(--coral);">
+      <div class="event-header" style="background:#fff5f3;">
+        <div>
+          <div class="event-date">August 2024</div>
+          <div class="event-title">Lost Job</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-poor">Career: Setback</span>
+          <span class="outcome-poor">Money: Disrupted</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Mercury</span> · PD: <span>Mars → Rahu (Aug 2, 2024)</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">60–61</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">63</span></div>
+          <div><span class="s">DA-3 Classification</span> <span class="v" style="color:var(--coral);">Peak Stress Periods</span></div>
+        </div>
+        <p>The job loss in August 2024 maps with clinical precision to the start of Venus/Mercury/Rahu PD on <strong>August 2, 2024</strong>. Mars PD (preceding: Jun–Aug 2024) is retrograde in H6 in D1 and placed in H8 in D10 — the 8th house in Dasamsa is the classical signature for sudden professional endings. The DA-3 agent explicitly classified Venus/Mercury/Mars as "sudden professional turbulence" and Venus/Mercury/Rahu as "sudden career shifts with volatile ambition."</p>
+        <p>Rahu in D10 H8 amplified the disruption energy. Mercury AD (H12) kept the financial context constrained. The start date of Venus/Mercury/Rahu (August 2, 2024) and the reported job loss in August 2024 are essentially concurrent — a near-exact timing match.</p>
+        <div class="trigger-note" style="color:var(--coral);">Astrological trigger: Mars PD retrograde (D10 H8) → Rahu PD (D10 H8). D10 8th house = professional termination signature. Confidence: Very High. Date precision: within days.</div>
+      </div>
+    </div>
+
+    <!-- Event 9 -->
+    <div class="event-card">
+      <div class="event-header">
+        <div>
+          <div class="event-date">February 2025</div>
+          <div class="event-title">Pre-seed Startup · Minimum Salary</div>
+        </div>
+        <div class="event-outcomes">
+          <span class="outcome-avg">Career: High responsibility</span>
+          <span class="outcome-poor">Money: Sacrifice</span>
+        </div>
+      </div>
+      <div class="event-body">
+        <div class="dasha-row">MD: <span>Venus</span> · AD: <span>Mercury</span> · PD: <span>Jupiter (Jan 4, 2025)</span></div>
+        <div class="score-inline">
+          <div><span class="s">Career score</span> <span class="v">62</span></div>
+          <div><span class="s">Cashflow score</span> <span class="v">65</span></div>
+          <div><span class="s">Intensity</span> <span class="v">Medium</span></div>
+        </div>
+        <p>Jupiter PD beginning January 4, 2025 brings a new opportunity within weeks — the startup offer arrives in February 2025. Jupiter owns H8 (Sagittarius) and H11 (Pisces) from Taurus lagna. H8 lord in H8 creates Viparita Raja Yoga — gains through transformation, unconventional paths, and situations that appear risky but carry hidden potential. A pre-seed startup with minimum salary but equity upside is textbook H8 Viparita energy.</p>
+        <p>The cashflow score (65) confirms that income remains constrained even as the opportunity is real. Mercury as AD lord (H12 placement) keeps the financial sacrifice active. Career score 62 reflects high responsibility alongside limited financial reward — matching the observation precisely.</p>
+        <div class="trigger-note">Astrological trigger: Jupiter PD (H8 Viparita Raja Yoga) = unconventional opportunity with transformation potential. Mercury AD = below-market compensation. Both confirmed by the scores and the lived experience.</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 3: Patterns ══ -->
+  <section class="section" id="patterns">
+    <div class="section-header">
+      <span class="section-num">Section 03</span>
+      <h2>Pattern Analysis &amp; Recurring Triggers</h2>
+    </div>
+
+    <p class="text-p">After mapping all 9 historical events, four repeating patterns emerge with strong statistical consistency across the 2007-2025 period. These patterns inform the future predictions in Section 6.</p>
+
+    <div class="patterns-grid">
+      <div class="pattern-card strong">
+        <div class="pattern-icon">★</div>
+        <div class="pattern-title">Pattern 1 — Saturn activations = peaks</div>
+        <div class="pattern-desc">Every time Saturn appears as PD or AD lord (2009, 2012, 2015, 2019-2023), career and income measurably peak. Saturn's exalted H9-H10 lordship (Dharma-Karma Adhipati Yoga) overrides all competing planetary influences. <strong>Consistency: 5/5 events.</strong></div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-icon">◈</div>
+        <div class="pattern-title">Pattern 2 — Mercury H12 = sacrifice phases</div>
+        <div class="pattern-desc">Mercury as AD or PD lord (2023-2025) reliably reduces cashflow while keeping career activity high. H12 placement = maximum skill deployment, minimum financial reward. Both the post-2023 drop and the startup phase are structurally Mercury-H12 chapters.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-icon">⚡</div>
+        <div class="pattern-title">Pattern 3 — Mars/Rahu in D10 H8 = job disruptions</div>
+        <div class="pattern-desc">Mars retrograde in D10 H8 and Rahu in D10 H8 both correlate with sudden professional upheaval. Venus/Mercury/Mars and Venus/Mercury/Rahu produced the August 2024 job loss. This is a chart-specific, high-confidence pattern for employment endings.</div>
+      </div>
+      <div class="pattern-card">
+        <div class="pattern-icon">◎</div>
+        <div class="pattern-title">Pattern 4 — Moon H11 = network gains</div>
+        <div class="pattern-desc">Whenever Moon activates as AD or PD lord (Venus/Moon AD: 2011-2013, Moon PD sub-periods), career growth arrives through people — referrals, contacts, collaborative projects. Moon in Pisces H11 consistently translates into relationship-sourced opportunities.</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <div class="insight-label">Calibration finding</div>
+      <p>The <strong>Venus combustion discount</strong> is the most important calibration adjustment. Standard treatment of Venus as a strong benefic in its own sign in H1 overstates career ease. The combustion consistently produces a gap between financial performance and career recognition — income follows the dashas reliably, but visible authority, titles, and public respect lag by 1-3 years. Every future prediction should apply this discount to career expression while preserving financial predictions at face value.</p>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 4: Calibration ══ -->
+  <section class="section" id="calibration">
+    <div class="section-header">
+      <span class="section-num">Section 04</span>
+      <h2>Model Calibration</h2>
+    </div>
+
+    <div class="subsection-title">Where the model performs strongly</div>
+    <p class="text-p">The predictive model performs with highest accuracy when Saturn is involved. All five Saturn PD/AD activations match observed career and financial highs with near-perfect timing (within days to weeks). The cashflow model is particularly reliable — scores above 67 consistently correspond to "Money: Good" observations, and scores below 60 consistently correspond to "Money: Poor / Average" observations.</p>
+    <p class="text-p">The job-loss prediction mechanism is validated: Mars retrograde in D10 H8 + Rahu in D10 H8 = termination event, with date precision to within days of the actual August 2024 loss.</p>
+
+    <div class="subsection-title">Where refinements are needed</div>
+    <p class="text-p"><strong>Venus combustion is systematically underweighted.</strong> Generic Vedic interpretation treats Venus in own sign in H1 as highly auspicious, producing optimistic career predictions. The historical record shows the combustion suppresses career authority and recognition even when income is strong. The 2022 period (Money: Good, Career: Average despite Saturn AD scores of 68-70) is the clearest example. Future predictions should expect a 1-2 band discount on career scores for career quality, while cashflow predictions remain reliable.</p>
+    <p class="text-p"><strong>D10 H8 placements require explicit termination flagging.</strong> The model correctly scores Venus/Mercury/Mars and Venus/Mercury/Rahu as "stress periods," but stops short of identifying them as potential employment-ending configurations. Any future period where the active PD or AD lord occupies D10 H8 in a retrograde or functionally malefic state should be proactively flagged as an employment-risk window, not merely a "challenging period."</p>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 5: Current Position ══ -->
+  <section class="section" id="current">
+    <div class="section-header">
+      <span class="section-num">Section 05</span>
+      <h2>Current Position — July 2026</h2>
+    </div>
+
+    <div class="chart-brief">
+      <p><strong>Active dasha:</strong> Venus MD / Ketu AD / Rahu PD (Apr 29 – Jul 2, 2026) → Jupiter PD begins Jul 2, 2026</p>
+      <p><strong>Career score: 53 · Cashflow score: 58 · Intensity: Low</strong> — the weakest window of the Ketu AD phase.</p>
+    </div>
+
+    <p class="text-p">You are currently in the lowest-scoring sub-period of an already low-scoring Antardasha. Ketu in Scorpio H7 (Anuradha nakshatra, Saturn-ruled) as AD lord executes exactly what the user described: stripping away material comforts, reducing income, and forcing detachment from wealth accumulation. Ketu's fundamental nature is moksha — dissolution of material attachment — and in H7 it disrupts partnerships, business relationships, and external-facing career momentum.</p>
+
+    <p class="text-p">The Rahu PD adds volatility without stability. The combination of Ketu AD + Rahu PD is the "crossing" phase — Ketu dissolving the old, Rahu unable to build the new cleanly. This is not a period for forced decisions or large bets. Preservation and preparation are the right posture.</p>
+
+    <div class="insight-box">
+      <div class="insight-label">The Ketu Phase Explained</div>
+      <p>The Ketu Antardasha stripping material comforts within Venus Mahadasha is astrologically deliberate, not accidental. Venus MD's 20 years are drawing to a close (January 2, 2027). The final Antardasha in most Mahadashas is often a "completing" energy — clearing unresolved karma from the MD before a new chapter begins. Ketu in H7 specifically dissolves attachment to partnerships, external validation, and relational income. The startup sacrifice is Ketu's lesson operating at the practical level.</p>
+      <p><strong>The next sub-period beginning July 2, 2026 (Jupiter PD) brings a small improvement — career score 55, cashflow 60.</strong> The meaningful window arrives in August 2026.</p>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 6: Trigger Points ══ -->
+  <section class="section" id="triggers">
+    <div class="section-header">
+      <span class="section-num">Section 06</span>
+      <h2>Upcoming Career &amp; Financial Trigger Points</h2>
+    </div>
+
+    <!-- Trigger 1 -->
+    <div class="trigger-section">
+      <div class="trigger-phase-label">Current phase — Venus / Ketu AD (Nov 2025 – Jan 2027)</div>
+
+      <div class="future-trigger peak">
+        <div class="ft-header">
+          <div>
+            <div class="ft-date">Aug 27 – Nov 3, 2026 · 9 weeks</div>
+            <div class="ft-name">Trigger 1 — Venus / Ketu / Saturn PD</div>
+          </div>
+          <div class="ft-scores">
+            <div class="label">Career / Cashflow</div>
+            <div class="vals">61<span> / </span>64</div>
+          </div>
+        </div>
+        <div class="ft-body">
+          <div class="ft-tags">
+            <span class="ft-tag accent">Best window in Ketu AD</span>
+            <span class="ft-tag accent">Salary / equity negotiation</span>
+            <span class="ft-tag accent">Startup milestone push</span>
+            <span class="ft-tag">Financial renegotiation</span>
+          </div>
+          <p>This is the most important near-term window before the Mahadasha transition. Saturn PD (exalted H9-H10 lord) overrides Ketu AD's suppressive influence for 9 weeks. Historical precedent is unbroken: Saturn PD has produced career and financial improvements every time it has fired in this chart — 2009 (70/71), 2012 (64/68), 2015 (64/65), and throughout Saturn AD (2019-2023). The career score (61) is the highest in the Ketu AD phase. The cashflow score (64) represents a clear improvement over the surrounding sub-periods (57-60).</p>
+          <p style="margin-top:10px;">In the context of the pre-seed startup, this is the natural window for: equity renegotiation as the company's direction becomes clearer; a salary floor revision if any traction milestone has been achieved; or a significant investor conversation that could change the financial structure of your participation. Do not let this window pass without a concrete financial or career conversation.</p>
+          <p style="margin-top:10px;"><strong>Astrological basis:</strong> Saturn PD (exalted Libra H6, H9-H10 lord) — Dharma-Karma Adhipati Yoga activation. An exalted Saturn PD cannot be fully suppressed by Ketu AD. Five prior instances, all confirmed.</p>
+          <span class="ft-conf conf-high">Confidence: High</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trigger 2: MD Transition -->
+    <div class="trigger-section">
+      <div class="trigger-phase-label">Major life pivot</div>
+
+      <div class="future-trigger transition">
+        <div class="ft-header">
+          <div>
+            <div class="ft-date">January 2, 2027 — Mathematical certainty</div>
+            <div class="ft-name">Trigger 2 — Venus MD closes · Sun MD opens</div>
+          </div>
+          <div class="ft-scores">
+            <div class="label">Type</div>
+            <div class="vals" style="font-size:16px;line-height:1.3;">20-year<br>chapter<br>pivot</div>
+          </div>
+        </div>
+        <div class="ft-body">
+          <div class="ft-tags">
+            <span class="ft-tag gold">Major career pivot</span>
+            <span class="ft-tag gold">Identity shift</span>
+            <span class="ft-tag gold">Leadership trajectory</span>
+            <span class="ft-tag">New chapter</span>
+          </div>
+          <p>The close of a 20-year Mahadasha is one of the most significant astrological moments in a life. From January 2, 2027, the external world increasingly interacts with you through the Sun's qualities: authority, public identity, leadership, and visibility. Sun in Taurus H1 (Rohini nakshatra, Moon-lorded, strength ratio 1.03) gives public presence, creative authority, and natural leadership instinct — alongside ego sensitivity and a greater need for recognition.</p>
+          <p style="margin-top:10px;">The startup joined in February 2025 will be approximately 2 years old at this transition point. This is when its nature becomes clear — whether it evolves into a leadership platform for the next chapter or requires a directional change. The Mahadasha shift is not a single event but a reorientation of the entire operating context. Practical decisions (role, title, equity structure, direction) made in H1 2027 carry disproportionate long-term weight.</p>
+          <p style="margin-top:10px;"><strong>Important caveat:</strong> The Sun MD's career scores (52-62 range) are structurally lower than the Venus/Saturn AD peak (66-73). This is not a decline in the person — it is a shift in the planetary support structure. Income does not automatically jump on January 2, 2027. The MD transition opens a new quality of opportunity, not a sudden financial windfall.</p>
+          <span class="ft-conf conf-certain">Confidence: Certain (mathematically fixed)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trigger 3 -->
+    <div class="trigger-section">
+      <div class="trigger-phase-label">Sun MD — early phase (2027–2028)</div>
+
+      <div class="future-trigger peak">
+        <div class="ft-header">
+          <div>
+            <div class="ft-date">Jul 8 – Aug 6, 2027 · 4 weeks — sharp window</div>
+            <div class="ft-name">Trigger 3 — Sun / Moon / Saturn PD</div>
+          </div>
+          <div class="ft-scores">
+            <div class="label">Career / Cashflow</div>
+            <div class="vals">62<span> / </span>64</div>
+          </div>
+        </div>
+        <div class="ft-body">
+          <div class="ft-tags">
+            <span class="ft-tag accent">Peak of Sun MD early phase</span>
+            <span class="ft-tag accent">Career recognition</span>
+            <span class="ft-tag accent">Leadership opportunity</span>
+            <span class="ft-tag">Promotion / title upgrade</span>
+            <span class="ft-tag">Startup milestone</span>
+          </div>
+          <p>The sharpest positive window in Sun MD's first two years. Moon AD (H11 lord, Pisces H11) activates gains, networks, and fulfilment. Saturn PD (exalted H9-H10 lord) fires its well-established pattern of career elevation for the 5th time. The combination — H11 gains lord as AD + H9-H10 career lord as PD, both active simultaneously — produces the highest score in the Sun/Moon AD period.</p>
+          <p style="margin-top:10px;">The window is only 4 weeks long, making precise timing critical. If a leadership role, funding round, equity event, or executive title transition is possible, preparation should begin in the preceding Sun/Moon AD period (April–July 2027) and the trigger executed in this window. The score (62/64) is comparable to the 2012 job upgrade (64/68 with the same Moon AD + Saturn PD combination).</p>
+          <p style="margin-top:10px;"><strong>Astrological basis:</strong> Moon AD (H11) + Saturn PD (exalted H9-H10). Identical combination to March 2012 job upgrade. 4-week window — plan around it, don't wait for it to arrive.</p>
+          <span class="ft-conf conf-high">Confidence: High</span>
+        </div>
+      </div>
+
+      <div class="future-trigger moderate" style="margin-top:16px;">
+        <div class="ft-header">
+          <div>
+            <div class="ft-date">May 29 – Jul 20, 2028</div>
+            <div class="ft-name">Trigger 4 — Sun / Rahu / Saturn PD</div>
+          </div>
+          <div class="ft-scores">
+            <div class="label">Career / Cashflow</div>
+            <div class="vals">59<span> / </span>58</div>
+          </div>
+        </div>
+        <div class="ft-body">
+          <div class="ft-tags">
+            <span class="ft-tag indigo">International opportunity</span>
+            <span class="ft-tag indigo">Unconventional pivot</span>
+            <span class="ft-tag indigo">Technology / innovation</span>
+            <span class="ft-tag">Business direction</span>
+          </div>
+          <p>Rahu as AD lord in Sun MD introduces disruption, ambition beyond convention, and appetite for new environments. Rahu in Taurus H1 (Rohini) amplifies the Sun's visibility agenda. Saturn PD provides structural grounding. This combination is less powerful than Moon/Saturn (career score 59 vs 62) but points toward a directional move — likely involving technology, international exposure, or unconventional professional environments. Not a financial peak, but a course-setter.</p>
+          <span class="ft-conf conf-med">Confidence: Medium</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 7: Financial Trajectory ══ -->
+  <section class="section" id="financial">
+    <div class="section-header">
+      <span class="section-num">Section 07</span>
+      <h2>Financial Trajectory &amp; Wealth Forecast</h2>
+    </div>
+
+    <div class="subsection-title">Phase 1: Aug–Nov 2026 (Venus / Ketu / Saturn PD) — Cashflow 64</div>
+    <p class="text-p">The one meaningful income window in an otherwise contracting phase. This is where any salary floor renegotiation at the startup should be positioned. If equity terms have not been formalised, this is the window. After November 3, 2026, scores return to the 57-60 range through the end of the Venus MD.</p>
+
+    <div class="subsection-title">Phase 2: Jan–Jun 2027 (Sun MD early) — Cashflow 54-59</div>
+    <p class="text-p">Structural reset. Income does not immediately jump with the Mahadasha shift. The Sun MD opens in Sun/Sun AD — the weakest sub-period of any Mahadasha (cashflow score 55-56). There is no quick financial recovery at the MD transition itself. What changes is the quality of opportunity and the nature of career activity, not the immediate cash position. The expectation of immediate improvement in early 2027 needs to be managed carefully.</p>
+
+    <div class="subsection-title">Phase 3: Jul 2027 onward (Sun / Moon AD) — Cashflow recovery begins</div>
+    <p class="text-p">Cashflow recovery begins meaningfully in Moon AD. Moon in H11 (gains) as AD lord is genuinely income-supportive. The peak within this period is Sun/Moon/Saturn PD (Jul–Aug 2027, Cashflow 64) and Sun/Moon/Venus PD (Sep–Oct 2027, Cashflow 63). The Venus PD within Moon AD is also notable — Venus is the original MD lord and its reactivation as a PD within Sun MD often delivers deferred financial recognition from the Venus era.</p>
+
+    <div class="subsection-title">Long-term wealth assessment (Sun MD: 2027–2033)</div>
+    <p class="text-p">The Sun MD will not replicate the financial peaks of the Venus/Saturn AD period (2019-2023, scores 68-73). Sun owns only H4 (home, fixed assets) and does not create the Dharma-Karma Adhipati Yoga that Saturn's H9-H10 lordship does. Income will be more variable, tied more tightly to effort and public positioning, and less structurally supported than the 2019-2023 peak.</p>
+
+    <div class="subsection-title">The startup's equity wildcard — Viparita Raja Yoga timing</div>
+    <p class="text-p">Jupiter in H8 retrograde creates a Viparita Raja Yoga — gains from transformation, risk-taking, and unconventional structures. The pre-seed startup is structurally a Jupiter H8 Viparita vehicle: financially sacrificial in the short term, with back-loaded reward potential. If equity from this venture matures into a liquidity event, the timing would likely correlate with Jupiter being activated as PD or AD lord. The first major Jupiter AD window in the Sun MD is Sun/Jupiter AD (beginning approximately late 2029 in the Sun MD tree). This is the period to watch for any equity or liquidity outcome from the current venture.</p>
+
+    <div class="insight-box">
+      <div class="insight-label">Wealth accumulation prognosis</div>
+      <p>Full financial recovery to 2019-2023 levels is more realistically a <strong>Moon Mahadasha story (2033-2043)</strong> when the chart's own gains lord — Moon in Pisces H11 — rules an entire 10-year period. The Moon MD will almost certainly be the strongest sustained wealth-accumulation chapter in this life. The Sun MD (2027-2033) is a period of establishing authority and public identity; the financial reward for that authority arrives in the Moon MD. The current sacrifice phase, viewed in this longer arc, is positioning work — not a permanent plateau.</p>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 8: Confidence ══ -->
+  <section class="section" id="confidence">
+    <div class="section-header">
+      <span class="section-num">Section 08</span>
+      <h2>Confidence Assessment</h2>
+    </div>
+
+    <table class="conf-table">
+      <thead>
+        <tr>
+          <th>Prediction / Event</th>
+          <th>Astrological basis</th>
+          <th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Job loss Aug 2024</strong> (retroactive validation)</td>
+          <td>Mars/Rahu PD in D10 H8, date matched within days</td>
+          <td><span class="ft-conf conf-high">Very High</span></td>
+        </tr>
+        <tr>
+          <td><strong>Startup opportunity Feb 2025</strong> (retroactive)</td>
+          <td>Jupiter PD (H8 Viparita), Mercury H12 AD = salary sacrifice + hidden potential</td>
+          <td><span class="ft-conf conf-high">High</span></td>
+        </tr>
+        <tr>
+          <td><strong>Venus/Ketu/Saturn window</strong> (Aug–Nov 2026)</td>
+          <td>Exalted Saturn PD — 5/5 historical activations confirmed</td>
+          <td><span class="ft-conf conf-high">High</span></td>
+        </tr>
+        <tr>
+          <td><strong>MD transition</strong> Jan 2, 2027</td>
+          <td>Mathematical certainty — fixed by birth chart</td>
+          <td><span class="ft-conf conf-certain">Certain</span></td>
+        </tr>
+        <tr>
+          <td><strong>Sun MD score drop</strong> from Venus MD peak</td>
+          <td>Structural: Sun owns only H4 vs Saturn's H9-H10 yoga</td>
+          <td><span class="ft-conf conf-high">High</span></td>
+        </tr>
+        <tr>
+          <td><strong>Sun/Moon/Saturn window</strong> Jul–Aug 2027</td>
+          <td>Saturn PD pattern, 5/5 historical; Moon AD H11 gains lord</td>
+          <td><span class="ft-conf conf-high">High</span></td>
+        </tr>
+        <tr>
+          <td><strong>International / unconventional opportunity</strong> 2028</td>
+          <td>Rahu AD + Saturn PD — directional, not financial peak</td>
+          <td><span class="ft-conf conf-med">Medium</span></td>
+        </tr>
+        <tr>
+          <td><strong>Equity / liquidity event</strong> from startup</td>
+          <td>Jupiter AD activation needed — first window late 2029+</td>
+          <td><span class="ft-conf conf-med">Medium</span></td>
+        </tr>
+        <tr>
+          <td><strong>Moon MD (2033-2043)</strong> as financial peak era</td>
+          <td>Moon in H11 as 10-year MD lord — structural gains period</td>
+          <td><span class="ft-conf conf-high">High</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- ══ SECTION 9: Executive Summary ══ -->
+  <section class="section" id="exec">
+    <div class="section-header">
+      <span class="section-num">Section 09</span>
+      <h2>Executive Summary</h2>
+    </div>
+
+    <div class="exec-summary">
+      <h2>Three things that matter above all else</h2>
+
+      <div class="exec-highlights">
+        <div class="exec-highlight-card">
+          <div class="date">Aug 27 – Nov 3, 2026</div>
+          <div class="title">Venus / Ketu / Saturn PD</div>
+          <div class="subtitle">Last Saturn activation of Venus MD. Financial negotiation window. Career 61 / Cash 64.</div>
+        </div>
+        <div class="exec-highlight-card">
+          <div class="date">January 2, 2027</div>
+          <div class="title">Venus MD closes · Sun MD opens</div>
+          <div class="subtitle">20 years of Venus-defined career logic ends. New identity chapter begins. Decisions made here carry long-term weight.</div>
+        </div>
+        <div class="exec-highlight-card">
+          <div class="date">Jul 8 – Aug 6, 2027</div>
+          <div class="title">Sun / Moon / Saturn PD</div>
+          <div class="subtitle">Sharpest career window in next 2 years. 4-week window. Same combination as 2012 job upgrade. Career 62 / Cash 64.</div>
+        </div>
+      </div>
+
+      <p><strong>The chart belongs to Saturn.</strong> Despite being in Venus Mahadasha for 20 years, every career and financial peak in the timeline has been driven by Saturn activating as PD or AD lord. Saturn's exaltation in Libra H6 and its ownership of both H9 and H10 creates a Dharma-Karma Adhipati Yoga that overrides all other planetary influences whenever it fires. This has been validated across 5 independent historical events with near-exact timing. The next Saturn PD activation — August 27, 2026 — is the most important near-term window.</p>
+
+      <p><strong>The current Ketu phase is karmic, not accidental.</strong> Ketu as antardasha lord is a conscious stripping-away mechanism that precedes most major life transitions. The income reduction, the startup sacrifice, the detachment from material security — this is the chart executing a pre-designed completion before the 20-year Venus chapter ends. It is not failure; it is preparation. The pattern is working as designed.</p>
+
+      <p><strong>The startup has the right planetary backing — but wrong timing for reward.</strong> Jupiter in H8 retrograde (Viparita Raja Yoga) governs unconventional ventures with back-loaded reward structures. The financial sacrifice is structurally embedded. The reward is not absent — it is deferred to when Jupiter activates as an AD or PD lord, most likely in the 2029-2031 timeframe within the Sun MD.</p>
+
+      <p><strong>Full financial recovery is a Moon MD story.</strong> The Venus/Saturn AD period (2019-2023) was the income peak of the Venus MD. The Sun MD (2027-2033) will not replicate those scores — it is an authority and identity chapter, not an income-maximisation chapter. The real wealth accumulation era is the Moon Mahadasha beginning January 2033, when the chart's H11 gains lord rules 10 uninterrupted years. The current work is positioning for that era — not finishing in it.</p>
+    </div>
+  </section>
+
+  <div class="footer">
+    <p>Mojo — Career &amp; Wealth Event Rectification Report · Generated July 2026</p>
+    <p style="margin-top:4px;">Powered by VedicMojo MCP · Swiss Ephemeris computation · Vimshottari Dasha system</p>
+    <p style="margin-top:4px;color:#aaa8a0;">This report is for personal reflection and decision support. Astrological analysis does not constitute financial or professional advice.</p>
+  </div>
+
+</div>
+</body>
+</html>

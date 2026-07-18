@@ -12,12 +12,13 @@ import NakshatraTable from './components/NakshatraTable'
 import KarakaTable from './components/KarakaTable'
 import AshtakavargaView from './components/AshtakavargaView'
 import DashaTimeline from './components/DashaTimeline'
+import CharaDashaView from './components/CharaDashaView'
 import TransitsView from './components/TransitsView'
 import PindaStrengthView from './components/PindaStrengthView'
 import VarshaphalView from './components/VarshaphalView'
 import CopyForAIPanel from './components/CopyForAIPanel'
 
-type Tab = 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'transits' | 'pinda' | 'varshaphal'
+type Tab = 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'charts',       label: 'Divisional Charts' },
@@ -25,7 +26,8 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'nakshatras',   label: 'Nakshatras' },
   { key: 'karakas',      label: 'Karakas' },
   { key: 'ashtakavarga', label: 'Ashtakavarga' },
-  { key: 'dasha',        label: 'Dasha' },
+  { key: 'dasha',        label: 'Dasha (Vimshottari)' },
+  { key: 'charadasha',   label: 'Chara Dasha' },
   { key: 'transits',     label: 'Transits' },
   { key: 'pinda',        label: 'Pinda Strength' },
   { key: 'varshaphal',   label: 'Varshaphal' },
@@ -542,6 +544,9 @@ export default function ComputePage() {
             {activeTab === 'dasha' && (
               <DashaTimeline dashaTree={result.dashaTree} />
             )}
+            {activeTab === 'charadasha' && (
+              <CharaDashaView charaDasha={result.charaDasha} />
+            )}
             {activeTab === 'transits' && (
               <TransitsView data={result.chart.transits} birthDate={form.date} />
             )}
@@ -560,6 +565,7 @@ export default function ComputePage() {
         <CopyForAIPanel
           chart={result.chart}
           dashaTree={result.dashaTree}
+          charaDasha={result.charaDasha}
           form={form}
           onClose={() => setShowCopyPanel(false)}
         />

@@ -19,10 +19,22 @@ const PLANET_COLORS: Record<string, string> = {
   Saturn: 'text-blue-400',
 }
 
+interface AshtakavargaHouseEntry {
+  house: number
+  signNumber: number
+  sign: string
+  sav: number
+  bav: Record<string, number>
+}
+
 interface AshtakavargaData {
   bav: Record<string, number[]>
   sav: number[]
   savTotal: number
+  /** Absent on charts computed/stored before this field existed. */
+  lagnaSignNumber?: number
+  /** House-indexed view (house 1 = lagna sign). Same back-compat caveat. */
+  byHouse?: AshtakavargaHouseEntry[]
 }
 
 function getBinduColor(value: number, isSAV: boolean): string {
@@ -40,25 +52,65 @@ function getBinduColor(value: number, isSAV: boolean): string {
 
 export default function AshtakavargaView({ data }: { data: AshtakavargaData }) {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
+  const hasByHouse = !!data.byHouse && data.byHouse.length === 12
+  const [indexMode, setIndexMode] = useState<'sign' | 'house'>(hasByHouse ? 'house' : 'sign')
+
+  // Unified 12-slot view for the active index mode. In 'house' mode, slot i
+  // is house i+1 (from the lagna); in 'sign' mode it's the natural zodiac
+  // sign i+1 — using the pre-rotated `byHouse` array directly, no house/sign
+  // math performed here.
+  const savBySlot = indexMode === 'house' && data.byHouse ? data.byHouse.map((h) => h.sav) : data.sav
+  const labelBySlot = indexMode === 'house' && data.byHouse
+    ? data.byHouse.map((h) => `H${h.house}`)
+    : SIGNS
+  const bavBySlot = (planet: string): number[] =>
+    indexMode === 'house' && data.byHouse
+      ? data.byHouse.map((h) => h.bav[planet] ?? 0)
+      : (data.bav[planet] ?? Array(12).fill(0))
 
   return (
     <div className="space-y-6">
+      {hasByHouse && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">Index by:</span>
+          <div className="inline-flex rounded-lg border border-gray-600 overflow-hidden">
+            <button
+              onClick={() => setIndexMode('sign')}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                indexMode === 'sign' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-ink'
+              }`}
+            >
+              Sign
+            </button>
+            <button
+              onClick={() => setIndexMode('house')}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${
+                indexMode === 'house' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-ink'
+              }`}
+            >
+              House (from Lagna)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sarvashtakavarga */}
       <div className="rounded-lg border border-gray-700 overflow-hidden">
         <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
           <h3 className="text-sm font-semibold">Sarvashtakavarga (SAV)</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Total: {data.savTotal} bindus | Sum of all 7 planet BAVs per sign
+            {indexMode === 'house' && data.byHouse && ` | House 1 = ${data.byHouse[0].sign} (Lagna)`}
           </p>
         </div>
         <div className="p-4">
           <div className="grid grid-cols-12 gap-1">
             {/* Header row */}
-            {SIGNS.map((sign, i) => (
-              <div key={sign} className="text-center">
-                <div className="text-[10px] text-gray-500 mb-1">{sign}</div>
-                <div className={`rounded p-2 text-center font-mono text-sm font-bold ${getBinduColor(data.sav[i], true)}`}>
-                  {data.sav[i]}
+            {labelBySlot.map((label, i) => (
+              <div key={label} className="text-center">
+                <div className="text-[10px] text-gray-500 mb-1">{label}</div>
+                <div className={`rounded p-2 text-center font-mono text-sm font-bold ${getBinduColor(savBySlot[i], true)}`}>
+                  {savBySlot[i]}
                 </div>
               </div>
             ))}
@@ -70,7 +122,9 @@ export default function AshtakavargaView({ data }: { data: AshtakavargaData }) {
       <div className="rounded-lg border border-gray-700 overflow-hidden">
         <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
           <h3 className="text-sm font-semibold">Bhinnashtakavarga (BAV)</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Individual planet bindus per sign (0–8 scale)</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Individual planet bindus per {indexMode === 'house' ? 'house (0–8 scale)' : 'sign (0–8 scale)'}
+          </p>
         </div>
         <div className="p-4">
           {/* Planet selector tabs */}
@@ -108,15 +162,15 @@ export default function AshtakavargaView({ data }: { data: AshtakavargaData }) {
                 <thead>
                   <tr className="text-gray-500 border-b border-gray-700">
                     <th className="px-2 py-1 text-left">Planet</th>
-                    {SIGNS.map((s) => (
-                      <th key={s} className="px-2 py-1 text-center">{s}</th>
+                    {labelBySlot.map((label) => (
+                      <th key={label} className="px-2 py-1 text-center">{label}</th>
                     ))}
                     <th className="px-2 py-1 text-center font-bold">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {PLANETS.map((planet) => {
-                    const bindus = data.bav[planet] ?? Array(12).fill(0)
+                    const bindus = bavBySlot(planet)
                     const total = bindus.reduce((s, v) => s + v, 0)
                     return (
                       <tr key={planet} className="border-b border-gray-800">
@@ -137,7 +191,7 @@ export default function AshtakavargaView({ data }: { data: AshtakavargaData }) {
                   {/* SAV row */}
                   <tr className="border-t-2 border-gray-600 font-bold">
                     <td className="px-2 py-1.5 text-ink">SAV</td>
-                    {data.sav.map((v, i) => (
+                    {savBySlot.map((v, i) => (
                       <td key={i} className={`px-2 py-1.5 text-center font-mono ${getBinduColor(v, true)}`}>
                         {v}
                       </td>
@@ -156,11 +210,11 @@ export default function AshtakavargaView({ data }: { data: AshtakavargaData }) {
                 {selectedPlanet} Bhinnashtakavarga
               </h4>
               <div className="grid grid-cols-12 gap-1">
-                {SIGNS.map((sign, i) => {
-                  const bindus = data.bav[selectedPlanet]?.[i] ?? 0
+                {labelBySlot.map((label, i) => {
+                  const bindus = bavBySlot(selectedPlanet)[i] ?? 0
                   return (
-                    <div key={sign} className="text-center">
-                      <div className="text-[10px] text-gray-500 mb-1">{sign}</div>
+                    <div key={label} className="text-center">
+                      <div className="text-[10px] text-gray-500 mb-1">{label}</div>
                       <div className={`rounded p-2 text-center font-mono text-lg font-bold ${getBinduColor(bindus, false)}`}>
                         {bindus}
                       </div>
@@ -169,7 +223,7 @@ export default function AshtakavargaView({ data }: { data: AshtakavargaData }) {
                 })}
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Total: {(data.bav[selectedPlanet] ?? []).reduce((s, v) => s + v, 0)} bindus
+                Total: {bavBySlot(selectedPlanet).reduce((s, v) => s + v, 0)} bindus
               </p>
             </div>
           )}

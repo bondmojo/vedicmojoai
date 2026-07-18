@@ -39,7 +39,7 @@ type SectionId =
   | 'birth_info' | 'lagna_meta' | 'planets' | 'nakshatras'
   | 'shadbala' | 'bhava_bala' | 'pinda_strength' | 'ashtakavarga'
   | 'chara_karakas' | 'special_lagnas' | 'upagrahas' | 'arudha_padas'
-  | 'dasha' | 'transits' | 'sade_sati'
+  | 'dasha' | 'chara_dasha' | 'transits' | 'sade_sati'
   | 'relationships' | 'nakshatra_rel' | 'jaimini'
 
 interface Section {
@@ -66,6 +66,7 @@ const FIXED_SECTIONS: Section[] = [
   { id: 'arudha_padas',   label: 'Arudha Padas',                        group: 'Special Factors' },
   // Timing
   { id: 'dasha',          label: 'Vimshottari Dasha',                   group: 'Timing' },
+  { id: 'chara_dasha',    label: 'Chara Dasha (Jaimini)',               group: 'Timing' },
   { id: 'transits',       label: 'Transits (Gochar)',                   group: 'Timing' },
   { id: 'sade_sati',      label: 'Sade Sati',                           group: 'Timing' },
   // Relationships
@@ -79,6 +80,7 @@ const FIXED_SECTIONS: Section[] = [
 interface Props {
   chart: Record<string, unknown>
   dashaTree: Record<string, unknown>
+  charaDasha?: Record<string, unknown>
   form: {
     name: string
     date: string
@@ -97,6 +99,7 @@ function buildPayload(
   selected: Set<string>,
   chart: Record<string, unknown>,
   dashaTree: Record<string, unknown>,
+  charaDasha: Record<string, unknown> | undefined,
   form: Props['form'],
   availableDivisions: number[],
 ): Record<string, unknown> {
@@ -160,7 +163,14 @@ function buildPayload(
           lagna_sign_number: dc.lagnaSignNumber,
           planets: (dc.planets as unknown[])?.map((p: unknown) => {
             const pl = p as Record<string, unknown>
-            return { planet: pl.planet, sign_number: pl.signNumber, house: pl.house, retrograde: pl.retrograde }
+            return {
+              planet: pl.planet,
+              sign_number: pl.signNumber,
+              house: pl.house,
+              retrograde: pl.retrograde,
+              dignity: pl.dignity,
+              vargottama: pl.vargottama,
+            }
           }),
         }
       }
@@ -204,6 +214,10 @@ function buildPayload(
     out.vimshottari_dasha = dashaTree
   }
 
+  if (selected.has('chara_dasha') && charaDasha) {
+    out.chara_dasha = charaDasha
+  }
+
   if (selected.has('transits')) {
     const tr = chart.transits as Record<string, unknown> | undefined
     out.transits_gochar = tr
@@ -233,7 +247,7 @@ function buildPayload(
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export default function CopyForAIPanel({ chart, dashaTree, form, onClose }: Props) {
+export default function CopyForAIPanel({ chart, dashaTree, charaDasha, form, onClose }: Props) {
   // Discover which divisional charts are present in the data
   const availableDivisions = useMemo(() => {
     const divs = chart.divisionalCharts as Array<Record<string, unknown>> | undefined
@@ -280,7 +294,7 @@ export default function CopyForAIPanel({ chart, dashaTree, form, onClose }: Prop
   function deselectAll() { setSelected(new Set()) }
 
   async function handleCopy() {
-    const payload = buildPayload(selected, chart, dashaTree, form, availableDivisions)
+    const payload = buildPayload(selected, chart, dashaTree, charaDasha, form, availableDivisions)
     const json = JSON.stringify(payload, null, 2)
     await navigator.clipboard.writeText(json)
     setCopied(true)

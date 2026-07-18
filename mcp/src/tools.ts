@@ -13,6 +13,8 @@ import {
   birthDataSchema,
   chartRefShape,
   resolveChart,
+  resolveCharaDasha,
+  runningCharaPeriod,
   activeDashaChain,
   type NormalizedChart,
 } from './chart.js'
@@ -109,7 +111,7 @@ export function registerTools(server: McpServer): void {
     {
       title: 'Compute a full natal chart from birth data',
       description:
-        'Deterministic Swiss-Ephemeris computation: planets, 12 divisional charts, nakshatras, karakas, ashtakavarga, shadbala, relationships, Jaimini, bhava bala, plus the Vimshottari dasha tree. Nothing is saved.',
+        'Deterministic Swiss-Ephemeris computation: planets, 13 divisional charts (D1–D60), nakshatras, karakas, ashtakavarga, shadbala, relationships, Jaimini, bhava bala, plus the Vimshottari dasha tree and the Jaimini Chara Dasha. Nothing is saved.',
       inputSchema: birthDataSchema.shape,
     },
     async (a) => guard(async () => ok(await api.post('/api/compute', a)))
@@ -146,7 +148,7 @@ export function registerTools(server: McpServer): void {
     )
 
   extractor('get_shadbala', 'Get Shadbala (six-fold strength)', 'Per-planet Shadbala with virupas/rupas, strength grade, and the overall strength ranking.', (c) => ({ domain: 'shadbala', value: c.shadbala }))
-  extractor('get_ashtakavarga', 'Get Ashtakavarga', 'Bhinnashtakavarga (per graha) and Sarvashtakavarga bindus per house.', (c) => ({ domain: 'ashtakavarga', value: c.ashtakavarga }))
+  extractor('get_ashtakavarga', 'Get Ashtakavarga', 'Bhinnashtakavarga (per graha) and Sarvashtakavarga bindus. `bav`/`sav` are SIGN-indexed (0=Aries); `byHouse` (house 1 = lagna) is the pre-rotated house-indexed view — use it directly, no house/sign math needed. `byHouse`/`lagnaSignNumber` are absent on charts computed before this field existed.', (c) => ({ domain: 'ashtakavarga', value: c.ashtakavarga }))
   extractor('get_relationships', 'Get planetary relationships/geometry', 'Conjunctions, graha & rashi aspects, planetary war, mutual reception, combustion, avastha, gandanta, stelliums.', (c) => ({ domain: 'relationships', value: c.relationships }))
   extractor('get_jaimini', 'Get Jaimini geometry + chara karakas', 'Chara karakas (AK…DK), argala/virodha argala, yogi/avayogi points, special-lagna aspects.', (c) => ({ domain: 'jaimini', value: { jaimini: c.jaimini, charaKarakas: c.karakas } }))
   extractor('get_bhava_bala', 'Get Bhava Bala (house strength)', 'Per-house strength: bhavadhipati bala, dig bala, drishti bala, totals.', (c) => ({ domain: 'bhavaBala', value: c.bhavaBala }))
@@ -158,17 +160,50 @@ export function registerTools(server: McpServer): void {
     {
       title: 'Get divisional chart(s)',
       description:
-        'Divisional (varga) charts. Supported: D1,D2,D3,D4,D5,D6,D7,D9,D10,D12,D24,D30. Pass `divisions` to filter (e.g. [1,9,10] for career).',
+        'Divisional (varga) charts. Supported: D1,D2,D3,D4,D5,D6,D7,D9,D10,D12,D24,D30,D60. Pass `divisions` to filter ' +
+        '(e.g. [1,9,10] for career). Each planet placement includes `dignity` (panchadha-maitri label: exalted/' +
+        'debilitated/moolatrikona/own/great_friend/friend/neutral/enemy/great_enemy; absent for Rahu/Ketu) and ' +
+        '`vargottama` (true when the sign matches D1 — a strong dignity in its own right, reported separately from `dignity`).',
       inputSchema: { ...chartRefShape, divisions: z.array(z.number().int()).optional().describe('Varga numbers to keep, e.g. [1,9,10]') },
     },
     async (a) =>
       guard(async () => {
-        const chart = await resolveChart(a as { chartId?: string; birthData?: any })
+        let chart = await resolveChart(a as { chartId?: string; birthData?: any })
         if (chart.isPasteWithoutComputed) {
           return ok({ note: 'Paste-source chart with no computed divisional charts. Compute it first or pass birthData.', divisionalCharts: null })
         }
         let charts = (chart.divisionalCharts as Array<Record<string, unknown>> | null) ?? []
         const divisions = a.divisions as number[] | undefined
+
+        // If requested divisions are missing from stored data (e.g. D60 on
+        // charts saved before it was added), or the stored set is incomplete
+        // (fewer than 13 vargas), recompute from birthInput when possible.
+        const EXPECTED_VARGA_COUNT = 13
+        const storedDivs = new Set(charts.map((d) => Number(d.division)))
+        const hasMissing = divisions
+          ? divisions.some((d) => !storedDivs.has(d))
+          : charts.length < EXPECTED_VARGA_COUNT
+        if (hasMissing && chart.source === 'stored' && a.chartId) {
+          // Use the birthInput already resolved from the stored chart
+          const birth = chart.birthInput as
+            | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
+            | null
+          if (birth?.date && birth?.time) {
+            chart = await resolveChart({
+              birthData: {
+                date: birth.date,
+                time: birth.time,
+                timezone: birth.timezone!,
+                latitude: birth.latitude!,
+                longitude: birth.longitude!,
+                name: chart.name,
+                sunriseMode: (birth.sunriseMode ?? 'precise') as 'precise' | 'jhora',
+              },
+            })
+            charts = (chart.divisionalCharts as Array<Record<string, unknown>> | null) ?? []
+          }
+        }
+
         if (divisions && divisions.length > 0) {
           const want = new Set(divisions)
           charts = charts.filter((d) => want.has(Number(d.division)))
@@ -189,6 +224,30 @@ export function registerTools(server: McpServer): void {
         const chart = await resolveChart(a as { chartId?: string; birthData?: any })
         const at = (a.asOf as string | undefined) ?? new Date().toISOString().slice(0, 10)
         return ok(activeDashaChain(chart.dashaTree, `${at}T12:00:00.000Z`))
+      })
+  )
+
+  server.registerTool(
+    'get_chara_dasha',
+    {
+      title: 'Get the Jaimini Chara Dasha (sign/rasi dasha)',
+      description:
+        'Chara Dasha (KN Rao / Parashara method): SIGN-based mahadashas with 12 equal antardashas each, ' +
+        'plus direction, per-sign lord + duration, and the full dated timeline. Distinct from the planet-based ' +
+        'Vimshottari dasha (use get_dasha_tree for that). Pass `asOf` to also resolve the running MD/AD at a date.',
+      inputSchema: { ...chartRefShape, asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('YYYY-MM-DD; also return the running period at this date') },
+    },
+    async (a) =>
+      guard(async () => {
+        const { name, charaDasha } = await resolveCharaDasha(a as { chartId?: string; birthData?: any })
+        if (!charaDasha) {
+          return ok({ note: 'Paste-source chart with no birth data — Chara Dasha needs planet positions. Pass birthData to compute on the fly.', charaDasha: null })
+        }
+        const out: Record<string, unknown> = { name, charaDasha }
+        if (a.asOf) {
+          out.running = runningCharaPeriod(charaDasha, `${a.asOf as string}T12:00:00.000Z`)
+        }
+        return ok(out)
       })
   )
 

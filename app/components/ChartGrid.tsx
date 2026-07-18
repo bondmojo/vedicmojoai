@@ -21,7 +21,14 @@ interface RawDivisionalChart {
   shortName: string
   lagna: string
   lagnaSignNumber: number
-  planets: Array<{ planet: string; signNumber: number; house: number; retrograde?: boolean }>
+  planets: Array<{
+    planet: string
+    signNumber: number
+    house: number
+    retrograde?: boolean
+    dignity?: string
+    vargottama?: boolean
+  }>
   arudhaPadas?: ArudhaPadaRaw[]
   specialLagnas?: SpecialLagnaRaw[]
   upagrahas?: UpagrahaRaw[]
@@ -71,6 +78,10 @@ export default function ChartGrid({
           <span className="text-fuchsia-400">■</span> Special Lagnas &nbsp;
           <span className="text-gray-400">■</span> Upagrahas
         </span>
+      </div>
+      <div className="mb-4 text-[11px] text-gray-500">
+        (Ab) retrograde &nbsp;·&nbsp; Ab++ exalted &nbsp;·&nbsp; Ab+ own/moolatrikona
+        &nbsp;·&nbsp; Ab- great enemy &nbsp;·&nbsp; Ab-- debilitated &nbsp;·&nbsp; Ab^ vargottama
       </div>
 
       {/* Chart Grid */}

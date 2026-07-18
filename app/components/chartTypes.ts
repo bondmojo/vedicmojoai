@@ -7,6 +7,14 @@ export interface ChartPlanet {
   signNumber: number
   house: number
   retrograde?: boolean
+  /**
+   * Panchadha-maitri dignity label in this varga (exalted/debilitated/
+   * moolatrikona/own/great_friend/friend/neutral/enemy/great_enemy).
+   * Absent for Rahu/Ketu. See engine/compute/dignity.ts.
+   */
+  dignity?: string
+  /** True when the planet occupies the same sign here as in D1 (vargottama). */
+  vargottama?: boolean
 }
 
 export interface ArudhaPada {
@@ -58,3 +66,28 @@ export const PLANET_COLORS: Record<string, string> = {
 }
 
 export const SIGNS_SHORT = ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis']
+
+/** One-letter dignity marker shown after the planet abbreviation (e.g. "Ju+", "Sa-"). */
+const DIGNITY_MARKER: Record<string, string> = {
+  exalted: '++',
+  moolatrikona: '+',
+  own: '+',
+  great_friend: '',
+  friend: '',
+  neutral: '',
+  enemy: '',
+  great_enemy: '-',
+  debilitated: '--',
+}
+
+/**
+ * Suffix appended to a planet's cell label to show dignity/vargottama, mirroring
+ * the existing `(abbr)` retrograde convention:
+ *  - "^" for vargottama (same sign as D1) — a strong dignity in its own right.
+ *  - "+"/"++" for own/moolatrikona/exalted, "-"/"--" for enemy-tier/debilitated.
+ * Neutral/friend/great_friend get no suffix to keep charts readable.
+ */
+export function dignitySuffix(dignity?: string, vargottama?: boolean): string {
+  const marker = dignity ? (DIGNITY_MARKER[dignity] ?? '') : ''
+  return marker + (vargottama ? '^' : '')
+}

@@ -712,7 +712,7 @@ describe('rashiDrishti factor (Track 1c)', () => {
     expect(f!.normalized).toBe(1.0) // Sun is MD lord → MD weight
   })
 
-  it('returns neutral 0.5 (ok:true, not omitted) when no running lord aspects the primary house', () => {
+  it('omits (not 0.5-fill) when no running lord aspects the primary house', () => {
     const w = resolveDomainWeights('career')
     const chart: ScoringChartData = {
       ...ariesChart(),
@@ -725,8 +725,9 @@ describe('rashiDrishti factor (Track 1c)', () => {
       } as unknown as ScoringChartData['relationships'],
     }
     const { breakdown } = scorePeriod(makeSlice('Sun', 'Venus', 'Moon'), chart, null, w)
-    const f = breakdown.factors.find((x) => x.factor === 'rashiDrishti')!
-    expect(f.normalized).toBe(0.5)
+    // With the decompression fix, no-signal rashi-drishti now OMITS rather than 0.5-fill
+    expect(breakdown.omissions.some((o) => o.factor === 'rashiDrishti')).toBe(true)
+    expect(breakdown.factors.some((f) => f.factor === 'rashiDrishti')).toBe(false)
   })
 
   it('omits when relationships.rashiAspects is absent', () => {

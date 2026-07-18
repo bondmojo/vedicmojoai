@@ -10,7 +10,8 @@
  * Rahu/Ketu are NOT included in traditional Ashtakavarga.
  */
 
-import type { AshtakavargaResult, PlanetPosition } from './types'
+import type { AshtakavargaHouseEntry, AshtakavargaResult, PlanetPosition } from './types'
+import { getSignName } from './planets'
 
 // ─── Benefic-Point Tables (BPHS) ───────────────────────────────────
 
@@ -162,5 +163,24 @@ export function computeAshtakavarga(
 
   const savTotal = sav.reduce((sum, v) => sum + v, 0)
 
-  return { bav, sav, savTotal }
+  // House-indexed view (house 1 = lagna sign). Pre-rotate the SIGN-indexed
+  // arrays so consumers never re-derive the house→sign mapping by hand.
+  const byHouse: AshtakavargaHouseEntry[] = []
+  for (let house = 1; house <= 12; house++) {
+    const signNumber = ((lagnaSignNumber - 1 + (house - 1)) % 12) + 1
+    const signIndex = signNumber - 1 // 0-indexed = Aries
+    const houseBav: Record<string, number> = {}
+    for (const planet of ASHTAKAVARGA_PLANETS) {
+      houseBav[planet] = bav[planet][signIndex]
+    }
+    byHouse.push({
+      house,
+      signNumber,
+      sign: getSignName(signNumber),
+      sav: sav[signIndex],
+      bav: houseBav,
+    })
+  }
+
+  return { bav, sav, savTotal, lagnaSignNumber, byHouse }
 }

@@ -1,7 +1,7 @@
 /**
  * engine/compute/divisional.ts — Divisional (Varga) chart computation.
  *
- * Computes D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30 charts from
+ * Computes D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60 charts from
  * sidereal longitudes. Each divisional chart divides the 30° sign into N
  * equal (or, for D30, unequal) parts and maps each part to a sign according
  * to classical Parashari rules (BPHS).
@@ -11,6 +11,18 @@
 
 import type { DivisionalChart, DivisionalPlacement, PlanetPosition } from './types'
 import { getSignName } from './planets'
+import { getVargaDignityLabel } from './dignity'
+
+/**
+ * Build a lookup of planet → D1 (rasi) sign number. Used to score the
+ * tatkalika (temporary) friendship component of each varga dignity, which is
+ * classically drawn from the rasi positions.
+ */
+function buildD1SignMap(planets: PlanetPosition[]): Record<string, number> {
+  const map: Record<string, number> = {}
+  for (const p of planets) map[p.planet] = p.signNumber
+  return map
+}
 
 // ─── Divisional Chart Definitions ───────────────────────────────────
 
@@ -291,6 +303,42 @@ function computeD24Sign(longitude: number): number {
   return resultSign
 }
 
+/**
+ * D60 — Shashtiamsa (Sanchita Karma, past-life influences, finest-grained
+ * dignity assessment)
+ * Each sign is divided into 60 equal parts of 0°30' (30 arc-minutes) each.
+ * Offset-counting method — count forward from the NATAL SIGN ITSELF by the
+ * part number (0 through 59), for both odd and even signs alike (unlike
+ * D6/D9/D10/D24, which switch their starting sign by parity).
+ *
+ * Equivalent to BPHS's stated procedure (Parashara, per the Shashtyamsha
+ * chapter): take only the degrees-traversed-in-sign (ignore the sign
+ * itself), multiply by 2, divide by 12, and increase the remainder by 1 —
+ * that gives a 1-indexed COUNT of signs from (and including) the natal sign.
+ * Verified against a classical worked example: Sun at 20°40' Gemini ->
+ * 20.667x2=41.33 -> floor=41 -> 41 = 3x12+5, remainder 5, +1 = count 6 ->
+ * counting 6 signs inclusively from Gemini (Gemini=1,Cancer=2,Leo=3,
+ * Virgo=4,Libra=5,Scorpio=6) lands on Scorpio. `part = floor(2xdegreeInSign)
+ * mod 12` is the equivalent 0-indexed offset (here part=5, advancing 5 signs
+ * from Gemini also lands on Scorpio) used by every other varga in this file.
+ *
+ * Traditionally each of the 60 amsas also carries its own named deity
+ * (Ghora, Rakshasa, ... ) with benefic/malefic character — this engine
+ * (like its D30 treatment) computes only the resulting SIGN, not the deity
+ * name, so deity-level interpretation is left to the practitioner/LLM layer.
+ *
+ * Source: BPHS (Shashtyamsha); Wikipedia "Shashtyamsha" (Parasara's stated
+ * procedure); cross-checked against a classical worked example.
+ */
+function computeD60Sign(longitude: number): number {
+  const signNumber = Math.floor(longitude / 30) + 1
+  const degreeInSign = longitude % 30
+  const part = Math.floor(2 * degreeInSign) % 12 // 0–11 (60 amsas of 0.5 deg collapse to 12 signs)
+
+  const resultSign = ((signNumber - 1 + part) % 12) + 1
+  return resultSign
+}
+
 // ─── Chart Registry ─────────────────────────────────────────────────
 
 const VARGA_DEFINITIONS: VargaDefinition[] = [
@@ -306,6 +354,7 @@ const VARGA_DEFINITIONS: VargaDefinition[] = [
   { division: 12, name: 'Dwadasamsa', shortName: 'D12', computeSign: computeD12Sign },
   { division: 24, name: 'Chaturvimshamsa', shortName: 'D24', computeSign: computeD24Sign },
   { division: 30, name: 'Trimshamsa', shortName: 'D30', computeSign: computeD30Sign },
+  { division: 60, name: 'Shashtiamsa', shortName: 'D60', computeSign: computeD60Sign },
 ]
 
 // ─── Main Function ──────────────────────────────────────────────────
@@ -315,13 +364,14 @@ const VARGA_DEFINITIONS: VargaDefinition[] = [
  *
  * @param planets - Planet positions from computePlanetPositions()
  * @param lagnaLongitude - Sidereal longitude of the ascendant
- * @returns Array of divisional charts (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30)
+ * @returns Array of divisional charts (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60)
  */
 export function computeDivisionalCharts(
   planets: PlanetPosition[],
   lagnaLongitude: number
 ): DivisionalChart[] {
   const charts: DivisionalChart[] = []
+  const d1SignByPlanet = buildD1SignMap(planets)
 
   for (const varga of VARGA_DEFINITIONS) {
     // Compute lagna sign in this divisional chart
@@ -340,6 +390,9 @@ export function computeDivisionalCharts(
         signNumber: vargaSign,
         house,
         retrograde: planet.retrograde || undefined,
+        dignity: getVargaDignityLabel(planet.planet, vargaSign, d1SignByPlanet),
+        vargottama:
+          varga.division !== 1 && vargaSign === planet.signNumber ? true : undefined,
       }
     })
 
@@ -381,6 +434,7 @@ export function computeSingleDivisionalChart(
 
   const lagnaVargaSign = varga.computeSign(lagnaLongitude)
   const lagnaDegreee = lagnaLongitude % 30
+  const d1SignByPlanet = buildD1SignMap(planets)
 
   const placements: DivisionalPlacement[] = planets.map((planet) => {
     const vargaSign = varga.computeSign(planet.longitude)
@@ -391,6 +445,9 @@ export function computeSingleDivisionalChart(
       signNumber: vargaSign,
       house,
       retrograde: planet.retrograde || undefined,
+      dignity: getVargaDignityLabel(planet.planet, vargaSign, d1SignByPlanet),
+      vargottama:
+        varga.division !== 1 && vargaSign === planet.signNumber ? true : undefined,
     }
   })
 

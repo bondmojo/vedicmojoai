@@ -6,8 +6,10 @@ Deterministic astronomical calculations (Swiss Ephemeris):
 |---|---|
 | `planets.ts` | Planet longitudes, signs, houses |
 | `nakshatras.ts` | Nakshatra, pada, sublord |
-| `divisional.ts` | Divisional charts: D1/D2/D3/D4/D5/D6/D7/D9/D10/D12/D24/D30 (D2/D3/D12 added for Shadbala/Vimsopaka; D5/D6/D24 added for practitioner coverage) |
-| `ashtakavarga.ts` | Bindhu scores per planet per house |
+| `divisional.ts` | Divisional charts: D1/D2/D3/D4/D5/D6/D7/D9/D10/D12/D24/D30/D60 (D2/D3/D12 added for Shadbala/Vimsopaka; D5/D6/D24 added for practitioner coverage; D60 — Shashtiamsa — added 2026-07 for finest-grained dignity/Sanchita Karma review) |
+| `dignity.ts` | Canonical panchadha-maitri dignity classifier (`getVargaDignityLabel`) shared by `divisional.ts` and `durationAnalysis/scoring.ts` — single source of truth for exaltation/debilitation/moolatrikona/own/friendship tables |
+| `charaDasha.ts` | **Jaimini Chara Dasha** (KN Rao/Parashara) — sign-based mahadashas + 12 equal antardashas. `computeCharaDasha(planets, lagnaSignNumber, birthDate)`. On-demand sibling like the Vimshottari tree (NOT inside `computeFullChart`); returned by `/api/compute` as `charaDasha`. See `docs/computation_chara_dasha.md` |
+| `ashtakavarga.ts` | Bindhu scores per planet per sign (SIGN-indexed `bav`/`sav`), plus a pre-rotated house-indexed `byHouse` view (house 1 = lagna) |
 | `karakas.ts` | Jaimini karaka assignments |
 | `arudhaPadas.ts` | Arudha pada calculations |
 | `specialLagnas.ts` | Hora, Ghati, Sree Lagna etc. |
@@ -29,6 +31,16 @@ Neelakanthi maxima (Kshetra 30 / Uccha 20 / Hadda 15 / Drekkana 10 / Navamsa 5, 
 with Egyptian-term (Hadda) and Dorothean-triplicity tables; exact Vishwa scales vary
 by text/software, so values are indicative and the method is surfaced in the output.
 Entry point: `POST /api/compute/varshaphal`; UI: the "Varshaphal" tab on `/compute`.
+
+**Divisional dignity/vargottama (2026-07):** every `DivisionalPlacement` (in every
+varga, D1–D60) now carries an optional `dignity` (panchadha-maitri label from
+`dignity.ts`; `undefined` for Rahu/Ketu) and `vargottama` (true when the varga sign
+equals the D1 sign; never set for D1 itself, applies to all bodies incl. nodes).
+Both are additive/optional — charts computed before this change simply lack them.
+`durationAnalysis/scoring.ts`'s dignity factors (`mdLordDignity`/`adLordDignity`/
+`pdLordDignity`/`divisionalChartStrength`) were unified onto the same `dignity.ts`
+classifier (previously a private, less-correct copy) — see `scoringWeights.ts`
+`WEIGHTS_VERSION` 0.5.0 changelog.
 
 **Shadbala JHora-alignment (2026-07):** `shadbala.ts` now books **Ayana Bala** as a
 Kaala Bala term for all seven planets (declination-based; Sun doubled), sets both

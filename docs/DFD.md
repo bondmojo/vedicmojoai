@@ -475,8 +475,10 @@ PRACTITIONER
 │  • Swiss Ephemeris calls      │
 │  • Planetary positions (D1)   │
 │  • Divisional charts          │
-│    (D1–D30: D1,D2,D3,D4,D5,   │
-│    D6,D7,D9,D10,D12,D24,D30) │
+│    (D1–D60: D1,D2,D3,D4,D5,   │
+│    D6,D7,D9,D10,D12,D24,D30, │
+│    D60), each placement +     │
+│    dignity/vargottama         │
 │  • Nakshatras                 │
 │  • Chara Karakas              │
 │  • Ashtakavarga               │
@@ -512,21 +514,25 @@ BirthInput
     ├─► computePlanetPositions()     → PlanetPosition[] (9 grahas)
     │       │
     │       ├─► computeNakshatras()  → NakshatraInfo[]
-    │       ├─► computeDivisionalCharts() → DivisionalChart[] (D1–D30)
+    │       ├─► computeDivisionalCharts() → DivisionalChart[] (D1–D60)
     │       │       └── Each varga gets:
-    │       │           • planet placements
+    │       │           • planet placements (+ dignity, vargottama
+    │       │             via engine/compute/dignity.ts)
     │       │           • arudha padas (per-varga)
     │       │           • special lagnas (projected)
     │       │           • upagrahas (projected)
     │       ├─► computeCharaKarakas() → CharaKaraka[]
-    │       ├─► computeAshtakavarga() → BAV/SAV
+    │       ├─► computeAshtakavarga() → BAV/SAV (sign-indexed) + byHouse
+    │       │       (house-indexed, house 1 = lagna)
     │       ├─► computeUpagrahas()   → Upagraha[]
     │       ├─► computeSpecialLagnas() → SpecialLagna[]
     │       ├─► computeArudhaPadas() → ArudhaPada[]
     │       ├─► computePindaStrength() → PindaStrengthEntry[]
     │       └─► computeTransits()    → TransitAnalysis
     │
-    └─► computeVimshottari(moonLong, birthDate) → DashaTree
+    ├─► computeVimshottari(moonLong, birthDate) → DashaTree
+    └─► computeCharaDasha(planets, lagnaSign, birthDate) → CharaDashaResult
+        (Jaimini rasi dasha; /api/compute sibling, like DashaTree)
 ```
 
 ### P8.4 — Varshaphal (Tajika annual solar-return chart) — on demand

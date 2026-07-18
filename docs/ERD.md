@@ -171,7 +171,7 @@ compute path skip LLM Wave 1 entirely.
 
 ## Where is D1, D4 Planet Chart Data Stored?
 
-Divisional chart data (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30) is stored **inside the `chartData` JSONB column** of the `saved_chart` table (and similarly inside `chartJson` of the `chart` table for analysis-input charts).
+Divisional chart data (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60) is stored **inside the `chartData` JSONB column** of the `saved_chart` table (and similarly inside `chartJson` of the `chart` table for analysis-input charts).
 
 ### Path within `chartData` JSON:
 
@@ -305,18 +305,21 @@ ComputedChart (root)
 ├── nakshatras[]: NakshatraInfo[]
 │   ├── planet, nakshatra, nakshatraIndex
 │   ├── pada, nakshatraLord, degreeInNakshatra
-├── divisionalCharts[]: DivisionalChart[]    ← D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30
+├── divisionalCharts[]: DivisionalChart[]    ← D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60
 │   ├── division, name, shortName
 │   ├── lagna, lagnaSignNumber, lagnaDegreee
 │   ├── planets[]: DivisionalPlacement[]     ← planet positions in this varga
+│   │   └── (+ optional dignity, vargottama — see below)
 │   ├── arudhaPadas[]: ChartArudhaMark[]     ← A1–A12 in this varga
 │   ├── specialLagnas[]: ChartPointMark[]    ← projected special lagnas
 │   └── upagrahas[]: ChartPointMark[]        ← projected upagrahas
 ├── charaKarakas[]: CharaKaraka[]            ← AK, AmK, BK, etc.
 ├── ashtakavarga: AshtakavargaResult
-│   ├── bav: Record<planet, number[12]>
-│   ├── sav: number[12]
-│   └── savTotal: number
+│   ├── bav: Record<planet, number[12]>      ← SIGN-indexed (0=Aries)
+│   ├── sav: number[12]                      ← SIGN-indexed (0=Aries)
+│   ├── savTotal: number
+│   ├── lagnaSignNumber?: number             ← optional; absent on pre-2026-07 charts
+│   └── byHouse?: AshtakavargaHouseEntry[]   ← optional; house-indexed view (house 1 = lagna), pre-rotated
 ├── upagrahas[]: Upagraha[]                  ← D1 positions with full longitude
 ├── specialLagnas[]: SpecialLagna[]          ← D1 positions with full longitude
 ├── arudhaPadas[]: ArudhaPada[]              ← A1–A12 from natal lagna

@@ -6,7 +6,7 @@
  */
 'use client'
 
-import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData } from './chartTypes'
+import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData, dignitySuffix } from './chartTypes'
 
 // ─── Sign grid layout (South Indian) ────────────────────────────────
 // Fixed 4×4 grid. The 4 center cells are empty.
@@ -46,8 +46,9 @@ function getCellContent(signNumber: number, chart: ChartData): CellContent[] {
   for (const p of chart.planets) {
     if (p.signNumber === signNumber) {
       const abbr = PLANET_ABBR[p.planet] ?? p.planet.substring(0, 2)
+      const label = (p.retrograde ? `(${abbr})` : abbr) + dignitySuffix(p.dignity, p.vargottama)
       items.push({
-        label: p.retrograde ? `(${abbr})` : abbr,
+        label,
         color: PLANET_COLORS[p.planet] ?? '#e5e7eb',
       })
     }

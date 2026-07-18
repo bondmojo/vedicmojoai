@@ -27,6 +27,7 @@ import type {
 } from '@/lib/durationTypes'
 import type { TransitOverlay } from '@/lib/durationTypes'
 import type { ShadbalPlanet } from '@/engine/compute/types'
+import { getVargaDignityLabel, SIGN_LORDS, PERMANENT_FRIENDSHIP } from '@/engine/compute/dignity'
 import { WEIGHTS_VERSION } from './scoringWeights'
 
 // ─── Exported constants (Requirements 2, 3.6) ────────────────────────
@@ -50,43 +51,12 @@ export const BHAVA_RUPAS_CALIBRATION = 12
 /** Mean SAV bindus per house (337 total / 12 houses ≈ 28). Used by natalHouseStrength. */
 export const SAV_MEAN = 28
 
-// ─── Internal dignity / friendship tables ────────────────────────────
-
-const EXALTATION_SIGNS: Record<string, number> = {
-  Sun: 1, Moon: 2, Mars: 10, Mercury: 6, Jupiter: 4, Venus: 12, Saturn: 7,
-}
-const DEBILITATION_SIGNS: Record<string, number> = {
-  Sun: 7, Moon: 8, Mars: 4, Mercury: 12, Jupiter: 10, Venus: 6, Saturn: 1,
-}
-const MOOLATRIKONA_SIGNS: Record<string, number> = {
-  Sun: 5, Moon: 2, Mars: 1, Mercury: 6, Jupiter: 9, Venus: 7, Saturn: 11,
-}
-const OWN_SIGNS: Record<string, number[]> = {
-  Sun: [5], Moon: [4], Mars: [1, 8], Mercury: [3, 6],
-  Jupiter: [9, 12], Venus: [2, 7], Saturn: [10, 11],
-}
-const SIGN_LORDS: Record<number, string> = {
-  1: 'Mars', 2: 'Venus', 3: 'Mercury', 4: 'Moon', 5: 'Sun', 6: 'Mercury',
-  7: 'Venus', 8: 'Mars', 9: 'Jupiter', 10: 'Saturn', 11: 'Saturn', 12: 'Jupiter',
-}
-const PERMANENT_FRIENDS: Record<string, string[]> = {
-  Sun: ['Moon', 'Mars', 'Jupiter'],
-  Moon: ['Sun', 'Mercury'],
-  Mars: ['Sun', 'Moon', 'Jupiter'],
-  Mercury: ['Sun', 'Venus'],
-  Jupiter: ['Sun', 'Moon', 'Mars'],
-  Venus: ['Mercury', 'Saturn'],
-  Saturn: ['Mercury', 'Venus'],
-}
-const PERMANENT_ENEMIES: Record<string, string[]> = {
-  Sun: ['Venus', 'Saturn'],
-  Moon: [],
-  Mars: ['Mercury'],
-  Mercury: ['Moon'],
-  Jupiter: ['Mercury', 'Venus'],
-  Venus: ['Sun', 'Moon'],
-  Saturn: ['Sun', 'Moon', 'Mars'],
-}
+// ─── Dignity / friendship tables ─────────────────────────────────────
+// Sourced from the canonical `engine/compute/dignity.ts` (single source of
+// truth): SIGN_LORDS and PERMANENT_FRIENDSHIP are imported above, and the
+// exaltation/debilitation/moolatrikona/own tables live there too, consumed via
+// getVargaDignityLabel(). This replaces the former local copies + the divergent
+// aggregate-tatkalika `getDignityLabel` (unified per the dignity review).
 
 // ─── Small helpers ────────────────────────────────────────────────────
 
@@ -149,43 +119,11 @@ function findShadbala(
   return shadbala.planets.find((p) => p.planet === name) ?? null
 }
 
-/** Derive dignities from sign number. Returns 'exalted'|'moolatrikona'|'own'|'great_friend'|
- *  'friend'|'neutral'|'enemy'|'great_enemy'|'debilitated'. */
-function getDignityLabel(
-  planet: string,
-  signNumber: number,
-  residingPlanetSignNumbers: number[]
-): string {
-  if (EXALTATION_SIGNS[planet] === signNumber) return 'exalted'
-  if (DEBILITATION_SIGNS[planet] === signNumber) return 'debilitated'
-  if (MOOLATRIKONA_SIGNS[planet] === signNumber) return 'moolatrikona'
-  if (OWN_SIGNS[planet]?.includes(signNumber)) return 'own'
-
-  // Permanent friendship with the sign's lord
-  const signLord = SIGN_LORDS[signNumber]
-  if (!signLord) return 'neutral'
-
-  // Temporary (tatkalika) friendship: planets in 2/3/4/10/11/12 from each other
-  const tempFriendHouses = new Set([2, 3, 4, 10, 11, 12])
-  let tempFriend = false
-  let tempEnemy = false
-  for (const otherSign of residingPlanetSignNumbers) {
-    const dist = ((otherSign - signNumber + 12) % 12) + 1
-    if (tempFriendHouses.has(dist)) tempFriend = true
-    else tempEnemy = true
-  }
-
-  const permFriends = PERMANENT_FRIENDS[planet] ?? []
-  const permEnemies = PERMANENT_ENEMIES[planet] ?? []
-  const isPermanentFriend = permFriends.includes(signLord)
-  const isPermanentEnemy = permEnemies.includes(signLord)
-
-  // Compound (naisargika + tatkalika)
-  if (isPermanentFriend && tempFriend) return 'great_friend'
-  if (isPermanentFriend && !tempEnemy) return 'friend'
-  if (isPermanentEnemy && tempEnemy) return 'great_enemy'
-  if (isPermanentEnemy && !tempFriend) return 'enemy'
-  return 'neutral'
+/** Build a planet → D1 (rasi) sign-number map for canonical dignity lookups. */
+function buildD1SignMap(planets: ScoringChartData['planets']): Record<string, number> {
+  const map: Record<string, number> = {}
+  for (const p of planets ?? []) map[p.planet] = p.signNumber
+  return map
 }
 
 /** Map a dignity label to a normalized value n ∈ [0,1]. */
@@ -208,7 +146,10 @@ function dignityToNormalized(label: string): number {
 
 type FactorResult =
   | { ok: true; normalized: number; value: unknown }
-  | { ok: false; reason: string }
+  // `noSignal: true` = the factor evaluated fine but found nothing this period
+  // (legitimate — drop from the denominator but do NOT dent confidence).
+  // Absent/false = required chart data was unavailable/malformed (DOES dent confidence).
+  | { ok: false; reason: string; noSignal?: boolean }
 
 /** Lord dignity — reads signNumber from chartData.planets, handles Neechabhanga. */
 function factorLordDignity(
@@ -219,11 +160,12 @@ function factorLordDignity(
   const p = findPlanet(chartData.planets, lord)
   if (!p) return { ok: false, reason: `planet "${lord}" not found in chartData.planets` }
 
-  const otherSigns = (chartData.planets ?? [])
-    .filter((pl) => pl.planet !== lord)
-    .map((pl) => pl.signNumber)
-
-  let label = getDignityLabel(lord, p.signNumber, otherSigns)
+  // Canonical panchadha-maitri dignity (shadbala-consistent): positional dignity
+  // from the lord's own sign, tatkalika friendship with the sign-lord drawn from
+  // D1. Node lords (Rahu/Ketu) carry no friendship dignity → treated as neutral,
+  // preserving the prior behavior for nodes.
+  const d1Signs = buildD1SignMap(chartData.planets)
+  let label: string = getVargaDignityLabel(lord, p.signNumber, d1Signs) ?? 'neutral'
 
   // Neechabhanga lift: a debilitated lord is lifted to neutral ONLY when the
   // cancellation yoga names THIS lord. The slicer emits
@@ -320,16 +262,19 @@ function factorKarakaRole(
   domainWeights: DomainScoringWeights
 ): FactorResult {
   const relevant = new Set(domainWeights.relevantKarakaRoles)
-  if (relevant.size === 0) return { ok: true, normalized: 0.5, value: 'neutral (no karakaRoles for domain)' }
+  if (relevant.size === 0) return { ok: false, reason: 'no karakaRoles defined for domain', noSignal: true }
 
   if (mdKaraka && relevant.has(mdKaraka)) return { ok: true, normalized: 1.0, value: `MD matches: ${mdKaraka}` }
   if (adKaraka && relevant.has(adKaraka)) return { ok: true, normalized: 0.8, value: `AD matches: ${adKaraka}` }
-  return { ok: true, normalized: 0.5, value: 'no match' }
+  return { ok: false, reason: 'no running lord matches a domain karakaRole', noSignal: true }
 }
 
-/** Activated yogas count → [0.5, 0.95]. */
+/** Activated yogas: omits when 0 (no signal); scales 1→3 → 0.65→0.95.
+ * A negative-yoga marker (e.g. "Kemadruma", dusthana lord) could pull below 0.5
+ * — future extension. */
 function factorActivatedYogas(activatedYogas: string[]): FactorResult {
   const count = activatedYogas.length
+  if (count === 0) return { ok: false, reason: 'no activated yogas for this period', noSignal: true }
   const normalized = clamp(0.5 + Math.min(count, 3) * 0.15, 0, 1)
   return { ok: true, normalized, value: count }
 }
@@ -422,12 +367,12 @@ function factorNaturalKaraka(
   domainWeights: DomainScoringWeights
 ): FactorResult {
   const relevant = new Set(domainWeights.relevantNaturalKarakas)
-  if (relevant.size === 0) return { ok: true, normalized: 0.5, value: 'neutral (no natural karakas for domain)' }
+  if (relevant.size === 0) return { ok: false, reason: 'no natural karakas defined for domain', noSignal: true }
 
   if (relevant.has(mdLord)) return { ok: true, normalized: 1.0, value: `MD matches: ${mdLord}` }
   if (relevant.has(adLord)) return { ok: true, normalized: 0.75, value: `AD matches: ${adLord}` }
   if (relevant.has(pdLord)) return { ok: true, normalized: 0.65, value: `PD matches: ${pdLord}` }
-  return { ok: true, normalized: 0.5, value: 'no match' }
+  return { ok: false, reason: 'no running lord is a domain natural karaka', noSignal: true }
 }
 
 /**
@@ -487,7 +432,7 @@ function factorDomainHouseActivation(
 
   if (saturnActivates && jupiterActivates) return { ok: true, normalized: 1.0, value: 'double transit' }
   if (saturnActivates || jupiterActivates) return { ok: true, normalized: 0.7, value: saturnActivates ? 'Saturn only' : 'Jupiter only' }
-  return { ok: true, normalized: 0.5, value: 'no transit activation' }
+  return { ok: false, reason: 'no transit activation of domain houses', noSignal: true }
 }
 
 /**
@@ -508,8 +453,8 @@ function factorMdAdRelationship(
   }
 
   // Permanent relationship of AD lord to MD lord (is adLord in MD lord's friend/enemy list?)
-  const permFriends = PERMANENT_FRIENDS[mdLord] ?? []
-  const permEnemies = PERMANENT_ENEMIES[mdLord] ?? []
+  const permFriends = PERMANENT_FRIENDSHIP[mdLord]?.friends ?? []
+  const permEnemies = PERMANENT_FRIENDSHIP[mdLord]?.enemies ?? []
   const isPermanentFriend = permFriends.includes(adLord)
   const isPermanentEnemy = permEnemies.includes(adLord)
 
@@ -741,6 +686,8 @@ function factorDivisionalChartStrength(
   if (!vargaLagnaSign) return { ok: false, reason: 'varga lagna sign missing' }
   const vargaPlanets = chart.planets
   if (!vargaPlanets || vargaPlanets.length === 0) return { ok: false, reason: 'varga planets missing' }
+  // Tatkalika for varga dignity is drawn from D1 positions (shadbala convention).
+  const d1Signs = buildD1SignMap(chartData.planets)
 
   // (a) Domain-house lord's dignity + kendra occupancy, within the varga.
   const houseFindings: Array<{ house: number; lord: string; dignity: string; vargaHouse: number | null }> = []
@@ -753,8 +700,7 @@ function factorDivisionalChartStrength(
     const lord = SIGN_LORDS[sign]
     const lp = vargaPlanets.find((p) => p.planet === lord)
     if (!lp) { houseFindings.push({ house: h, lord, dignity: 'unknown', vargaHouse: null }); continue }
-    const otherSigns = vargaPlanets.filter((p) => p.planet !== lord).map((p) => p.signNumber)
-    const label = getDignityLabel(lord, lp.signNumber, otherSigns)
+    const label = getVargaDignityLabel(lord, lp.signNumber, d1Signs) ?? 'neutral'
     dignitySum += dignityToNormalized(label)
     dignityCount++
     if (KENDRA_HOUSES.has(lp.house)) lordInKendra = true
@@ -769,7 +715,7 @@ function factorDivisionalChartStrength(
   const vargaLagnaLord = SIGN_LORDS[vargaLagnaSign]
   const llp = vargaPlanets.find((p) => p.planet === vargaLagnaLord)
   const vargaLagnaLordLabel = llp
-    ? getDignityLabel(vargaLagnaLord, llp.signNumber, vargaPlanets.filter((p) => p.planet !== vargaLagnaLord).map((p) => p.signNumber))
+    ? (getVargaDignityLabel(vargaLagnaLord, llp.signNumber, d1Signs) ?? 'neutral')
     : null
   const subLagnaLordDignity = vargaLagnaLordLabel ? dignityToNormalized(vargaLagnaLordLabel) : 0.5
 
@@ -840,7 +786,7 @@ function factorRashiDrishti(
     if (best === null || w > best) best = w
   }
 
-  if (best === null) return { ok: true, normalized: 0.5, value: 'no rashi-drishti onto domain primary houses' }
+  if (best === null) return { ok: false, reason: 'no rashi-drishti onto domain primary houses', noSignal: true }
   return { ok: true, normalized: best, value: detail }
 }
 
@@ -961,7 +907,7 @@ function applyFactor(
 ): { weightedSum: number; weightSum: number } {
   if (!result.ok) {
     const severity = domainWeights.primaryFactors.includes(factorKey) ? 'primary' : 'secondary'
-    omissions.push({ factor: factorKey, reason: result.reason, severity })
+    omissions.push({ factor: factorKey, reason: result.reason, severity, noSignal: result.noSignal })
     return { weightedSum: 0, weightSum: 0 }
   }
   const contribution = weight * result.normalized
@@ -980,7 +926,11 @@ function computeConfidence(
   domainWeights: DomainScoringWeights,
   omissions: ScoreOmission[]
 ): { reducedConfidence: boolean; confidence: number } {
-  const omittedPrimary = new Set(omissions.filter((o) => o.severity === 'primary').map((o) => o.factor))
+  // Only DATA-UNAVAILABLE omissions dent confidence. A primary factor that evaluated
+  // cleanly but found no signal this period (noSignal) is legitimate and must not.
+  const omittedPrimary = new Set(
+    omissions.filter((o) => o.severity === 'primary' && !o.noSignal).map((o) => o.factor)
+  )
   const primaryKeys = domainWeights.primaryFactors
   if (primaryKeys.length === 0) return { reducedConfidence: false, confidence: 1.0 }
 

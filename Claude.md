@@ -109,6 +109,14 @@ Geometry**) live in `engine/compute/`:
 `shadbala.ts`, `relationships.ts`, `nakshatraRelationships.ts`, `jaimini.ts`,
 `bhavaBala.ts` (plus `D2`, `D3`, `D12` in `divisional.ts`).
 
+> **Chara Dasha (Jaimini rasi dasha):** `engine/compute/charaDasha.ts`
+> (`computeCharaDasha`, KN Rao/Parashara method) is an on-demand sibling of the
+> Vimshottari tree — returned by `POST /api/compute` as `charaDasha`, shown in the
+> `/compute` "Chara Dasha" tab + Copy-for-AI, and exposed to Claude Desktop via the
+> MCP `get_chara_dasha` tool and the `chara_dasha` knowledge framework. Not
+> persisted to `UnifiedChart` (recomputed from `birthInput` on demand). See
+> `docs/computation_chara_dasha.md`.
+
 ---
 
 ## Key directories

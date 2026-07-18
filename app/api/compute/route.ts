@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { computeFullChart } from '@/engine/compute'
+import { computeFullChart, computeCharaDasha } from '@/engine/compute'
 import { computeVimshottari } from '@/engine/computeVimshottari'
 
 // ─── Input Validation ───────────────────────────────────────────────
@@ -100,6 +100,14 @@ export async function POST(request: NextRequest) {
 
     const dashaTree = computeVimshottari(moonPlanet.longitude, birthDate)
 
+    // Chara Dasha (Jaimini rasi dasha) — deterministic from D1 sign positions +
+    // birth instant. Returned as a sibling of `chart`, like the Vimshottari tree.
+    const charaDasha = computeCharaDasha(
+      chart.planets,
+      chart.lagnaSignNumber,
+      birthDate
+    )
+
     // Serialize dasha tree (convert Dates to ISO strings)
     const serializedDasha = {
       balance_years: dashaTree.balance_years,
@@ -127,6 +135,7 @@ export async function POST(request: NextRequest) {
       success: true,
       chart,
       dashaTree: serializedDasha,
+      charaDasha,
     })
   } catch (error) {
     console.error('Chart computation error:', error)

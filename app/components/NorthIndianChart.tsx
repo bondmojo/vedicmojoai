@@ -18,7 +18,7 @@
  */
 'use client'
 
-import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData } from './chartTypes'
+import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData, dignitySuffix } from './chartTypes'
 
 const S = 480
 const M = S / 2 // 240
@@ -58,8 +58,9 @@ function getCellItems(house: number, chart: ChartData): Item[] {
   for (const p of chart.planets) {
     if (p.house === house) {
       const abbr = PLANET_ABBR[p.planet] ?? p.planet.substring(0, 2)
+      const label = (p.retrograde ? `(${abbr})` : abbr) + dignitySuffix(p.dignity, p.vargottama)
       items.push({
-        label: p.retrograde ? `(${abbr})` : abbr,
+        label,
         color: PLANET_COLORS[p.planet] ?? '#e5e7eb',
       })
     }

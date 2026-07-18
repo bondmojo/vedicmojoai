@@ -128,7 +128,14 @@ interface RawDivisionalChart {
   shortName: string
   lagna: string
   lagnaSignNumber: number
-  planets: Array<{ planet: string; signNumber: number; house: number; retrograde?: boolean }>
+  planets: Array<{
+    planet: string
+    signNumber: number
+    house: number
+    retrograde?: boolean
+    dignity?: string
+    vargottama?: boolean
+  }>
   arudhaPadas?: Array<{ abbr: string; signNumber: number; house_in_chart: number }>
   specialLagnas?: Array<{ abbr: string; signNumber: number; house: number }>
   upagrahas?: Array<{ abbr: string; signNumber: number; house: number }>
@@ -145,7 +152,13 @@ export interface TimelineResponse {
   categoryData?: {
     planets?: PlanetRow[]
     nakshatras?: NakshatraRow[]
-    ashtakavarga?: { bav: Record<string, number[]>; sav: number[]; savTotal: number }
+    ashtakavarga?: {
+      bav: Record<string, number[]>
+      sav: number[]
+      savTotal: number
+      lagnaSignNumber?: number
+      byHouse?: Array<{ house: number; signNumber: number; sign: string; sav: number; bav: Record<string, number> }>
+    }
     upagrahas?: Upagraha[] | null
     shadbala?: ShadbalResult | null
     bhavaBala?: BhavaBalaResult | null

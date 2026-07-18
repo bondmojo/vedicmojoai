@@ -96,11 +96,12 @@ describe('Sanity_Backtest: relative ranking holds across domains', () => {
       const worst = scored.reduce((a, b) => (b.expectedRank > a.expectedRank ? b : a))
       // The strong period is favorable...
       expect(best.score).toBeGreaterThanOrEqual(50)
-      // ...and the weak period is meaningfully lower. (A hard "<50" is not asserted because
-      // transit-independent factors like natal SAV are shared across both periods and can
-      // keep an otherwise-weak window near neutral — the ENGINE is behaving correctly.)
+      // ...and the weak period is meaningfully lower. Since v0.6.0's decompression
+      // (omit-on-no-signal) lets the denominator shrink, even a "weak" fixture whose
+      // remaining factors are natal-chart-quality can land slightly above 50. The
+      // meaningful constraint is the SEPARATION (≥ 8 below).
       expect(best.score - worst.score).toBeGreaterThanOrEqual(8)
-      expect(worst.score).toBeLessThanOrEqual(50)
+      expect(worst.score).toBeLessThanOrEqual(55)
     })
 
     it(`${domain}: every breakdown is stamped with the current WEIGHTS_VERSION`, () => {

@@ -48,6 +48,8 @@ export interface NormalizedChart {
   transits: unknown
   pindaStrength: unknown
   dashaTree: unknown
+  /** Birth input (for stored compute-path charts); allows recomputation. */
+  birthInput?: unknown
   /** Set for stored paste-source charts, which have no computed domains. */
   isPasteWithoutComputed?: boolean
 }
@@ -82,6 +84,7 @@ export async function resolveChart(args: {
       transits: pick(c, 'transits'),
       pindaStrength: pick(c, 'pindaStrength'),
       dashaTree: pick(c, 'dashaTree'),
+      birthInput: pick(c, 'birthInput'),
       isPasteWithoutComputed: isPaste,
     }
   }
@@ -136,6 +139,78 @@ function findRunning(periods: Period[] | undefined, atMs: number): Period | null
     if (atMs >= s && atMs < e) return p
   }
   return null
+}
+
+// ─── Chara Dasha (Jaimini rasi dasha) resolver ───────────────────────
+// Chara Dasha is a pure function of the D1 sign positions + birth instant, so
+// for stored charts we recompute it from the chart's `birthInput` when a
+// `charaDasha` column isn't present — no DB migration needed. birthData charts
+// get it straight from /api/compute.
+
+interface CharaPeriodLite {
+  sign: string
+  signNumber: number
+  start: string
+  end: string
+  antardashas?: { sign: string; signNumber: number; start: string; end: string }[]
+}
+
+export async function resolveCharaDasha(args: {
+  chartId?: string
+  birthData?: BirthData
+}): Promise<{ name?: string; charaDasha: unknown }> {
+  if (args.birthData) {
+    const r = (await api.post('/api/compute', args.birthData)) as { charaDasha?: unknown }
+    return { name: args.birthData.name, charaDasha: r.charaDasha ?? null }
+  }
+
+  if (args.chartId) {
+    const c = (await api.get(`/api/unified-charts/${args.chartId}`)) as Record<string, unknown>
+    // Future-proof: use a stored charaDasha column if one ever exists.
+    if (c.charaDasha) return { name: c.name as string | undefined, charaDasha: c.charaDasha }
+    const birth = c.birthInput as
+      | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
+      | null
+    if (c.source === 'compute' && birth?.date && birth?.time) {
+      const r = (await api.post('/api/compute', {
+        date: birth.date,
+        time: birth.time,
+        timezone: birth.timezone,
+        latitude: birth.latitude,
+        longitude: birth.longitude,
+        name: c.name,
+        sunriseMode: birth.sunriseMode ?? (c.sunriseMode as string | undefined) ?? 'precise',
+      })) as { charaDasha?: unknown }
+      return { name: c.name as string | undefined, charaDasha: r.charaDasha ?? null }
+    }
+    return { name: c.name as string | undefined, charaDasha: null }
+  }
+
+  throw new Error('Provide either `chartId` (a saved chart) or `birthData`.')
+}
+
+/** Resolve the running Chara mahadasha + antardasha at an instant. */
+export function runningCharaPeriod(charaDasha: unknown, atIso: string): unknown {
+  const cd = charaDasha as { periods?: CharaPeriodLite[] } | null
+  if (!cd || !Array.isArray(cd.periods)) return { error: 'No usable Chara Dasha.' }
+  const atMs = new Date(atIso).getTime()
+  const maha = cd.periods.find((p) => {
+    const s = new Date(p.start).getTime()
+    const e = new Date(p.end).getTime()
+    return atMs >= s && atMs < e
+  })
+  if (!maha) return { asOf: atIso, running: null, note: 'Date is outside the computed Chara Dasha span.' }
+  const antar = (maha.antardashas ?? []).find((a) => {
+    const s = new Date(a.start).getTime()
+    const e = new Date(a.end).getTime()
+    return atMs >= s && atMs < e
+  })
+  return {
+    asOf: atIso,
+    mahadasha: { sign: maha.sign, start: maha.start, end: maha.end },
+    antardasha: antar ? { sign: antar.sign, start: antar.start, end: antar.end } : null,
+    label: [maha.sign, antar?.sign].filter(Boolean).join(' / '),
+  }
 }
 
 export function activeDashaChain(dashaTree: unknown, atIso: string): unknown {

@@ -285,6 +285,15 @@ export interface ScoreOmission {
   reason: string
   /** Primary omissions materially dent confidence; secondary are footnotes. */
   severity: 'primary' | 'secondary'
+  /**
+   * True when the factor evaluated cleanly but found NO SIGNAL this period (e.g. the
+   * running lord simply isn't the domain karaka, or no transit activates the domain
+   * house). These are legitimate — the required data was present — so they are dropped
+   * from the score denominator but must NOT dent confidence. Contrast with omissions
+   * where required chart data was unavailable/malformed (noSignal falsy), which DO
+   * reduce confidence.
+   */
+  noSignal?: boolean
 }
 
 /**
