@@ -11,12 +11,14 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { createUnifiedChartFromBirthData } from '@/lib/unified-chart-create'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
 const ComputeInputSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().trim().min(1, 'Name is required'),
+  existingChartId: z.string().uuid().optional(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
@@ -72,6 +74,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (result.status === 'updated') {
+      return NextResponse.json(
+        {
+          id: result.id,
+          name: result.name,
+          source: 'compute',
+          lagna: result.lagna,
+          birthDatetime: result.birthDatetime,
+          createdAt: result.createdAt,
+          message: 'Chart updated successfully',
+        },
+        { status: 200 }
+      )
+    }
+
     return NextResponse.json(
       {
         id: result.id,
@@ -85,6 +102,18 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Chart to update was not found — it may have been deleted. Save it as a new chart instead.',
+        },
+        { status: 404 }
+      )
+    }
+
     console.error('Compute unified chart error:', error)
     return NextResponse.json(
       {

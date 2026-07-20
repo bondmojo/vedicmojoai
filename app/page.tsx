@@ -88,6 +88,11 @@ export default function ComputePage() {
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
+  // Id of the saved chart currently loaded into the form, if any — lets
+  // Save Chart update that chart in place instead of creating a duplicate
+  // when birth data is edited after loading.
+  const [loadedChartId, setLoadedChartId] = useState<string | null>(null)
+
   // Run AI Analysis state
   const [analyzeSaving, setAnalyzeSaving] = useState(false)
 
@@ -154,7 +159,9 @@ export default function ComputePage() {
     setSaveMessage(null)
 
     try {
-      // Save to the canonical UnifiedChart store (same as AI Analysis / Duration Analysis)
+      // Save to the canonical UnifiedChart store (same as AI Analysis / Duration Analysis).
+      // existingChartId, when set, updates that chart in place instead of
+      // creating a duplicate (see handleLoadChart / the "editing" banner).
       const res = await fetch('/api/unified-charts/from-compute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,15 +173,23 @@ export default function ComputePage() {
           latitude: parseFloat(form.latitude),
           longitude: parseFloat(form.longitude),
           sunriseMode: form.sunriseMode,
+          existingChartId: loadedChartId ?? undefined,
         }),
       })
 
       const data = await res.json()
       if (res.status === 201) {
         setSaveMessage('Chart saved to Unified Charts')
+        setLoadedChartId(data.id) // further saves update this new chart, not duplicate it
         fetchSavedCharts() // Refresh the list
+      } else if (res.status === 200) {
+        setSaveMessage('Chart updated')
+        fetchSavedCharts() // Refresh the list (name/lagna may have changed)
       } else if (res.status === 409) {
         setSaveMessage(`Already saved as "${data.name}" — rename it from the Unified Charts page if needed`)
+      } else if (res.status === 404) {
+        setLoadedChartId(null)
+        setSaveMessage(`Save failed: ${data.error}`)
       } else {
         setSaveMessage(`Save failed: ${data.error}`)
       }
@@ -203,13 +218,14 @@ export default function ComputePage() {
           latitude: parseFloat(form.latitude),
           longitude: parseFloat(form.longitude),
           sunriseMode: form.sunriseMode,
+          existingChartId: loadedChartId ?? undefined,
         }),
       })
 
       const data = await res.json()
 
-      if (res.status === 201 || res.status === 409) {
-        // Created or already exists — navigate to analyze page
+      if (res.status === 201 || res.status === 200 || res.status === 409) {
+        // Created, updated, or already exists — navigate to analyze page
         const chartId = data.id
         router.push(`/unified-charts/${chartId}/analyze`)
       } else {
@@ -279,6 +295,7 @@ export default function ComputePage() {
       setActiveTab('summary')
       setSaveMessage(null)
       setError(null)
+      setLoadedChartId(chartId)
     } catch (err) {
       setError('Failed to load chart')
     } finally {
@@ -425,6 +442,21 @@ export default function ComputePage() {
                   >
                     Copy for AI
                   </Button>
+                )}
+
+                {/* Editing indicator — Save Chart updates this chart in place;
+                    click "Save as new" to detach and create a separate chart instead. */}
+                {loadedChartId && (
+                  <span className="text-sm text-muted-foreground">
+                    Editing a saved chart — Save Chart will update it.{' '}
+                    <button
+                      type="button"
+                      onClick={() => setLoadedChartId(null)}
+                      className="underline hover:text-foreground"
+                    >
+                      Save as new instead
+                    </button>
+                  </span>
                 )}
 
                 {/* Save feedback */}

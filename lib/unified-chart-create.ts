@@ -21,10 +21,13 @@ export interface BirthDataInput {
   latitude: number
   longitude: number
   sunriseMode: 'precise' | 'jhora'
+  /** When set, re-saving edited birth data updates this chart in place
+   *  instead of creating a new row (see handleSaveChart in app/page.tsx). */
+  existingChartId?: string
 }
 
 export interface CreateUnifiedResult {
-  status: 'created' | 'duplicate'
+  status: 'created' | 'updated' | 'duplicate'
   id: string
   name: string
   lagna?: string
@@ -35,7 +38,10 @@ export interface CreateUnifiedResult {
 /**
  * Computes and persists a UnifiedChart (source="compute") from birth data.
  * Returns status="duplicate" with the EXISTING chart when the same birth
- * data (chartHash) is already stored — the name is not updated in that case.
+ * data (chartHash) is already stored under a *different* id — the name is
+ * not updated in that case. When `input.existingChartId` is set, the birth
+ * data is instead written onto that existing row (status="updated"),
+ * enabling in-place edits of a previously saved chart.
  *
  * @throws when the ephemeris computation fails (e.g. Moon position missing).
  */
@@ -82,8 +88,33 @@ export async function createUnifiedChartFromBirthData(
     select: { id: true, name: true },
   })
 
-  if (existing) {
+  // A different chart already has this exact birth data — refuse to save
+  // over it, whether this is a fresh save or an in-place edit.
+  if (existing && existing.id !== input.existingChartId) {
     return { status: 'duplicate', id: existing.id, name: existing.name }
+  }
+
+  if (input.existingChartId) {
+    const updated = await prisma.unifiedChart.update({
+      where: { id: input.existingChartId },
+      data: createInput,
+      select: {
+        id: true,
+        name: true,
+        lagna: true,
+        birthDatetime: true,
+        createdAt: true,
+      },
+    })
+
+    return {
+      status: 'updated',
+      id: updated.id,
+      name: updated.name,
+      lagna: updated.lagna,
+      birthDatetime: updated.birthDatetime,
+      createdAt: updated.createdAt,
+    }
   }
 
   const saved = await prisma.unifiedChart.create({
