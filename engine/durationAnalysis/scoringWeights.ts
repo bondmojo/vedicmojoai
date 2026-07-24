@@ -106,8 +106,72 @@ import { DOMAIN_AGENT_REGISTRY } from './registry'
  *             simply isn't the domain karaka would have shown false reducedConfidence.
  *             This changes confidence/reducedConfidence metadata only — NOT the score.
  *         STILL uncalibrated — see the warning above.
+ *
+ * 0.7.0 — Scorer dynamic range (scorer-dynamic-range spec, Requirements 1, 2, 3, 6, 7):
+ *         (A) Natal-constant de-emphasis + transit/period-varying reweight. Cut
+ *             mdLordDignity (-4), naturalKaraka (-4, or -3 where it is a
+ *             `primaryFactor`, e.g. marriage), natalHouseStrength (-2),
+ *             argalaOnDomainHouse (-2), and divisionalChartStrength (-2; health -1 from
+ *             its already-reduced 4) across every domain, and moved that weight onto
+ *             adLordDignity (+2), pdLordDignity (+1), shadbala (+1), transitBav (+3),
+ *             and saturnAfflictions (+2, or +3 for wealth per its exact worked table —
+ *             health's +2 lands it at 14, the highest absolute value, since Saturn
+ *             afflictions are its `primaryFactor`). `mdAdRelationship` and
+ *             `domainHouseActivation` are trimmed by a deliberately MINIMAL -2 each (not
+ *             deepened) — a larger cut, justified only by the single Mojo wealth chart
+ *             that motivated this rebalance, would risk overfitting; the per-domain
+ *             fixture suite in (F) is the intended guard against that, not a heavier
+ *             hand on these two factors. Every category's Period_Varying +
+ *             Transit_Level weight share (as a proportion of its category total) now
+ *             exceeds its 0.6.0 share (Requirement 1.4 — verified for every domain).
+ *         (B) `naturalKaraka`/`karakaRole` de-pin + combustion credit reduction: an
+ *             MD-lord karaka match no longer pins the factor at a flat 1.0 for the whole
+ *             Mahadasha — the value now sums a per-level presence base (MD/AD/PD) scaled
+ *             by each matched lord's combustion-survival fraction, so it varies with
+ *             AD/PD reinforcement and drops when the matched karaka lord is combust.
+ *             (Implemented in `scoring.ts` — a companion change to this file.)
+ *         (C) New additive `lordAffliction` factor (SECONDARY tier, never a
+ *             `primaryFactor`): dampens a period when a running MD/AD/PD lord is
+ *             combust, graded by closeness to the Sun via `degreeFromSun`/`threshold`.
+ *             Weight = 8 for career/wealth/marriage/property/cashflow/family; = 9 for
+ *             health, since combustion of the vitality/Atmakaraka significator is most
+ *             consequential there. Added to every domain's `weights` table in this file;
+ *             the factor's evaluation logic is a companion change in `scoring.ts`.
+ *         (D) `domainHouseActivation` net narrowed to occupation + 7th-aspect only
+ *             (drops the domain-house-lord's natal house and the wide Saturn 3rd/10th /
+ *             Jupiter 5th/9th special aspects), with graded benefic/malefic output
+ *             (double-transit 1.00, Jupiter-only 0.75, Saturn-only 0.60, neither omits)
+ *             so the factor stops pinning at its ceiling across a whole analysis window.
+ *             The -2 weight trim on this factor (part of (A) above) is the only change
+ *             in this file; the evaluation-logic redesign is a companion change in
+ *             `scoring.ts`.
+ *         (E) `factorSaturnAfflictions`' Sade-Sati peak-phase penalty becomes
+ *             conditional on transiting Saturn's own transit dignity: steep (normalized
+ *             0.40) when Saturn sits in a non-friendly rashi (debilitated/enemy/
+ *             great_enemy — Aries, Cancer, Leo, Scorpio), mild (normalized 0.60, i.e.
+ *             unchanged from 0.6.0) otherwise; rising/setting, ashtamaShani, and
+ *             kantakaShani are unchanged. No weight-table effect — this is a companion
+ *             logic change in `scoring.ts`.
+ *         (F) Backtest validation: a new Mojo wealth-chart backtest fixture
+ *             (`mojo_wealth_range.json` / `scoring.backtest.test.ts`, companion change)
+ *             confirms the top-of-range inversion is removed and the worst-window floor
+ *             drops materially below the pre-fix ~58; existing per-domain fixtures
+ *             (`career_strong_weak`, `health_saturn_affliction`,
+ *             `marriage_dk_vs_dusthana`, `wealth_dhana_vs_dusthana`) are re-verified
+ *             under 0.7.0 and all pass unchanged. RE-BASELINED unit test (recorded per
+ *             Requirement 8.1/8.2): `scoring.test.ts`'s former T4-3 case
+ *             ("domainHouseActivation ... aspects the domain-house lord", which
+ *             expected normalized >= 0.7) asserted the OLD Limb-2 domain-house-lord net
+ *             and Saturn's 3rd aspect — both removed by (D). Its scenario (Saturn in
+ *             H1 7th-aspecting the marriage primary house 7, Jupiter not reaching H7)
+ *             is now a legitimate Saturn-only case, re-baselined to expect exactly 0.60
+ *             under the narrowed occupation+7th grading.
+ *         Combustion source correctness (removing the cazimi cancellation of `combust`
+ *         in `engine/compute/relationships.ts`, shipped in 0.7.0 alongside this table)
+ *         feeds this version's `lordAffliction`/karaka-credit signals but does not touch
+ *         this file. STILL uncalibrated — see the warning above.
  */
-export const WEIGHTS_VERSION = '0.6.0-provisional'
+export const WEIGHTS_VERSION = '0.7.0-provisional'
 
 // ─── Configuration error ─────────────────────────────────────────────
 
@@ -141,27 +205,28 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: ['AK'],          // Atmakaraka — vitality indicator
     relevantNaturalKarakas: ['Sun', 'Moon', 'Saturn'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        4,
-      shadbala:             8,
+      mdLordDignity:        6,           // 0.7.0: 10→6 (-4), natal-constant cut
+      adLordDignity:       10,           // 0.7.0: 8→10 (+2), period-varying gain
+      pdLordDignity:        5,           // 0.7.0: 4→5 (+1), period-varying gain
+      shadbala:             9,           // 0.7.0: 8→9 (+1), period-varying gain
       ishtaKashta:          8,
       houseOwnership:      12,
       karakaRole:           7,
-      naturalKaraka:        7,
+      naturalKaraka:        3,           // 0.7.0: 7→3 (-4), natal-constant cut (not a primaryFactor)
       activatedYogas:       5,
       bhavaBala:            8,
-      domainHouseActivation: 10,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   12,           // Saturn afflictions weigh heavily on health
+      domainHouseActivation: 8,          // 0.7.0: 10→8 (-2), minimal transit trim
+      mdAdRelationship:     8,           // 0.7.0: 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 0.7.0: 8→6 (-2), natal-constant cut
+      transitBav:          13,           // 0.7.0: 10→13 (+3), transit gain
+      saturnAfflictions:   14,           // 0.7.0: 12→14 (+2), largest absolute increase — primaryFactor for health
       nakshatraDispositor:  7,
       dashaLordBav:         7,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 4,
+      argalaOnDomainHouse:  5,           // 0.7.0: 7→5 (-2), natal-constant cut
+      divisionalChartStrength: 3,        // 0.7.0: 4→3 (-1, already-reduced base)
       rashiDrishti:         5,
       rashiDispositorChain: 7,
+      lordAffliction:       9,           // NEW 0.7.0: heaviest of any domain — combustion of vitality/Atmakaraka significator
     },
     specialPoints: [
       { key: 'ghatiLagna', source: 'specialLagnas', selector: 'GL', confidence: 'primary'   },
@@ -182,27 +247,28 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: ['AmK'],         // Amatyakaraka
     relevantNaturalKarakas: ['Sun', 'Saturn', 'Mercury'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        4,
-      shadbala:             8,
+      mdLordDignity:        6,           // 0.7.0: 10→6 (-4), natal-constant cut
+      adLordDignity:       10,           // 0.7.0: 8→10 (+2), period-varying gain
+      pdLordDignity:        5,           // 0.7.0: 4→5 (+1), period-varying gain
+      shadbala:             9,           // 0.7.0: 8→9 (+1), period-varying gain
       ishtaKashta:          6,
       houseOwnership:      12,
       karakaRole:           9,
-      naturalKaraka:        7,
+      naturalKaraka:        3,           // 0.7.0: 7→3 (-4), natal-constant cut (not a primaryFactor)
       activatedYogas:       7,
       bhavaBala:            8,
-      domainHouseActivation: 12,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   10,
+      domainHouseActivation: 10,         // 0.7.0: 12→10 (-2), minimal trim — kept comparatively higher, career primaryFactor
+      mdAdRelationship:     8,           // 0.7.0: 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 0.7.0: 8→6 (-2), natal-constant cut
+      transitBav:          13,           // 0.7.0: 10→13 (+3), transit gain
+      saturnAfflictions:   12,           // 0.7.0: 10→12 (+2), transit gain
       nakshatraDispositor:  7,
       dashaLordBav:         7,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 6,
+      argalaOnDomainHouse:  5,           // 0.7.0: 7→5 (-2), natal-constant cut
+      divisionalChartStrength: 4,        // 0.7.0: 6→4 (-2), natal-constant cut
       rashiDrishti:         5,
       rashiDispositorChain: 7,
+      lordAffliction:       8,           // NEW 0.7.0
     },
     specialPoints: [
       { key: 'arudhaLagna', source: 'arudhaPadas',   selector: 'AL', confidence: 'primary'   },
@@ -223,27 +289,29 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: [],
     relevantNaturalKarakas: ['Jupiter', 'Venus'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        4,
-      shadbala:             8,
+      // 0.7.0: exact table per design.md §1 Factor Rebalance (wealth worked example)
+      mdLordDignity:        6,           // 10→6 (-4)
+      adLordDignity:       10,           // 8→10 (+2)
+      pdLordDignity:        5,           // 4→5 (+1)
+      shadbala:             9,           // 8→9 (+1)
       ishtaKashta:          6,
       houseOwnership:      12,
       karakaRole:           7,
-      naturalKaraka:        9,
-      activatedYogas:       7,
+      naturalKaraka:        5,           // 9→5 (-4)
+      activatedYogas:       6,           // 7→6 (-1)
       bhavaBala:            8,
-      domainHouseActivation: 10,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   10,
-      nakshatraDispositor:  7,
+      domainHouseActivation: 8,          // 10→8 (-2), minimal trim
+      mdAdRelationship:     8,           // 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 8→6 (-2)
+      transitBav:          13,           // 10→13 (+3)
+      saturnAfflictions:   13,           // 10→13 (+3)
+      nakshatraDispositor:  6,           // 7→6 (-1)
       dashaLordBav:         7,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 6,
+      argalaOnDomainHouse:  5,           // 7→5 (-2)
+      divisionalChartStrength: 4,        // 6→4 (-2)
       rashiDrishti:         5,
-      rashiDispositorChain: 7,
+      rashiDispositorChain: 6,           // 7→6 (-1)
+      lordAffliction:       8,           // NEW 0.7.0
     },
     specialPoints: [
       { key: 'sreeLagna',  source: 'specialLagnas', selector: 'SL', confidence: 'primary'   },
@@ -265,27 +333,28 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: ['DK'],          // Darakaraka
     relevantNaturalKarakas: ['Venus', 'Jupiter'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        4,
-      shadbala:             8,
+      mdLordDignity:        6,           // 0.7.0: 10→6 (-4), natal-constant cut
+      adLordDignity:       10,           // 0.7.0: 8→10 (+2), period-varying gain
+      pdLordDignity:        5,           // 0.7.0: 4→5 (+1), period-varying gain
+      shadbala:             9,           // 0.7.0: 8→9 (+1), period-varying gain
       ishtaKashta:          6,
       houseOwnership:      12,
       karakaRole:          10,
-      naturalKaraka:        8,
+      naturalKaraka:        5,           // 0.7.0: 8→5 (-3), primaryFactor kept usable
       activatedYogas:       6,
       bhavaBala:            8,
-      domainHouseActivation: 10,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   10,
+      domainHouseActivation: 8,          // 0.7.0: 10→8 (-2), minimal trim
+      mdAdRelationship:     8,           // 0.7.0: 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 0.7.0: 8→6 (-2), natal-constant cut
+      transitBav:          13,           // 0.7.0: 10→13 (+3), transit gain
+      saturnAfflictions:   12,           // 0.7.0: 10→12 (+2), transit gain
       nakshatraDispositor:  6,
       dashaLordBav:         6,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 6,
+      argalaOnDomainHouse:  5,           // 0.7.0: 7→5 (-2), natal-constant cut
+      divisionalChartStrength: 4,        // 0.7.0: 6→4 (-2), natal-constant cut (primaryFactor, kept usable)
       rashiDrishti:         6,
       rashiDispositorChain: 7,
+      lordAffliction:       8,           // NEW 0.7.0
     },
     specialPoints: [
       { key: 'upapadaLagna', source: 'arudhaPadas',   selector: 'UL', confidence: 'primary'   },
@@ -307,27 +376,28 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: [],
     relevantNaturalKarakas: ['Mars', 'Venus', 'Saturn'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        4,
-      shadbala:             8,
+      mdLordDignity:        6,           // 0.7.0: 10→6 (-4), natal-constant cut
+      adLordDignity:       10,           // 0.7.0: 8→10 (+2), period-varying gain
+      pdLordDignity:        5,           // 0.7.0: 4→5 (+1), period-varying gain
+      shadbala:             9,           // 0.7.0: 8→9 (+1), period-varying gain
       ishtaKashta:          6,
       houseOwnership:      12,
       karakaRole:           7,
-      naturalKaraka:        8,
+      naturalKaraka:        4,           // 0.7.0: 8→4 (-4), natal-constant cut (not a primaryFactor)
       activatedYogas:       7,
       bhavaBala:            8,
-      domainHouseActivation: 12,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   10,
+      domainHouseActivation: 10,         // 0.7.0: 12→10 (-2), minimal trim — kept comparatively higher, property primaryFactor
+      mdAdRelationship:     8,           // 0.7.0: 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 0.7.0: 8→6 (-2), natal-constant cut
+      transitBav:          13,           // 0.7.0: 10→13 (+3), transit gain
+      saturnAfflictions:   12,           // 0.7.0: 10→12 (+2), transit gain
       nakshatraDispositor:  5,
       dashaLordBav:         7,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 6,
+      argalaOnDomainHouse:  5,           // 0.7.0: 7→5 (-2), natal-constant cut
+      divisionalChartStrength: 4,        // 0.7.0: 6→4 (-2), natal-constant cut (primaryFactor, kept usable)
       rashiDrishti:         6,
       rashiDispositorChain: 7,
+      lordAffliction:       8,           // NEW 0.7.0
     },
     specialPoints: [
       { key: 'ghatiLagna', source: 'specialLagnas', selector: 'GL', confidence: 'secondary' },
@@ -348,27 +418,28 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: [],
     relevantNaturalKarakas: ['Mercury', 'Venus'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        5,
-      shadbala:             8,
+      mdLordDignity:        6,           // 0.7.0: 10→6 (-4), natal-constant cut
+      adLordDignity:       10,           // 0.7.0: 8→10 (+2), period-varying gain
+      pdLordDignity:        6,           // 0.7.0: 5→6 (+1), period-varying gain
+      shadbala:             9,           // 0.7.0: 8→9 (+1), period-varying gain
       ishtaKashta:          6,
       houseOwnership:      12,
       karakaRole:           7,
-      naturalKaraka:        7,
+      naturalKaraka:        3,           // 0.7.0: 7→3 (-4), natal-constant cut (not a primaryFactor)
       activatedYogas:       7,
       bhavaBala:            8,
-      domainHouseActivation: 10,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   10,
+      domainHouseActivation: 8,          // 0.7.0: 10→8 (-2), minimal trim
+      mdAdRelationship:     8,           // 0.7.0: 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 0.7.0: 8→6 (-2), natal-constant cut (primaryFactor, kept usable)
+      transitBav:          13,           // 0.7.0: 10→13 (+3), transit gain — primaryFactor for cashflow
+      saturnAfflictions:   12,           // 0.7.0: 10→12 (+2), transit gain
       nakshatraDispositor:  5,
       dashaLordBav:         7,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 5,
+      argalaOnDomainHouse:  5,           // 0.7.0: 7→5 (-2), natal-constant cut
+      divisionalChartStrength: 3,        // 0.7.0: 5→3 (-2), natal-constant cut
       rashiDrishti:         7,
       rashiDispositorChain: 7,
+      lordAffliction:       8,           // NEW 0.7.0
     },
     specialPoints: [
       { key: 'horaLagna',  source: 'specialLagnas', selector: 'HL', confidence: 'primary'   },
@@ -394,27 +465,28 @@ export const DOMAIN_SCORING_WEIGHTS: Record<DurationCategory, DomainScoringWeigh
     relevantKarakaRoles: [],
     relevantNaturalKarakas: ['Moon', 'Jupiter'],
     weights: {
-      mdLordDignity:       10,
-      adLordDignity:        8,
-      pdLordDignity:        4,
-      shadbala:             8,
+      mdLordDignity:        6,           // 0.7.0: 10→6 (-4), natal-constant cut
+      adLordDignity:       10,           // 0.7.0: 8→10 (+2), period-varying gain
+      pdLordDignity:        5,           // 0.7.0: 4→5 (+1), period-varying gain
+      shadbala:             9,           // 0.7.0: 8→9 (+1), period-varying gain
       ishtaKashta:          6,
       houseOwnership:      12,
       karakaRole:           7,
-      naturalKaraka:        8,
+      naturalKaraka:        4,           // 0.7.0: 8→4 (-4), natal-constant cut (not a primaryFactor)
       activatedYogas:       7,
       bhavaBala:            8,
-      domainHouseActivation: 12,
-      mdAdRelationship:    10,
-      natalHouseStrength:   8,
-      transitBav:          10,
-      saturnAfflictions:   10,
+      domainHouseActivation: 10,         // 0.7.0: 12→10 (-2), minimal trim — kept comparatively higher, family primaryFactor (modeled on property)
+      mdAdRelationship:     8,           // 0.7.0: 10→8 (-2), minimal trim
+      natalHouseStrength:   6,           // 0.7.0: 8→6 (-2), natal-constant cut (primaryFactor, kept usable)
+      transitBav:          13,           // 0.7.0: 10→13 (+3), transit gain
+      saturnAfflictions:   12,           // 0.7.0: 10→12 (+2), transit gain
       nakshatraDispositor:  5,
       dashaLordBav:         7,
-      argalaOnDomainHouse:  7,
-      divisionalChartStrength: 6,
+      argalaOnDomainHouse:  5,           // 0.7.0: 7→5 (-2), natal-constant cut
+      divisionalChartStrength: 4,        // 0.7.0: 6→4 (-2), natal-constant cut (primaryFactor, kept usable)
       rashiDrishti:         6,
       rashiDispositorChain: 7,
+      lordAffliction:       8,           // NEW 0.7.0
     },
     specialPoints: [
       { key: 'ghatiLagna', source: 'specialLagnas', selector: 'GL', confidence: 'secondary' },

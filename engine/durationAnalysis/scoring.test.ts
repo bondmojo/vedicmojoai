@@ -396,13 +396,20 @@ describe('Stress-peak topFactors surface the biggest drags, not strengths (T4-4)
   })
 })
 
-// ─── domainHouseActivation domain-house-lord limb (T4-3 regression) ──
+// ─── domainHouseActivation narrowed aspect net (scorer-dynamic-range §4) ──
+//
+// RE-BASELINED under WEIGHTS_VERSION 0.7.0-provisional (scorer-dynamic-range task 7 / task 10).
+// The former T4-3 test asserted the OLD "domain-house lord limb" (Limb 2) plus the wide special
+// aspects (Saturn 3rd/10th) — both of which design §4 intentionally REMOVED to stop the factor
+// pinning at its ceiling. The net is now occupation + 7th aspect only, graded
+// both→1.00 / Jupiter-only→0.75 / Saturn-only→0.60 / neither→omit. This test now validates that
+// narrowed grading. Rationale recorded in scoringWeights.ts version-history entry 0.7.0 (D).
 
-describe('domainHouseActivation credits the domain-house lord limb (T4-3)', () => {
-  it('activates when a transit aspects the domain-house lord even if not the primary house itself', () => {
+describe('domainHouseActivation uses the narrowed occupation+7th net (scorer-dynamic-range §4)', () => {
+  it('grades Saturn-only (Saturn 7th-aspects the primary house, Jupiter does not) as 0.60', () => {
     const w = resolveDomainWeights('marriage') // primaryHouses [7]
-    // Aries lagna: 7th house = Libra (sign 7), lord Venus. Place Venus in house 3.
-    // Saturn transiting house 12 aspects house 3 (3rd aspect: 12+... let's use house 1 → 3rd aspect = house 3).
+    // Aries lagna. Place Venus (7th lord) in house 3 — under the narrowed net the domain-house
+    // LORD's house is no longer a target, so Venus's placement is irrelevant to this factor now.
     const chart: ScoringChartData = {
       category: 'marriage',
       planets: [
@@ -410,8 +417,9 @@ describe('domainHouseActivation credits the domain-house lord limb (T4-3)', () =
         { planet: 'Venus', signNumber: 3, house: 3, longitude: 65, latitude: 0, speed: 1, retrograde: false, sign: 'Gemini', degreeInSign: 5 },
       ] as ScoringChartData['planets'],
     }
-    // Saturn in house 1 → aspects houses 1, 7 (7th), 3 (3rd), 10 (10th). House 3 = Venus's house.
-    // Jupiter in house 5 → aspects 5, 11, 9, 1. Does not hit house 7 or Venus(3).
+    // Saturn in house 1 → 7th aspect reaches house 7 (the marriage primary house) ⇒ saturnHits.
+    // Jupiter in house 5 → occupies 5, 7th-aspects 11; never reaches house 7 ⇒ !jupiterHits.
+    // Narrowed net drops Saturn's 3rd/10th and Jupiter's 5th/9th, and drops the 7th-lord limb.
     const overlay: TransitOverlay = {
       adStart: '2024-01-01', adLord: 'x',
       saturn: { sign: 'Aries', signNumber: 1, houseFromLagna: 1, houseFromMoon: 1, retrograde: false },
@@ -423,8 +431,8 @@ describe('domainHouseActivation credits the domain-house lord limb (T4-3)', () =
     }
     const { breakdown } = scorePeriod(makeSlice('Venus', 'Jupiter', 'Moon'), chart, overlay, w)
     const dha = breakdown.factors.find((f) => f.factor === 'domainHouseActivation')!
-    // Saturn aspects the 7th-lord (Venus in H3, via Saturn's 3rd aspect) → at least "one activating" (0.7)
-    expect(dha.normalized).toBeGreaterThanOrEqual(0.7)
+    // Saturn-only reaches the primary house (via its 7th aspect) → malefic-only grade 0.60.
+    expect(dha.normalized).toBe(0.6)
   })
 })
 
