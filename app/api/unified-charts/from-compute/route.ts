@@ -11,15 +11,14 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/db'
-import { computeFullChart } from '@/engine/compute'
-import { computeVimshottari } from '@/engine/computeVimshottari'
-import { mapComputedToUnified, serializeDashaTree } from '@/lib/chart-mapper'
+import { Prisma } from '@prisma/client'
+import { createUnifiedChartFromBirthData } from '@/lib/unified-chart-create'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
 const ComputeInputSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().trim().min(1, 'Name is required'),
+  existingChartId: z.string().uuid().optional(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
@@ -60,89 +59,61 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const input = parsed.data
+    // Shared Path A implementation — also used by the SavedChart migration.
+    const result = await createUnifiedChartFromBirthData(parsed.data)
 
-    // Normalize time to HH:MM:SS
-    const time = input.time.length === 5 ? `${input.time}:00` : input.time
-
-    // Compute the full chart via Swiss Ephemeris
-    const chart = computeFullChart({
-      date: input.date,
-      time,
-      timezone: input.timezone,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      name: input.name,
-      sunriseMode: input.sunriseMode,
-    })
-
-    // Compute Vimshottari Dasha from Moon longitude
-    const moonPlanet = chart.planets.find((p) => p.planet === 'Moon')
-    if (!moonPlanet) {
-      return NextResponse.json(
-        { error: 'Moon position could not be computed' },
-        { status: 500 }
-      )
-    }
-
-    // Build birth datetime (UTC) for dasha computation
-    const [year, month, day] = input.date.split('-').map(Number)
-    const [hours, minutes, seconds] = time.split(':').map(Number)
-    const birthUtcMillis =
-      Date.UTC(year, month - 1, day, hours, minutes, seconds || 0) -
-      input.timezone * 3600 * 1000
-    const birthDate = new Date(birthUtcMillis)
-
-    const dashaTree = computeVimshottari(moonPlanet.longitude, birthDate)
-    const serializedDasha = serializeDashaTree(dashaTree)
-
-    // Map to UnifiedChart create input
-    const createInput = mapComputedToUnified(chart, serializedDasha, input.name)
-
-    // Check for duplicate (same birth data hash)
-    const existing = await prisma.unifiedChart.findUnique({
-      where: { chartHash: createInput.chartHash },
-      select: { id: true, name: true },
-    })
-
-    if (existing) {
+    if (result.status === 'duplicate') {
       return NextResponse.json(
         {
-          id: existing.id,
-          name: existing.name,
-          message: `Chart already exists for "${existing.name}"`,
+          id: result.id,
+          name: result.name,
+          message: `Chart already exists for "${result.name}"`,
           isDuplicate: true,
         },
         { status: 409 }
       )
     }
 
-    // Persist to UnifiedChart
-    const saved = await prisma.unifiedChart.create({
-      data: createInput,
-      select: {
-        id: true,
-        name: true,
-        source: true,
-        lagna: true,
-        birthDatetime: true,
-        createdAt: true,
-      },
-    })
+    if (result.status === 'updated') {
+      return NextResponse.json(
+        {
+          id: result.id,
+          name: result.name,
+          source: 'compute',
+          lagna: result.lagna,
+          birthDatetime: result.birthDatetime,
+          createdAt: result.createdAt,
+          message: 'Chart updated successfully',
+        },
+        { status: 200 }
+      )
+    }
 
     return NextResponse.json(
       {
-        id: saved.id,
-        name: saved.name,
-        source: saved.source,
-        lagna: saved.lagna,
-        birthDatetime: saved.birthDatetime,
-        createdAt: saved.createdAt,
+        id: result.id,
+        name: result.name,
+        source: 'compute',
+        lagna: result.lagna,
+        birthDatetime: result.birthDatetime,
+        createdAt: result.createdAt,
         message: 'Chart computed and saved successfully',
       },
       { status: 201 }
     )
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Chart to update was not found — it may have been deleted. Save it as a new chart instead.',
+        },
+        { status: 404 }
+      )
+    }
+
     console.error('Compute unified chart error:', error)
     return NextResponse.json(
       {

@@ -54,6 +54,23 @@ export interface DivisionalPlacement {
   signNumber: number
   house: number
   retrograde?: boolean
+  /**
+   * Panchadha-maitri dignity label of the planet in THIS varga sign
+   * (exalted / debilitated / moolatrikona / own / great_friend / friend /
+   * neutral / enemy / great_enemy). `undefined` for Rahu/Ketu, which carry no
+   * classical friendship dignity. Computed deterministically — see
+   * `engine/compute/dignity.ts`.
+   */
+  dignity?: import('./dignity').DignityLabel
+  /**
+   * True when the planet occupies the SAME sign in this varga as it does in D1
+   * (rasi) — i.e. vargottama in this division. A strong dignity, classically
+   * treated on par with own/exaltation, so it is exposed SEPARATELY from
+   * `dignity` (which reports only the positional friend/enemy status of the
+   * varga sign). Set only when true; never set for D1 itself, where it would
+   * be trivially true for every planet. Applies to all bodies, incl. Rahu/Ketu.
+   */
+  vargottama?: boolean
 }
 
 /** An arudha pada as placed within a specific chart (for display). */
@@ -93,10 +110,41 @@ export interface CharaKaraka {
   degreeInSign: number
 }
 
+/**
+ * One house of the Ashtakavarga chart, indexed FROM THE LAGNA (house 1 = the
+ * lagna sign). Pre-rotated so consumers never re-derive the house→sign mapping.
+ */
+export interface AshtakavargaHouseEntry {
+  /** House number 1–12, counted from the lagna. */
+  house: number
+  /** Sign occupying this house (1=Aries … 12=Pisces). */
+  signNumber: number
+  /** Sign name. */
+  sign: string
+  /** Sarvashtakavarga bindus in this house/sign. */
+  sav: number
+  /** Per-planet (Bhinnashtakavarga) bindus in this house/sign. */
+  bav: Record<string, number>
+}
+
 export interface AshtakavargaResult {
+  /** Bhinnashtakavarga per planet — SIGN-indexed 12-slot arrays (0 = Aries). */
   bav: Record<string, number[]>
+  /** Sarvashtakavarga — SIGN-indexed 12-slot array (0 = Aries). */
   sav: number[]
   savTotal: number
+  /**
+   * Lagna sign number (1–12) used to build the house-indexed view. Optional
+   * because charts computed/stored before this field existed will not carry it
+   * (present on all freshly computed charts).
+   */
+  lagnaSignNumber?: number
+  /**
+   * House-indexed view (house 1 = lagna sign), pre-rotated from the SIGN-indexed
+   * `bav`/`sav` above so callers don't hand-map houses to signs. Optional for
+   * the same back-compat reason as `lagnaSignNumber`.
+   */
+  byHouse?: AshtakavargaHouseEntry[]
 }
 
 // ─── New types ───────────────────────────────────────────────────────
@@ -232,6 +280,7 @@ export interface ShadbalPlanet {
   masaBala: number
   varaBala: number
   horaBala: number
+  ayanaBala: number
 
   cheshtaBala: number
   naisargikaBala: number
@@ -452,6 +501,83 @@ export interface BhavaBalaResult {
   computedAt: string
 }
 
+// ─── Varshaphal (Tajika annual solar-return chart) ───────────────────
+
+/** The five office-bearer candidates competing to be Varshesha (year lord). */
+export interface VarsheshaCandidate {
+  /** Which office this planet holds among the five. */
+  office:
+    | 'muntha_lord'
+    | 'varsha_lagna_lord'
+    | 'janma_lagna_lord'
+    | 'dinaratri_lord'
+    | 'trirashi_lord'
+  planet: string
+  /** Human-readable label for the office. */
+  officeLabel: string
+  /** Final Panchavargeeya Bala (0–20 scale). */
+  panchavargeeyaBala: number
+}
+
+/** Per-planet Panchavargeeya Bala breakdown (Tajika 5-fold strength). */
+export interface PanchavargeeyaBalaEntry {
+  planet: string
+  kshetraBala: number   // sign dignity (Vishwa)
+  ucchaBala: number     // exaltation proximity (Vishwa)
+  haddaBala: number     // Egyptian term / bound (Vishwa)
+  drekkanaBala: number  // D3 dignity (Vishwa)
+  navamsaBala: number   // D9 dignity (Vishwa)
+  total: number         // sum of the five (Vishwa)
+  finalBala: number     // total / 4 → 0–20
+  grade: 'Weak' | 'Ordinary' | 'Powerful' | 'VeryStrong' | 'Extraordinary'
+}
+
+export interface Muntha {
+  signNumber: number
+  sign: string
+  /** House occupied in the annual (Varsha) chart, counted from Varsha Lagna. */
+  house: number
+  lord: string
+}
+
+export interface VarshaPravesh {
+  julianDay: number
+  /** Local civil date of the solar return (YYYY-MM-DD). */
+  date: string
+  /** Local civil time of the solar return (HH:MM:SS). */
+  time: string
+  /** ISO-8601 UTC instant of the solar return. */
+  utcISO: string
+  weekday: string
+  weekdayLord: string
+}
+
+export interface VarshaphalResult {
+  varshaYear: number
+  /** Completed years of age at the solar return (= varshaYear − birthYear). */
+  age: number
+  natalSunLongitude: number
+  natalLagnaSignNumber: number
+  varshaPravesh: VarshaPravesh
+  /** Full chart cast for the solar-return instant at the birthplace. */
+  annualChart: ComputedChart
+  muntha: Muntha
+  /** Whether the birth (natal) was a day birth (Sun above horizon). */
+  dayBirth: boolean
+  panchavargeeyaBala: PanchavargeeyaBalaEntry[]
+  candidates: VarsheshaCandidate[]
+  /** The selected year lord (strongest candidate by Panchavargeeya Bala). */
+  varshesha: {
+    planet: string
+    office: VarsheshaCandidate['office']
+    officeLabel: string
+    panchavargeeyaBala: number
+  }
+  /** Method notes / caveats surfaced to the UI. */
+  method: string
+  computedAt: string
+}
+
 // ─── Full chart result ───────────────────────────────────────────────
 
 export interface ComputedChart {
@@ -481,4 +607,58 @@ export interface ComputedChart {
   computedNakshatra: NakshatraRelationships
   computedJaimini: JaiminiGeometry
   bhavaBala: BhavaBalaResult
+}
+
+// ─── Chara Dasha (Jaimini rasi dasha) ────────────────────────────────
+
+/** One equal 1/12 sub-period (antardasha) of a Chara mahadasha. */
+export interface CharaAntardasha {
+  /** Sign name of this sub-period. */
+  sign: string
+  /** Sign number (1–12). */
+  signNumber: number
+  /** ISO start datetime. */
+  start: string
+  /** ISO end datetime. */
+  end: string
+  /** Duration in years (mahadasha years / 12). */
+  durationYears: number
+}
+
+/** One Chara mahadasha — a SIGN period (not a planet period). */
+export interface CharaDashaPeriod {
+  /** Mahadasha sign name. */
+  sign: string
+  /** Mahadasha sign number (1–12). */
+  signNumber: number
+  /** Classical lord of the sign (Scorpio→Mars, Aquarius→Saturn; no nodes). */
+  lord: string
+  /** Sign number the lord occupies in D1 (drives the duration). */
+  lordSignNumber: number
+  /** Duration in years (variable per sign; second-cycle = 12 − first-cycle). */
+  durationYears: number
+  /** Which of the two 12-sign cycles this period belongs to (1 or 2). */
+  cycle: number
+  /** ISO start datetime. */
+  start: string
+  /** ISO end datetime. */
+  end: string
+  /** The 12 equal antardashas of this mahadasha. */
+  antardashas: CharaAntardasha[]
+}
+
+/** Complete Jaimini Chara Dasha (Parasara / PVR method) for a chart. */
+export interface CharaDashaResult {
+  /** Method label, e.g. "Parasara / PVR (JHora-matching, 2-cycle)". */
+  method: string
+  /** Ascendant sign number (1–12). */
+  lagnaSignNumber: number
+  /** 9th sign from the lagna — decides the sequence direction. */
+  ninthSignNumber: number
+  /** Sequence direction of the mahadashas. */
+  direction: 'forward' | 'reverse'
+  /** Sum of the FIRST 12-sign cycle in years (second cycle sums to 144 − this). */
+  cycleYears: number
+  /** Two cycles of dated sign mahadashas (24 periods, 144 years total). */
+  periods: CharaDashaPeriod[]
 }

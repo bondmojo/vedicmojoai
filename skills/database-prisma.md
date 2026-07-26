@@ -14,6 +14,8 @@
 | `model_config` | Runtime model/provider per agent | `wave_id` (unique), `model_id`, `provider`, `temperature`, `max_tokens` |
 | `unified_chart` | **Canonical chart store** (Generate Chart + AI Analysis) | `id`, `source` (`compute`\|`paste`), `chart_hash` (unique), one JSONB column per domain, `chart_input_v1` |
 | `saved_chart` | Legacy computed chart store (superseded by `unified_chart`) | `id`, `input_hash` (unique), `chart_data` (JSONB), `dasha_tree` |
+| `duration_analysis` | **Duration Analysis run** (3-agent focused pipeline) | `id`, `unified_chart_id` (FK), `status`, `period_slice` (JSONB), `transit_overlay` (JSONB), `da1/2/3_output` (JSONB), `error_message`, `override_applied` |
+| `duration_message` | Duration Analysis conversation thread | `id`, `analysis_id` (FK), `role`, `content`, `agent_id`, `focus_period`, `token_in/out` |
 
 ## UnifiedChart (column-per-domain)
 
@@ -43,6 +45,9 @@ Wave 1.
 - `wave_output` has unique constraint on `(run_id, agent_id)` — one row per agent per run
 - `run_message` is append-only — no UPDATE or DELETE
 - `pipeline_run.status` enum: `queued | running | done | failed | halted_for_review`
+- `duration_analysis.status` enum: `queued | running | symptom_unmatched | done | failed`
+- `duration_analysis.error_message` — persisted when status=failed so SSE can surface it
+- `model_config` has entries for `DA-1`, `DA-2`, `DA-3` in addition to wave agents
 - `pipeline_run` has BOTH `chart_id` (required, legacy `Chart` FK) and
   `unified_chart_id` (nullable, `UnifiedChart` FK). AI Analysis from a unified chart
   ensures a matching legacy `Chart` exists (by `chart_hash`) and sets both.
@@ -74,3 +79,5 @@ In Docker: host is `db` (service name in docker-compose).
 - `wave_output`: indexed on `(run_id, domain)`, `(run_id, wave_number)`
 - `run_message`: indexed on `run_id`
 - `unified_chart`: indexed on `name`, `lagna`, `source`
+- `duration_analysis`: indexed on `unified_chart_id`, `status`
+- `duration_message`: indexed on `analysis_id`

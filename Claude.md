@@ -17,7 +17,7 @@ HTML reports. It is one **Next.js 14 (App Router, TypeScript)** monorepo — UI,
 routes, the deterministic compute engine, the LLM pipeline, and the report renderer
 all live in one project and one deployment.
 
-### Three practitioner-facing features
+### Four practitioner-facing features
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in one `UnifiedChart` store:
@@ -27,8 +27,38 @@ all live in one project and one deployment.
    `POST /api/unified-charts/[id]/analyze`. Compute-path charts **skip LLM Wave 1**
    because their foundation data is already computed deterministically.
 3. **Reporting** — Wave 4 synthesis JSON is rendered to an HTML report
-   (`engine/renderer.ts`), stored on disk, and served via `/api/reports/[id]` and
-   the report viewer at `/runs/[id]/report`.
+   (`engine/renderer.ts`), stored on disk, and served via the report viewer at
+   `/runs/[id]/report` (data fetched from `GET /api/runs/[id]` +
+   `GET /api/runs/[id]/report-content`; the list of completed reports comes from
+   `GET /api/reports`).
+4. **Duration Analysis** — a separate 3-agent sequential pipeline
+   (`engine/durationAnalysis/`): user picks a date range + life domain (health,
+   career, wealth, marriage, property, cashflow); the dasha tree is sliced and a
+   registry-selected domain agent (DA1-*) analyses each period, with an optional
+   symptom-validation gate (DA-2) and a forecast + chat agent (DA-3). Entry:
+   `POST /api/duration-analysis`. Domain knowledge lives in `prompts/domains/`
+   (shared with Wave 2 via `{{include:}}`); see `skills/backend/duration-analysis.md`.
+
+   A sibling, purely deterministic UI — **Duration Analyser** (`/duration-computation`)
+   — sits on top of the same Step 0a–0d compute-first layer with no LLM call: pick a
+   chart, drill into a dasha period (MD → AD → PD), and pick an analysis type (Career,
+   Health, Money, Family) to see every computed chart for that window — divisional
+   charts, planets, nakshatras, upagrahas, balas, Ashtakavarga. Each period also gets a
+   deterministic **driver digest** (`engine/durationAnalysis/periodInsights.ts`) that
+   selects + labels the drishti / control / nakshatra / argala the raw payload already
+   carries — the no-LLM tab's stand-in for the interpretation the MCP path leaves to
+   Claude Desktop. Entry: `POST /api/timeline` (`includeCategoryData:true`) — the same
+   backbone the MCP server exposes to Claude Desktop. `family` is a UI-only domain
+   registered in `DOMAIN_AGENT_REGISTRY`/`DOMAIN_SCORING_WEIGHTS` for this path only; it
+   has no prompt file and is not reachable from `/api/duration-analysis`. See
+   `docs/duration-analyser.md` for the MCP-vs-UI exposure model.
+
+Alongside these, the home page (`/`, the Chart Compute UI) also offers
+**Varshaphal** (Tajika annual solar-return chart) as an on-demand, stateless
+tool: `POST /api/compute/varshaphal`
+→ `engine/compute/varshaphal.ts` computes the Varsha Pravesh (solar return), the
+annual chart (reusing `computeFullChart`, so the annual Shadbala uses the same
+engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord).
 
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.
@@ -38,12 +68,23 @@ all live in one project and one deployment.
 ## Architecture at a glance
 
 ```
-Browser (Next.js UI)
-  → Next.js API routes (/app/api)
+Browser (Next.js UI)                         Claude Desktop
+  → Next.js API routes (/app/api)  ◄──HTTP──   → MCP server (mcp/, stdio, no LLM)
     → Engine (/engine): compute (deterministic) + pipeline (LLM) + renderer
       → LLM providers (Anthropic / OpenAI via Vercel AI SDK)
   → PostgreSQL (Prisma) + HTML reports on disk
 ```
+
+### MCP server (`mcp/`) — Claude Desktop path, $0 API
+
+A **separate stdio process** (its own package under `mcp/`) that exposes the
+deterministic engine (Tools), the domain rubrics (Resources), and ready-to-run
+analysis workflows (Prompts) to Claude Desktop, so the *reasoning* is billed to the
+Desktop subscription, not the API. It is a thin HTTP client of the app and
+**deliberately never calls the paid pipelines** (`analyze`, `duration-analysis`
+POST) — enforced by `tests/mcp-cost-guard.test.ts`. Backed by two new read-only,
+no-LLM routes: `POST /api/timeline` (deterministic period scoring) and
+`GET /api/knowledge/**` (rubrics). Details: `mcp/README.md`, HLD §3.9, DFD P11.
 
 ### The AI pipeline (LLM path)
 
@@ -68,6 +109,14 @@ Geometry**) live in `engine/compute/`:
 `shadbala.ts`, `relationships.ts`, `nakshatraRelationships.ts`, `jaimini.ts`,
 `bhavaBala.ts` (plus `D2`, `D3`, `D12` in `divisional.ts`).
 
+> **Chara Dasha (Jaimini rasi dasha):** `engine/compute/charaDasha.ts`
+> (`computeCharaDasha`, KN Rao/Parashara method) is an on-demand sibling of the
+> Vimshottari tree — returned by `POST /api/compute` as `charaDasha`, shown in the
+> `/compute` "Chara Dasha" tab + Copy-for-AI, and exposed to Claude Desktop via the
+> MCP `get_chara_dasha` tool and the `chara_dasha` knowledge framework. Not
+> persisted to `UnifiedChart` (recomputed from `birthInput` on demand). See
+> `docs/computation_chara_dasha.md`.
+
 ---
 
 ## Key directories
@@ -82,9 +131,10 @@ engine/         Pipeline + deterministic compute
   compute/        Swiss Ephemeris modules (pure functions, no DB)
   waves/          wave1–wave4 utilities
   orchestrator.ts planner.ts llm.ts pre_analysis.ts computeVimshottari.ts renderer.ts
-lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts
+lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts, mcpAuth.ts
 prisma/         schema.prisma, migrations, seed.ts
 prompts/agents/ LLM prompt files (read at runtime, never modified by the app)
+mcp/            MCP server (separate stdio process; thin HTTP client, no LLM) — see mcp/README.md
 docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
 .kiro/skills/   AI Skills (implementation conventions)
 .kiro/specs/    Feature specs (requirements/design)
@@ -102,6 +152,9 @@ docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
 - **`PipelineRun`** keeps a required legacy `chartId` (`Chart` FK) and a nullable
   `unifiedChartId` (`UnifiedChart` FK). AI Analysis from a unified chart ensures a
   matching `Chart` exists by `chartHash`, then sets both.
+- **All chart CRUD goes through `UnifiedChart`** — the compute page's Save/Load/
+  Delete, renames (`PATCH /api/unified-charts/[id]`), and every pipeline read.
+  `SavedChart` is legacy/read-only (promote old rows: `npm run db:migrate-saved`).
 - Other tables: `Chart` (legacy immutable input), `SavedChart` (legacy computed
   store), `Wave1Cache`, `WaveOutput`, `RunMessage`, `ModelConfig`.
 - Format conversion is centralized in `lib/chart-mapper.ts`.
@@ -123,11 +176,17 @@ npm run db:seed      # seed model_config defaults (prisma/seed.ts)
 npm run db:studio    # Prisma Studio
 npm run docker:up    # docker-compose up -d (Postgres + app)
 npm run docker:down  # docker-compose down
+
+# MCP server (separate package under mcp/)
+cd mcp && npm install         # first time
+cd mcp && npm run build       # → dist/server.js (point Claude Desktop here)
+cd mcp && node smoke-test.mjs # live wiring check (app must be running)
 ```
 
 Environment: copy `.env.example` to `.env`. Requires `DATABASE_URL` and provider API
 keys (Anthropic / OpenAI). Models/providers are resolved at runtime from the
-`model_config` table, so provider swaps need no code change.
+`model_config` table, so provider swaps need no code change. The MCP server reads
+`VEDICMOJO_BASE_URL` (default `http://localhost:3000`) and optional `MCP_TOKEN`.
 
 ---
 

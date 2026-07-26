@@ -8,9 +8,11 @@
 
 A divisional chart is obtained by dividing each 30° zodiac sign into N equal (or in one case unequal) parts and mapping each part to a specific sign. The resulting chart shows a more specific area of life: D9 for marriage and inner strength, D10 for career, etc.
 
-Our system computes: **D1, D2, D3, D4, D7, D9, D10, D12, D30**.
+Our system computes: **D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60**.
 
 All use **Lahiri (Chitrapaksha) ayanamsa** and **sidereal longitudes** from Swiss Ephemeris.
+
+**Dignity and Vargottama (every varga):** each planet placement in every divisional chart also carries a `dignity` label (exalted / debilitated / moolatrikona / own / great_friend / friend / neutral / enemy / great_enemy — panchadha-maitri, with tatkalika friendship drawn from the D1 rasi positions, matching the Saptavargaja Bala convention) and a `vargottama` flag (true when the planet occupies the same sign in that varga as in D1). Rahu/Ketu carry no `dignity` (no classical friendship dignity) but do get `vargottama`. Neither field is set on D1 itself. See `engine/compute/dignity.ts`.
 
 ---
 
@@ -93,6 +95,45 @@ Each sign is divided into **7 equal parts of 4°17'08"** (30° / 7).
 
 ---
 
+## D5 — Panchamsa (Fame, Authority, Power)
+
+**Life area:** Fame, authority, and power.
+
+Each sign is divided into **5 equal parts of 6°** each.
+
+**Mapping rule — fixed table (same style as D2/D30):**
+
+Unlike the offset-counting divisions (D6, D7, D9, D10...), D5 uses a fixed
+lookup table — the target signs are the same for every sign sharing the same
+parity, regardless of which sign it is.
+
+| Part | Odd signs (Aries, Gemini, Leo, Libra, Sagittarius, Aquarius) | Even signs (Taurus, Cancer, Virgo, Scorpio, Capricorn, Pisces) |
+|---|---|---|
+| 1st (0°–6°) | Aries | Taurus |
+| 2nd (6°–12°) | Aquarius | Virgo |
+| 3rd (12°–18°) | Sagittarius | Pisces |
+| 4th (18°–24°) | Gemini | Capricorn |
+| 5th (24°–30°) | Libra | Scorpio |
+
+**Source:** Classical Parashari Panchamsa table.
+
+---
+
+## D6 — Shashthamsa (Health Troubles, Obstacles, Debts)
+
+**Life area:** Health troubles, obstacles, debts, litigation.
+
+Each sign is divided into **6 equal parts of 5°** each.
+
+**Mapping rule — offset counting (same style as D9/D10):**
+- If the natal sign is **odd**: counting starts from **Aries**.
+- If the natal sign is **even**: counting starts from **Libra**.
+- Count forward by part number (0 through 5) from the starting sign.
+
+**Source:** Classical Parashari Shashthamsa rule.
+
+---
+
 ## D9 — Navamsa
 
 **Life area:** Marriage, dharma, inner strength; also used for all planetary dignity assessment.
@@ -147,6 +188,21 @@ Counting starts from the natal sign itself and advances one sign per part.
 
 ---
 
+## D24 — Chaturvimshamsa / Siddhamsa (Education, Learning, Knowledge)
+
+**Life area:** Education, learning capability, knowledge acquisition.
+
+Each sign is divided into **24 equal parts of 1°15'** (30° / 24).
+
+**Mapping rule — offset counting (same style as D6/D9/D10):**
+- If the natal sign is **odd**: counting starts from **Leo**.
+- If the natal sign is **even**: counting starts from **Cancer**.
+- Count forward by part number (0 through 23) from the starting sign.
+
+**Source:** BPHS (Chaturvimsamsa / Siddhamsa chapter).
+
+---
+
 ## D30 — Trimshamsa
 
 **Life area:** Misfortune, disease, suffering.
@@ -179,6 +235,29 @@ Each sign is divided into **5 unequal parts** (not 30 equal parts). The planet-r
 
 ---
 
+## D60 — Shashtiamsa (Sanchita Karma, Past-Life Influences)
+
+**Life area:** Accumulated karma from past incarnations, the finest-grained dignity/quality assessment. BPHS considers this chart authoritative for confirming or overturning judgments made from other vargas.
+
+Each sign is divided into **60 equal parts of 0°30' (30 arc-minutes)** each — the finest division computed by this engine.
+
+**Mapping rule — offset counting from the natal sign (both parities alike):**
+- Counting starts from the **natal sign itself**, regardless of odd/even (unlike D6/D9/D10/D24, which switch starting sign by parity).
+- Part index = floor(2 × degreeInSign) mod 12 → 0–11 (the 60 amsas collapse to 12 signs after 5 full cycles per sign).
+- D60 sign = natal sign + part index (mod 12, 1-indexed).
+
+This is arithmetically equivalent to Parashara's stated procedure (per the Shashtyamsha chapter): take the degrees traversed within the sign, multiply by 2, divide by 12, and increase the remainder by 1 to get a 1-indexed count of signs to advance from (and including) the natal sign.
+
+**Verified against a classical worked example:** Sun at 20°40′ Gemini → 20.667 × 2 = 41.33 → floor 41 → remainder 5 (41 = 3×12+5) → count 6 → counting 6 signs inclusively from Gemini lands on Scorpio. This engine's `part = floor(2 × degreeInSign) mod 12` form gives the equivalent 0-indexed offset (part = 5, advancing 5 signs from Gemini) and lands on the same sign, Scorpio.
+
+**Note on deities:** each of the 60 amsas traditionally carries its own named deity (Ghora, Rakshasa, … Chandrarekha) with benefic/malefic character, cyclic for odd signs and reversed for even signs. This engine — consistent with its D30 treatment — computes only the resulting **sign**, not the deity name; deity-level nuance is left to the practitioner/LLM layer.
+
+**Source:** BPHS (Shashtyamsha chapter, per Parashara's stated procedure).
+
+**❓ Validation request:** Confirm the offset-counting (natal-sign-start, both parities) implementation matches your school. Some secondary sources describe D60 sign assignment via lookup tables keyed to the deity list rather than direct arithmetic — if your tradition uses one of those tables, the resulting sign may differ from the arithmetic method used here in edge cases.
+
+---
+
 ## Lagna in Divisional Charts
 
 The Ascendant sign in each divisional chart is computed by applying the same formula to the **Ascendant's sidereal longitude** (not to a separate calculation). So the D9 Lagna is determined by where the ascendant degree falls in the 9-part division of its natal sign.
@@ -207,3 +286,4 @@ Special Lagnas (HL, GL, BL, SL, VL, IL, BBL, PL) have real ecliptic longitudes. 
 | 4 | D30 alternate systems | Which D30 system does your school follow? |
 | 5 | Special lagnas in vargas | Is showing HL, GL etc. in D9/D10 a valid practice? |
 | 6 | Karakamsa in non-D9 | Should KS be shown in D4, D7, D10, D30? |
+| 7 | D60 sign assignment | Does the offset-counting arithmetic (natal-sign-start, both parities) match your school, or does your tradition use a deity-lookup-table method instead? |

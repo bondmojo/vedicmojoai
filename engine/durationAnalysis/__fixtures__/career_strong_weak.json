@@ -1,0 +1,118 @@
+{
+  "category": "career",
+  "description": "Strong career period (Sun MD / Sun AD, exalted in Aries, AmK karakaRole) should score higher than weak (Saturn MD / Rahu AD, Saturn debilitated in Aries, dusthana placements).",
+  "chartData": {
+    "category": "career",
+    "planets": [
+      { "planet": "Sun",     "signNumber": 1,  "house": 10, "retrograde": false },
+      { "planet": "Moon",    "signNumber": 4,  "house": 1,  "retrograde": false },
+      { "planet": "Mars",    "signNumber": 10, "house": 7,  "retrograde": false },
+      { "planet": "Mercury", "signNumber": 3,  "house": 12, "retrograde": false },
+      { "planet": "Jupiter", "signNumber": 4,  "house": 1,  "retrograde": false },
+      { "planet": "Venus",   "signNumber": 12, "house": 9,  "retrograde": false },
+      { "planet": "Saturn",  "signNumber": 1,  "house": 10, "retrograde": false },
+      { "planet": "Rahu",    "signNumber": 8,  "house": 5,  "retrograde": true  },
+      { "planet": "Ketu",    "signNumber": 2,  "house": 11, "retrograde": true  }
+    ],
+    "shadbala": {
+      "planets": [
+        { "planet": "Sun",     "strengthRatio": 1.8, "beneficRatio": 0.85, "totalRupas": 11.7 },
+        { "planet": "Moon",    "strengthRatio": 1.2, "beneficRatio": 0.65, "totalRupas": 7.2  },
+        { "planet": "Saturn",  "strengthRatio": 0.6, "beneficRatio": 0.25, "totalRupas": 3.0  },
+        { "planet": "Jupiter", "strengthRatio": 1.4, "beneficRatio": 0.75, "totalRupas": 9.1  },
+        { "planet": "Mars",    "strengthRatio": 1.1, "beneficRatio": 0.55, "totalRupas": 7.0  },
+        { "planet": "Mercury", "strengthRatio": 0.9, "beneficRatio": 0.45, "totalRupas": 6.3  },
+        { "planet": "Venus",   "strengthRatio": 1.3, "beneficRatio": 0.70, "totalRupas": 8.5  }
+      ],
+      "strengthRanking": [
+        { "rank": 1, "planet": "Sun",     "ratio": 1.8 },
+        { "rank": 2, "planet": "Venus",   "ratio": 1.3 },
+        { "rank": 3, "planet": "Jupiter", "ratio": 1.4 }
+      ],
+      "computedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "bhavaBala": {
+      "houses": [
+        { "house": 1,  "total": 420, "rupas": 7.0  },
+        { "house": 2,  "total": 360, "rupas": 6.0  },
+        { "house": 3,  "total": 300, "rupas": 5.0  },
+        { "house": 4,  "total": 390, "rupas": 6.5  },
+        { "house": 5,  "total": 330, "rupas": 5.5  },
+        { "house": 6,  "total": 270, "rupas": 4.5  },
+        { "house": 7,  "total": 400, "rupas": 6.7  },
+        { "house": 8,  "total": 240, "rupas": 4.0  },
+        { "house": 9,  "total": 480, "rupas": 8.0  },
+        { "house": 10, "total": 540, "rupas": 9.0  },
+        { "house": 11, "total": 450, "rupas": 7.5  },
+        { "house": 12, "total": 210, "rupas": 3.5  }
+      ],
+      "computedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "karakas": [
+      { "planet": "Sun",     "karaka": "Atmakaraka",    "karakaAbbr": "AK",  "degreeInSign": 28.0 },
+      { "planet": "Venus",   "karaka": "Amatyakaraka",  "karakaAbbr": "AmK", "degreeInSign": 25.0 },
+      { "planet": "Jupiter", "karaka": "Bhratrikaraka", "karakaAbbr": "BK",  "degreeInSign": 22.0 },
+      { "planet": "Moon",    "karaka": "Matrikaraka",   "karakaAbbr": "MK",  "degreeInSign": 18.0 },
+      { "planet": "Mars",    "karaka": "Putrakaraka",   "karakaAbbr": "PK",  "degreeInSign": 15.0 },
+      { "planet": "Mercury", "karaka": "Gnatikaraka",   "karakaAbbr": "GK",  "degreeInSign": 12.0 },
+      { "planet": "Saturn",  "karaka": "Darakaraka",    "karakaAbbr": "DK",  "degreeInSign":  8.0 }
+    ],
+    "ashtakavarga": {
+      "sav": [28, 24, 30, 32, 26, 22, 28, 18, 36, 40, 34, 19],
+      "bav": {},
+      "savTotal": 337
+    }
+  },
+  "periods": [
+    {
+      "expectedRank": 1,
+      "description": "Sun MD / Venus AD — Venus is AmK (Amatyakaraka), both in benefic houses, Sun exalted in H10",
+      "slice": {
+        "md": { "lord": "Sun",   "start": "2020-01-01", "end": "2026-01-01" },
+        "ad": { "lord": "Venus", "start": "2020-01-01", "end": "2021-08-01" },
+        "pd": { "lord": "Moon",  "start": "2020-01-01", "end": "2020-04-01" },
+        "lordAnnotations": {
+          "mdLord": { "planet": "Sun",   "sign": "Aries",  "house": 10, "nakshatra": "Ashwini", "nakshatraLord": "Ketu",    "subLord": "Mars",    "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": ["Raja Yoga substrate — Sun kendra owner, Venus trikona owner"], "ownsHouses": [5], "occupiesHouse": 10, "karakaRole": "AK"  },
+          "adLord": { "planet": "Venus", "sign": "Pisces", "house": 9,  "nakshatra": "Revati",  "nakshatraLord": "Mercury", "subLord": "Jupiter", "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": ["Raja Yoga substrate — Sun kendra owner, Venus trikona owner"], "ownsHouses": [2, 7], "occupiesHouse": 9, "karakaRole": "AmK" },
+          "pdLord": { "planet": "Moon",  "sign": "Cancer", "house": 1,  "nakshatra": "Pushya",  "nakshatraLord": "Saturn",  "subLord": "Mars",    "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": ["Raja Yoga substrate — Sun kendra owner, Venus trikona owner"], "ownsHouses": [4], "occupiesHouse": 1,  "karakaRole": "MK"  }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2020-01-01",
+        "adLord": "Venus",
+        "saturn": { "sign": "Capricorn", "signNumber": 10, "houseFromLagna": 10, "houseFromMoon": 7, "retrograde": false },
+        "jupiter": { "sign": "Capricorn", "signNumber": 10, "houseFromLagna": 10, "houseFromMoon": 7, "retrograde": false },
+        "rahu": { "sign": "Gemini", "signNumber": 3, "houseFromLagna": 3 },
+        "ketu": { "sign": "Sagittarius", "signNumber": 9, "houseFromLagna": 9 },
+        "sadeSatiActive": false, "sadeSatiPhase": null,
+        "ashtamaShani": false, "kantakaShani": false,
+        "saturnBavScore": 5, "jupiterBavScore": 6
+      }
+    },
+    {
+      "expectedRank": 2,
+      "description": "Saturn MD / Rahu AD — Saturn debilitated in Aries, Rahu in H5 (no AmK), dusthana placements",
+      "slice": {
+        "md": { "lord": "Saturn", "start": "2010-01-01", "end": "2029-01-01" },
+        "ad": { "lord": "Rahu",   "start": "2010-01-01", "end": "2012-08-01" },
+        "pd": { "lord": "Ketu",   "start": "2010-01-01", "end": "2010-07-01" },
+        "lordAnnotations": {
+          "mdLord": { "planet": "Saturn", "sign": "Aries",     "house": 10, "nakshatra": "Bharani", "nakshatraLord": "Venus", "subLord": "Sun",     "retrograde": false, "combust": false, "cazimi": false, "activatedYogas": [], "ownsHouses": [10, 11], "occupiesHouse": 10, "karakaRole": "DK" },
+          "adLord": { "planet": "Rahu",   "sign": "Leo",       "house": 5,  "nakshatra": "Magha",   "nakshatraLord": "Ketu",  "subLord": "Saturn",  "retrograde": true,  "combust": false, "cazimi": false, "activatedYogas": [], "ownsHouses": [], "occupiesHouse": 5,  "karakaRole": null },
+          "pdLord": { "planet": "Ketu",   "sign": "Aquarius",  "house": 11, "nakshatra": "Shatabhisha", "nakshatraLord": "Rahu", "subLord": "Jupiter", "retrograde": true, "combust": false, "cazimi": false, "activatedYogas": [], "ownsHouses": [], "occupiesHouse": 11, "karakaRole": null }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2010-01-01",
+        "adLord": "Rahu",
+        "saturn": { "sign": "Virgo", "signNumber": 6, "houseFromLagna": 6, "houseFromMoon": 3, "retrograde": false },
+        "jupiter": { "sign": "Aquarius", "signNumber": 11, "houseFromLagna": 11, "houseFromMoon": 8, "retrograde": false },
+        "rahu": { "sign": "Capricorn", "signNumber": 10, "houseFromLagna": 10 },
+        "ketu": { "sign": "Cancer", "signNumber": 4, "houseFromLagna": 4 },
+        "sadeSatiActive": true, "sadeSatiPhase": "peak",
+        "ashtamaShani": false, "kantakaShani": false,
+        "saturnBavScore": 2, "jupiterBavScore": 3
+      }
+    }
+  ]
+}

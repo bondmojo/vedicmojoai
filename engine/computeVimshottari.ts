@@ -128,32 +128,10 @@ export function computeVimshottari(
     currentDate = end
   }
 
-  // ─── Step 5: Compute Pratyantardashas for current + next MD ───
-  // Determine which MD is "current" based on today
-  const now = new Date()
-  let currentMDIndex = -1
-  for (let i = 0; i < mahadashas.length; i++) {
-    if (now >= mahadashas[i].start && now < mahadashas[i].end) {
-      currentMDIndex = i
-      break
-    }
-  }
-
-  // Populate pratyantardashas for current and next mahadashas
-  const mdIndicesToPopulate: number[] = []
-  if (currentMDIndex >= 0) {
-    mdIndicesToPopulate.push(currentMDIndex)
-    if (currentMDIndex + 1 < mahadashas.length) {
-      mdIndicesToPopulate.push(currentMDIndex + 1)
-    }
-  } else {
-    // If birth is in the future or all MDs have passed, populate first two
-    mdIndicesToPopulate.push(0)
-    if (mahadashas.length > 1) mdIndicesToPopulate.push(1)
-  }
-
-  for (const mdIdx of mdIndicesToPopulate) {
-    const md = mahadashas[mdIdx]
+  // ─── Step 5: Compute Pratyantardashas for ALL 9 MDs ───────────
+  // PDs are pure arithmetic (cheap) and stored in full (~73KB serialized)
+  // so that Duration Analysis can slice any date range without recomputing.
+  for (const md of mahadashas) {
     for (const ad of md.antardashas) {
       ad.pratyantardashas = computePratyantardashas(
         md.lord,
@@ -239,6 +217,7 @@ function computeAntardashas(
       start,
       end,
       duration_days: adDurationDays,
+      pratyantardashas: [], // populated in Step 5 of computeVimshottari
     })
 
     currentDate = end
@@ -254,8 +233,11 @@ function computeAntardashas(
  *
  * The first PD belongs to the antardasha lord itself.
  * Each PD's duration = (AD duration × PD lord years) / 120.
+ *
+ * Exported for scripts/backfill-pratyantardashas.ts, which fills PDs into
+ * charts computed before full-PD storage.
  */
-function computePratyantardashas(
+export function computePratyantardashas(
   _mdLord: Planet,
   adLord: Planet,
   adStart: Date,

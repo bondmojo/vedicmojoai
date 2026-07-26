@@ -1,7 +1,7 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.1
-**Last updated:** 2026-07-05
+**Version:** 1.3
+**Last updated:** 2026-07-11
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
@@ -10,11 +10,40 @@
 
 ## What changed in v1.1
 
-- Added **P9: Unified Chart Ingestion + Analyze** — the Generate Chart and AI
-  Analysis features backed by the `UnifiedChart` store (`D7`).
-- Added data store **`D7: UnifiedChart`** (column-per-domain).
-- Compute-path unified charts feed `wave1_delta` from deterministic domain columns
-  (no LLM Wave 1); paste-path charts run the full pipeline.
+- Added P9: Unified Chart Ingestion + Analyze and D7: UnifiedChart.
+
+## What changed in v1.2
+
+- Added **P10: Duration Analysis** process and data stores **D8: DurationAnalysis** and **D9: DurationMessage**.
+- Added D8/D9 to the Level 1 data store list.
+- Extended the Data Dictionary with Duration Analysis data items.
+
+## What changed in v1.3
+
+- P10.4 is now a **registry-resolved per-domain agent** (DA1-HEALTH … DA1-CASHFLOW)
+  with **batched** DA-1 calls (≤25 periods/call, merged via `mergeDA1Outputs()`)
+  and lenient JSON parsing with one retry (`callAgentJson`).
+- Added the **cashflow** category ("Money Agent" — liquidity, distinct from wealth).
+- P10.2 slicer **fails fast on an empty period slice** (hint: `npm run db:backfill-pd`).
+- **Stale-run reaper**: queued/running rows with no heartbeat (updatedAt) for 10 min are
+  marked failed on every read path (GET [id], SSE poll, list). DA-1 batches persist
+  totals per batch as the heartbeat.
+- **Cancel**: `POST /[id]/cancel` → `status=cancelled`; the pipeline checks the flag
+  between steps and unwinds without overwriting it. SSE emits `run_cancelled`.
+- **History**: `GET /api/duration-analysis` lists the newest 50 runs (chart name,
+  category, status, cost) for the launcher page's Recent analyses section.
+- **Prompt caching**: DA-1 batches and DA-3 chat follow-ups send their stable
+  chart-data prefix via `callLLM({ cachedPrefix })` (Anthropic cache_control).
+
+## What changed in v1.4
+
+- Added **P11 — MCP server** (`mcp/`): a separate stdio process that lets Claude
+  Desktop read deterministic data + rubrics and reason locally at **$0 API cost**.
+  It calls the app over HTTP and **never** flows into P4 (wave pipeline) or P10
+  (duration pipeline) — the paid LLM processes. New external entity: **CLAUDE
+  DESKTOP**. See the Level 2 — P11 section.
+- New data stores/flows are read-only: `POST /api/timeline` (deterministic scoring,
+  reuses P10.2/P10.3 pre-steps sans LLM) and `GET /api/knowledge/**` (rubric files).
 
 ---
 
@@ -130,6 +159,8 @@ Data Stores:
   D5: RunMessage     — conversation thread (role, content, run_id)
   D6: SavedChart     — persisted computed charts (birth data + full chartData JSONB + dashaTree)
   D7: UnifiedChart   — canonical chart store, column-per-domain JSONB (source=compute|paste)
+  D8: DurationAnalysis — duration analysis runs (periodSlice, transitOverlay, da1-3 outputs, errorMessage)
+  D9: DurationMessage  — duration analysis conversation thread (role, content, analysisId)
   FS: reports/       — HTML report files on disk
 ```
 
@@ -376,12 +407,19 @@ Practitioner submits follow-up query
 
 ## Level 2 — API ↔ Engine Data Flows
 
+> **v1.3 note:** this flow originally ran through the legacy `Chart` model's
+> `POST /api/runs` and `GET /api/charts/:id/dasha` / `GET /api/reports/:id`
+> routes. Those routes had no remaining UI caller and were deleted. The
+> current entry point is `POST /api/unified-charts/[id]/analyze` (see P9
+> below); the SSE progress and run-detail flows are unchanged.
+
 ```
 BROWSER                    API LAYER                    ENGINE / DB
    │                           │                            │
-   │── POST /api/runs ─────────►│                            │
-   │   {chart_id, types[],      │── validate chart ─────────►│ D1: Chart
-   │    user_query}             │                            │
+   │── POST /api/unified-      │                            │
+   │   charts/:id/analyze ────►│                            │
+   │   {queryTypes[],           │── read UnifiedChart ──────►│ D7: UnifiedChart
+   │    userQuery, ...}         │                            │
    │                           │── create PipelineRun ─────►│ D2: PipelineRun
    │◄── 202 {run_id} ──────────│                            │
    │                           │                            │
@@ -397,26 +435,30 @@ BROWSER                    API LAYER                    ENGINE / DB
    │── GET /api/runs/:id ──────►│── read PipelineRun ───────►│ D2: PipelineRun
    │◄── run detail JSON ───────│                            │
    │                           │                            │
-   │── GET /api/charts/:id/    │                            │
-   │       dasha ──────────────►│── read Wave1Cache ─────────►│ D3: Wave1Cache
-   │◄── DashaTree JSON ────────│  (compute currentPeriod   │
-   │   {currentPeriod derived  │   from today() at         │
-   │    at request time}       │   request time)            │
+   │── GET /api/reports ───────►│── list done runs ──────────►│ D2: PipelineRun
+   │◄── report list JSON ──────│                            │
    │                           │                            │
-   │── GET /api/reports/:id ───►│── read report_path ────────►│ D2: PipelineRun
-   │                           │── serve HTML file ─────────►│ FS: reports/
-   │◄── HTML report ───────────│                            │
+   │── GET /api/runs/:id/       │                            │
+   │   report-content ─────────►│── read report_path ────────►│ D2: PipelineRun
+   │◄── markdown/HTML content ─│── serve file content ──────│ FS: reports/
 ```
 
 ---
 
 ---
 
-## Level 2 — P8: Chart Compute + Save/Load (NEW)
+## Level 2 — P8: Chart Compute + Save/Load (SUPERSEDED by P9)
 
 This process is independent from the AI analysis pipeline. It handles real-time
-astronomical chart computation from birth data, and persists/retrieves computed
-charts for future reference.
+astronomical chart computation from birth data.
+
+> **v1.3 note:** the P8.2/P8.3 save-and-load steps below (via `SavedChart` and
+> `/api/compute/save`, `/api/compute/charts[/id]`) are historical — those routes
+> were dormant and have been deleted. Save/Load now goes through P9's
+> `UnifiedChart` (`POST /api/unified-charts/from-compute`, `GET
+> /api/unified-charts[/id]`). P8.1 (the compute engine itself, stateless) is
+> unchanged and still lives behind `POST /api/compute`; its UI is now the
+> home page (`/`, formerly `/compute`).
 
 ```
 PRACTITIONER
@@ -433,7 +475,10 @@ PRACTITIONER
 │  • Swiss Ephemeris calls      │
 │  • Planetary positions (D1)   │
 │  • Divisional charts          │
-│    (D1, D4, D7, D9, D10, D30)│
+│    (D1–D60: D1,D2,D3,D4,D5,   │
+│    D6,D7,D9,D10,D12,D24,D30, │
+│    D60), each placement +     │
+│    dignity/vargottama         │
 │  • Nakshatras                 │
 │  • Chara Karakas              │
 │  • Ashtakavarga               │
@@ -448,47 +493,13 @@ PRACTITIONER
 └──────────────┬────────────────┘
                │ ComputedChart + DashaTree (JSON)
                │
-               │─────────────────────────────────────► PRACTITIONER (/compute UI)
+               │─────────────────────────────────────► PRACTITIONER (Chart Compute UI, `/`)
                │
-               │ (User clicks "Save Chart")
-               │ POST /api/compute/save
+               │ (User clicks "Save Chart" — now via P9, see below)
+               │ POST /api/unified-charts/from-compute
                ▼
-┌───────────────────────────────┐
-│  P8.2                         │
-│  SAVE CHART                   │
-│  • Generate inputHash         │
-│    (SHA-256 of birth params)  │
-│  • Check for duplicate        │
-│  • Upsert SavedChart record   │
-└──────────────┬────────────────┘
-               │
-               ▼
-         D6: SavedChart
-         ┌──────────────────┐
-         │ id, name         │
-         │ birthDate/Time   │
-         │ timezone, lat/lon│
-         │ lagna, ayanamsa  │
-         │ chartData (JSONB)│◀── Full ComputedChart
-         │ dashaTree (JSONB)│◀── Full DashaTree
-         │ inputHash (uniq) │
-         └────────┬─────────┘
-                  │
-                  │ (User clicks "Load")
-                  │ GET /api/compute/charts or /[id]
-                  ▼
-┌───────────────────────────────┐
-│  P8.3                         │
-│  LOAD CHART                   │
-│  • List: metadata only        │
-│  • Single: full chartData +   │
-│    dashaTree + birth params   │
-│  • Populates form + result    │
-│    in UI (no recomputation)   │
-└──────────────┬────────────────┘
-               │ SavedChart data
-               ▼
-         PRACTITIONER (/compute UI — chart displayed immediately)
+              (See "Level 2 — P9: Unified Chart Ingestion + Analyze" —
+               persists to UnifiedChart, not the legacy SavedChart table.)
 ```
 
 ### Data flows within Compute engine (P8.1):
@@ -503,22 +514,58 @@ BirthInput
     ├─► computePlanetPositions()     → PlanetPosition[] (9 grahas)
     │       │
     │       ├─► computeNakshatras()  → NakshatraInfo[]
-    │       ├─► computeDivisionalCharts() → DivisionalChart[] (D1–D30)
+    │       ├─► computeDivisionalCharts() → DivisionalChart[] (D1–D60)
     │       │       └── Each varga gets:
-    │       │           • planet placements
+    │       │           • planet placements (+ dignity, vargottama
+    │       │             via engine/compute/dignity.ts)
     │       │           • arudha padas (per-varga)
     │       │           • special lagnas (projected)
     │       │           • upagrahas (projected)
     │       ├─► computeCharaKarakas() → CharaKaraka[]
-    │       ├─► computeAshtakavarga() → BAV/SAV
+    │       ├─► computeAshtakavarga() → BAV/SAV (sign-indexed) + byHouse
+    │       │       (house-indexed, house 1 = lagna)
     │       ├─► computeUpagrahas()   → Upagraha[]
     │       ├─► computeSpecialLagnas() → SpecialLagna[]
     │       ├─► computeArudhaPadas() → ArudhaPada[]
     │       ├─► computePindaStrength() → PindaStrengthEntry[]
     │       └─► computeTransits()    → TransitAnalysis
     │
-    └─► computeVimshottari(moonLong, birthDate) → DashaTree
+    ├─► computeVimshottari(moonLong, birthDate) → DashaTree
+    └─► computeCharaDasha(planets, lagnaSign, birthDate) → CharaDashaResult
+        (Jaimini rasi dasha; /api/compute sibling, like DashaTree)
 ```
+
+### P8.4 — Varshaphal (Tajika annual solar-return chart) — on demand
+
+Independent, stateless flow triggered from the `/compute` **Varshaphal** tab.
+
+```
+PRACTITIONER (Varshaphal tab: birth data + varshaYear)
+     │ POST /api/compute/varshaphal
+     ▼
+┌───────────────────────────────────────────┐
+│  computeVarshaphal() (engine/compute/       │
+│  varshaphal.ts)                             │
+│                                             │
+│  • natal Sun sidereal longitude             │
+│  • findSolarReturnJulianDay()   → Varsha    │
+│    Pravesh instant (Newton on Sun long.)    │
+│  • julianDayToLocalCivil()      → date/time │
+│  • computeFullChart(annual)     → annual    │
+│    chart (planets, Varsha Lagna, vargas,    │
+│    Shadbala, …)                             │
+│  • computeMuntha()  (+1 sign/year)          │
+│  • computePanchavargeeyaBala()  (7 planets) │
+│  • computeVarshesha() (5 candidates → lord) │
+└──────────────┬──────────────────────────────┘
+               │ VarshaphalResult (JSON)
+               ▼
+         PRACTITIONER (/compute Varshaphal tab)
+```
+
+No DB writes. Reuses `computeFullChart` for the annual chart (so the annual
+Shadbala is the same engine as the natal). Method/caveats are surfaced in the
+`method` field of the result.
 
 ---
 
@@ -595,6 +642,157 @@ PRACTITIONER
 
 ---
 
+## Level 2 — P10: Duration Analysis (NEW in v1.2)
+
+Focused 3-agent sequential pipeline for date-range / domain-specific analysis.
+Completely independent from the 18-agent wave pipeline.
+
+Categories: health | career | wealth | marriage | property | cashflow.
+The domain step (P10.4) is registry-driven: `DOMAIN_AGENT_REGISTRY`
+(engine/durationAnalysis/registry.ts) resolves the category's agent id
+(DA1-HEALTH … DA1-CASHFLOW), prompt file, model_config row, divisional charts,
+and extra chart columns before the pipeline runs.
+
+```
+PRACTITIONER
+     │ POST /api/duration-analysis
+     │ { unifiedChartId, dateFrom, dateTo, category, symptoms?, userQuestion? }
+     ▼
+┌───────────────────────────┐
+│ P10.1  API ROUTE           │──► create DurationAnalysis (status=queued) ──► D8
+│  • validate (10yr cap,    │
+│    dashaTree not null)    │──► create DurationMessage if userQuestion ───► D9
+│  • fire pipeline (no await)│
+└───────────────┬───────────┘
+                │ 202 { analysisId }
+                ▼ (fire-and-forget)
+┌───────────────────────────┐
+│ P10.2  STEP 0a — SLICER   │◄─── dashaTree, planets, nakshatras ────── D7: UnifiedChart
+│  sliceDashaTree() pure TS │
+│  • MD/AD/PD overlap filter│
+│  • Lord annotations        │──► DashaSlice[] (with lordAnnotations,
+│    (nakshatra, combustion, │      activatedYogas, ownsHouses, ...)
+│    yogas, ownsHouses)     │
+│  • Truncate to 200        │──► periodSlice + truncated flag
+│  • empty → FAIL FAST      │      (no LLM call; hint: db:backfill-pd)
+└───────────────┬───────────┘
+                │
+                ▼
+┌───────────────────────────┐
+│ P10.3  STEP 0b — TRANSIT  │◄─── transits, ashtakavarga ─────────── D7: UnifiedChart
+│  buildTransitOverlay()    │
+│  • Per unique AD boundary │──► calls computeTransits() [Swiss Eph]
+│  • Saturn/Jup/Rahu/Ketu   │
+│  • BAV scores from bav[]  │──► TransitOverlay[] → stored ──────────► D8
+│  • Sade Sati from stored  │
+│    allPeriods             │
+│  • ashtamaShani, kantaka  │
+└───────────────┬───────────┘
+                │ periodSlice + transitOverlay persisted ──────────────► D8
+                ▼
+┌───────────────────────────┐
+│ P10.4  DA-1 DOMAIN AGENT  │◄─── category-scoped chart data ──────── D7
+│  (DA1-<DOMAIN>, registry- │      (registry: divisions + extra columns;
+│   resolved prompt/model)  │       dashaTree stripped from prompt)
+│  [Claude Sonnet, temp 0.3]│──► read DA1-<DOMAIN> model config ─── model_config
+│  • BATCHED: ≤25 periods + │
+│    matching overlays/call │──► callAgentJson(per-batch prompt)
+│    (lenient JSON + 1 retry)│
+│  • mergeDA1Outputs()      │
+│  • Post-LLM: merge        │
+│    transitContext +       │──► da1Output (merged, enriched) ────────► D8
+│    lordAnnotations back   │
+└───────────────┬───────────┘
+                │
+                ├── symptoms present? ───────► P10.5
+                │
+                └── no symptoms ─────────────► P10.6
+                ▼
+┌───────────────────────────┐
+│ P10.5  DA-2 SYMPTOM       │◄─── da1Output ──────────────────────── D8
+│  VALIDATOR (CONDITIONAL)  │
+│  [Claude Sonnet, temp 0.0]│──► callLLM(DA-2 prompt)
+│                           │──► da2Output ──────────────────────────► D8
+│  GATE: found===false?     │
+│    YES → status=           │
+│      symptom_unmatched    │──────────────────────────────────────────► D8
+│      SSE symptom_gate     │──────────────────────────────────────────► PRACTITIONER
+│      STOP (overridable)   │
+│    NO  → continue to DA-3 │
+└───────────────┬───────────┘
+                │
+                ▼
+┌───────────────────────────┐
+│ P10.6  DA-3 FUTURE        │◄─── da1Output, da2Output, messages ─── D8, D9
+│  ANALYSER                 │
+│  [Claude Sonnet, temp 0.3]│──► callLLM(DA-3 prompt)
+│                           │──► da3Output ──────────────────────────► D8
+│  contextSummary generated │──► contextSummary (deterministic) ──────► D8
+│  (no LLM, ~500 tokens)    │
+│  status = done            │──────────────────────────────────────────► D8
+│                           │──► assistant DurationMessage ──────────► D9
+│  SSE run_complete ────────┼──────────────────────────────────────────► PRACTITIONER
+└───────────────────────────┘
+
+Override path (POST /api/duration-analysis/[id]/override):
+  status=symptom_unmatched → set overrideApplied=true → resume P10.6 with mismatch note in prompt
+
+Cancel path (POST /api/duration-analysis/[id]/cancel):
+  status in queued|running|symptom_unmatched → status=cancelled ──► D8
+  pipeline checks the flag between steps (per DA-1 batch, before DA-2/DA-3) and unwinds
+  SSE run_cancelled ──► PRACTITIONER
+
+Follow-up chat (POST /api/duration-analysis/[id]/chat):
+  Load D8 (da1/da2/da3 outputs) + D9 (messages) → build DA-3 prompt →
+  use contextSummary when history depth > 2 → callLLM → D9 message + D8 totals updated
+```
+
+---
+
+## Level 2 — P11: MCP Server (Claude Desktop, no paid LLM)
+
+The MCP server (`mcp/`) is a separate stdio process. It moves the *reasoning* into
+Claude Desktop and only ever reads deterministic data + rubrics from the app — it
+never triggers P4 or P10 (the paid LLM pipelines).
+
+```
+CLAUDE DESKTOP
+     │  MCP (stdio): tools / resources / prompts
+     ▼
+┌─────────────────────┐
+│  P11  MCP SERVER    │   thin HTTP client — no astrology logic, no LLM
+│  (mcp/, Node)       │
+└─────┬───────────────┘
+      │ HTTP (localhost, optional x-mcp-token)
+      ├──────────────► GET  /api/unified-charts[/id]     (D: UnifiedChart)   read
+      ├──────────────► POST /api/compute[/varshaphal]    (stateless compute) no DB, no LLM
+      ├──────────────► POST /api/timeline ───────────────► P10.2 slicer + P10.3 overlay
+      │                                                    + deterministic scorePeriod + identifyPeaks
+      │                                                    + buildPeriodInsights (driver digest) + domainContext
+      │                                                    (NO DA-1/2/3, NO LLM)
+      ├──────────────► GET  /api/knowledge/**  ──────────► prompts/domains + prompts/agents (readPromptFile)
+      └──────────────► GET  /api/reports, /api/runs/[id], /api/duration-analysis[/id]   read-only
+
+  Claude Desktop then reasons over the returned numbers using the returned rubric
+  and writes the reading — billed to the Desktop subscription, $0 API.
+
+  ✗ P11 never calls POST /api/unified-charts/[id]/analyze  (P4)
+  ✗ P11 never calls POST /api/duration-analysis            (P10 create)
+     Enforced by tests/mcp-cost-guard.test.ts.
+```
+
+**P11 data flows**
+
+| Flow | From → To | Payload |
+|---|---|---|
+| discover | P11 → UnifiedChart | list/detail (read) |
+| compute | P11 → compute engine | ComputedChart + dashaTree (stateless) |
+| timeline | P11 → `/api/timeline` | scored MD/AD/PD periods + peaks + transit overlay |
+| knowledge | P11 → `/api/knowledge` | domain/framework rubric text (include-expanded) |
+| reports | P11 → runs / duration reads | already-generated results (no new cost) |
+
+---
+
 ## Data Dictionary
 
 | Data Item | Format | Size (approx) | Source | Consumers |
@@ -616,3 +814,9 @@ PRACTITIONER
 | `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
 | `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
 | `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
+| `DashaSlice[]` (with annotations) | JSON (JSONB) | ~30–80KB (200 entries) | slicer.ts | DurationAnalysis.periodSlice; DA-1 prompt |
+| `TransitOverlay[]` | JSON (JSONB) | ~5–15KB (one entry per AD boundary) | transitOverlay.ts | DurationAnalysis.transitOverlay; DA-1 prompt |
+| `DA1Output` | JSON (JSONB) | ~20–50KB | DA-1 agent + post-merge | DurationAnalysis.da1Output; DA-2/DA-3 prompts |
+| `DA2Output` | JSON (JSONB) | ~2–5KB | DA-2 agent | DurationAnalysis.da2Output; symptom gate |
+| `DA3Output` | JSON (JSONB) | ~10–30KB | DA-3 agent | DurationAnalysis.da3Output; report UI |
+| `contextSummary` | TEXT | ~500 tokens (~2KB) | index.ts (deterministic) | DurationAnalysis.contextSummary; DA-3 chat follow-up prompts |

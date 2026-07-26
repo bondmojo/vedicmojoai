@@ -193,6 +193,22 @@ export default function AnalyzePage() {
           )}
         </div>
 
+        {/* Duration Analysis link */}
+        <div className="rounded-lg border border-amber-800 bg-amber-900/20 p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-amber-300 font-medium">Duration Analysis</p>
+            <p className="text-xs text-amber-400/70 mt-0.5">
+              Focused dasha-period analysis for a specific date range and life domain (3-agent pipeline).
+            </p>
+          </div>
+          <a
+            href={`/duration-analysis?chartId=${chartId}`}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 transition-colors whitespace-nowrap"
+          >
+            Run Duration Analysis
+          </a>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Query Type Selection */}
           <section>

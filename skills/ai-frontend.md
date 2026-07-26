@@ -6,137 +6,45 @@ Guidelines for building and maintaining the frontend UI that interacts with the 
 
 - Next.js 14 App Router with React Server Components (RSC) by default
 - Client Components (`'use client'`) only for: SSE streams, form interactions, real-time updates
-- Tailwind CSS for styling — dark theme (gray-900 backgrounds, gray-700 borders)
+- Tailwind CSS for styling — dark theme by default, **light theme also supported (v1.3)**
 - No component library — custom UI built with Tailwind utility classes
 
-## SSE (Server-Sent Events) Pattern
+## Theming (v1.3)
 
-The pipeline sends real-time progress via SSE. Frontend consumes with `EventSource`:
+The app was built with literal `gray-*`/`slate-*`/`text-white` Tailwind classes
+rather than the `dark:` variant system. Light-theme support was added WITHOUT
+rewriting those ~800 occurrences, by redefining `gray`/`slate` (and adding a new
+`ink` color for primary text) in `tailwind.config.ts` to resolve through CSS
+variables (`--color-gray-*`, `--color-ink`) that flip between `:root` (light)
+and `.dark` (dark) in `app/globals.css`. The light-mode scale is a **mirror**
+of the dark-mode scale (light `gray-900` ≈ dark `gray-100`, etc.) so existing
+dark-surface classes (`bg-gray-900`) become light surfaces, and existing
+dark-safe muted-text classes (`text-gray-400`) stay legible.
 
-```typescript
-// Standard SSE consumption pattern
-const eventSource = new EventSource(`/api/runs/${runId}/events`)
+- `next-themes` (`app/components/ThemeProvider.tsx`) toggles the `.dark` class
+  on `<html>`; default is `"dark"` to preserve prior behavior. `enableSystem`
+  is off — the toggle is explicit, not OS-driven.
+- `app/components/ThemeToggle.tsx` is the sun/moon switch, rendered globally
+  (fixed top-right) from `app/layout.tsx`.
+- **When writing new components:** use bare `text-white` ONLY on a solid
+  saturated background (`bg-indigo-600`, etc.) where white-on-color is correct
+  in both themes. For primary text on a `gray`/`slate` surface, use `text-ink`
+  instead so it flips correctly.
 
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data)
-  switch (data.type) {
-    case 'agent_start':    // Agent began execution
-    case 'agent_complete': // Agent finished — includes tokenIn, tokenOut, costUsd
-    case 'agent_error':    // Agent failed — includes error message
-    case 'run_complete':   // Full pipeline done — includes totals
-    case 'run_failed':     // Pipeline failed
-    case 'critical_error': // 4A halt gate triggered — show override UI
-  }
-}
-```
+## Detailed Guides
 
-**Rules:**
-- Always close `EventSource` on unmount (return cleanup in `useEffect`)
-- Don't open SSE if run status is already terminal (`done`, `failed`)
-- Handle reconnection gracefully — re-fetch full state on reconnect
+This skill is split into focused sub-documents in `skills/frontend/`:
 
-## Run Progress UI
-
-- Group agents by wave (1–4) for visual hierarchy
-- Show per-agent: status icon (pulse animation for running), token count, cost
-- Show totals: tokens, cost, agents completed
-- Halt state: red alert box with Override & Cancel buttons
-- Terminal state: link to report viewer
-
-## Report Viewer
-
-- Reports are HTML files rendered via iframe (`/api/reports/{id}`)
-- Server Component — fetches run from DB, validates report exists
-- Shows toolbar with: back link, client name, query types, override badge
-- "Open in new tab" link for full-screen viewing
-
-## Unified Charts UI (Generate Chart + AI Analysis)
-
-Pages under `app/unified-charts/` drive the current chart lifecycle:
-
-| Page | Route | Purpose |
-|---|---|---|
-| List | `/unified-charts` | Generate Chart hub — lists compute + paste charts with run counts; filter by `search`/`lagna`/`source` |
-| Detail | `/unified-charts/[id]` | Full domain view of a unified chart + recent runs |
-| Analyze | `/unified-charts/[id]/analyze` | AI Analysis launcher — query types, agent preview, optional per-tier model override |
-
-**Rules:**
-- Generate Chart submits to `POST /api/unified-charts/from-compute` (birth data) or
-  `from-paste` (`ChartInputV1` JSON). A `409` means the chart already exists — surface
-  the existing chart, don't error.
-- AI Analysis submits to `POST /api/unified-charts/[id]/analyze`, receives `202`
-  with `{ runId, waveStrategy, executionPlan }`, then redirects to `/runs/[id]` and
-  opens the SSE stream (same progress + report flow as legacy runs).
-- The analyze response's `waveStrategy` (`skip_wave1` | `full_pipeline`) can be shown
-  so the user understands compute-path charts skip LLM Wave 1.
-
-## Chart Visualization Components
-
-Located in `app/compute/components/`:
-
-| Component | Purpose |
+| File | Topic |
 |---|---|
-| `NorthIndianChart.tsx` | Diamond-style Rashi chart |
-| `SouthIndianChart.tsx` | South Indian square chart |
-| `ChartGrid.tsx` | Multi-chart grid (D1–D60) |
-| `DashaTimeline.tsx` | Visual dasha period timeline |
-| `PlanetTable.tsx` | Planet positions/dignities table |
-| `NakshatraTable.tsx` | Nakshatra analysis view |
-| `KarakaTable.tsx` | Jaimini karaka assignments |
-| `AshtakavargaView.tsx` | Bindhu scores display |
-| `PindaStrengthView.tsx` | Pinda/Bala strength bars |
-| `TransitsView.tsx` | Current transits overlay |
-
-**Rules for chart components:**
-- Accept typed props — no `any` or loose objects
-- Use SVG for chart diagrams (not canvas)
-- All chart types defined in `chartTypes.ts`
-- Responsive: work at 300px–800px widths
-
-## Form Patterns
-
-- Query type selection: toggle buttons with visual highlight (indigo border + bg)
-- Multi-select uses state array; "full" selection clears others
-- Agent preview: computed from `DOMAIN_AGENTS` map — shows user which agents will run
-- Submission: POST to API, receive 202 + `runId`, redirect to progress page
-- Error display: red box below form, cleared on next submit
-
-## State Management
-
-- Local component state (`useState`) for UI state — no global store
-- SSE-driven state: agents array, run status, cost totals
-- Initial state loaded via `fetch` on mount, then SSE takes over
-- No polling — SSE is the live update mechanism
-
-## Data Flow (Frontend → Backend)
-
-```
-User action → POST /api/unified-charts/[id]/analyze (or /api/runs, /api/charts, /api/compute)
-  → Returns 202 { runId, waveStrategy, executionPlan }
-  → Redirect to /runs/{id}
-  → Open SSE connection
-  → Receive real-time agent progress
-  → Terminal event → show report link
-```
-
-## Token & Cost Display
-
-- Format tokens with `.toLocaleString()` (e.g., `12,345`)
-- Format cost with `.toFixed(4)` and `$` prefix
-- Show per-agent breakdown + run totals
-- Grid layout: 3 columns (Total Tokens | Estimated Cost | Agents Complete)
-
-## Accessibility
-
-- Use semantic HTML (`<main>`, `<section>`, `<h1>`–`<h3>`)
-- Status indicators: don't rely on color alone — use text labels alongside
-- Form buttons: `disabled` state during loading with `cursor-not-allowed`
-- Links: descriptive text (not "click here")
-- Status badge component: maps status → color + readable text
-
-## Error Handling in UI
-
-- Network errors: show user-friendly message, suggest retry
-- 404s: use `notFound()` from `next/navigation` (Server Components)
-- Invalid states: defensive rendering — check `null` before accessing nested data
-- Loading states: centered gray text ("Loading run...", "Loading chart...")
+| [architecture.md](frontend/architecture.md) | Next.js App Router, RSC vs Client Components, styling approach |
+| [sse-pattern.md](frontend/sse-pattern.md) | `EventSource` consumption, event types, cleanup |
+| [run-progress-ui.md](frontend/run-progress-ui.md) | Wave-grouped agent status, token/cost display, halt state |
+| [report-viewer.md](frontend/report-viewer.md) | Server Component iframe rendering, toolbar |
+| [unified-charts-ui.md](frontend/unified-charts-ui.md) | Generate Chart + AI Analysis pages, data flow |
+| [chart-visualization.md](frontend/chart-visualization.md) | 10 compute components (North/South Indian, Dasha, etc.) |
+| [form-patterns.md](frontend/form-patterns.md) | Query type selection, agent preview, 202 redirect flow |
+| [state-management.md](frontend/state-management.md) | Local state + SSE-driven updates, no global store |
+| [duration-analysis-ui.md](frontend/duration-analysis-ui.md) | DA form, results page, symptom gate, follow-up chat |
+| [accessibility.md](frontend/accessibility.md) | Semantic HTML, non-color-only indicators, disabled states |
+| [error-handling.md](frontend/error-handling.md) | Network errors, 404s, loading states |

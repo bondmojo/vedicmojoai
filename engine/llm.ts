@@ -16,17 +16,17 @@ import type { LLMCallOptions, LLMResponse } from '@/lib/types'
 /**
  * Creates the appropriate provider model instance based on the provider string.
  */
-function getProviderModel(provider: string, model: string) {
+function getProviderModel(provider: string, model: string, apiKey?: string) {
   switch (provider) {
     case 'anthropic': {
       const anthropic = createAnthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
+        apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
       })
       return anthropic(model)
     }
     case 'openai': {
       const openai = createOpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+        apiKey: apiKey || process.env.OPENAI_API_KEY,
       })
       return openai(model)
     }
@@ -88,8 +88,9 @@ function estimateCost(model: string, tokenIn: number, tokenOut: number): number 
  * ```
  */
 export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
-  const { model, provider, prompt, temperature, maxTokens } = opts
+  const { model, provider, prompt, temperature, maxTokens, cachedPrefix, apiKey } = opts
   const startTime = Date.now()
+  const totalChars = (cachedPrefix?.length ?? 0) + prompt.length
 
   // OpenAI: all models — temperature not supported (reasoning models require default=1).
   // Anthropic Claude 4.x+: models only accept temperature=1 (the API default); passing
@@ -105,17 +106,42 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
   console.log(`│ Model:    ${model}`)
   console.log(`│ Temp:     ${skipTemperature ? 'N/A (model uses default temperature)' : temperature}`)
   console.log(`│ MaxTok:   ${maxTokens}`)
-  console.log(`│ Prompt:   ${prompt.length} chars (${Math.round(prompt.length / 4)} est. tokens)`)
+  console.log(`│ Prompt:   ${totalChars} chars (${Math.round(totalChars / 4)} est. tokens)${cachedPrefix ? ` — ${cachedPrefix.length} chars cache-marked` : ''}`)
   console.log(`└────────────────────────────────────────────────────`)
 
   try {
-    const providerModel = getProviderModel(provider, model)
+    const providerModel = getProviderModel(provider, model, apiKey)
+
+    // Prompt caching: on Anthropic, a stable prefix is sent as a separate
+    // text part marked cache_control=ephemeral — byte-identical prefixes
+    // across calls (chat turns, DA-1 batches) are read from cache at ~10%
+    // of input cost. Other providers get plain concatenation.
+    const promptOrMessages =
+      cachedPrefix && provider === 'anthropic'
+        ? {
+            messages: [
+              {
+                role: 'user' as const,
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: cachedPrefix,
+                    providerOptions: {
+                      anthropic: { cacheControl: { type: 'ephemeral' } },
+                    },
+                  },
+                  { type: 'text' as const, text: prompt },
+                ],
+              },
+            ],
+          }
+        : { prompt: cachedPrefix ? cachedPrefix + prompt : prompt }
 
     // v7 SDK: maxTokens → maxOutputTokens. temperature=1 is explicit for models that
     // reject other values (OpenAI reasoning, Anthropic Claude 4.x+).
     const result = await generateText({
       model: providerModel,
-      prompt,
+      ...promptOrMessages,
       // Models that only accept the default temperature: explicitly pass 1 rather than
       // omitting it — the SDK defaults to 0 when omitted, which these APIs reject.
       ...(skipTemperature ? { temperature: 1 } : { temperature }),
@@ -127,11 +153,14 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
     const tokenIn = result.usage?.inputTokens ?? 0
     const tokenOut = result.usage?.outputTokens ?? 0
     const costUsd = estimateCost(model, tokenIn, tokenOut)
+    // finishReason === 'length' means the model hit maxOutputTokens and the
+    // output is truncated. For JSON agents this guarantees parse failure.
+    const truncated = result.finishReason === 'length'
 
     // Log response
     console.log(`\n┌─── LLM RESPONSE ───────────────────────────────────`)
     console.log(`│ Provider:  ${provider} / ${model}`)
-    console.log(`│ Status:    SUCCESS`)
+    console.log(`│ Status:    ${truncated ? '⚠ TRUNCATED (hit maxOutputTokens)' : 'SUCCESS'}`)
     console.log(`│ Time:      ${(elapsed / 1000).toFixed(2)}s`)
     console.log(`│ Tokens In: ${tokenIn.toLocaleString()}`)
     console.log(`│ Tokens Out:${tokenOut.toLocaleString()}`)
@@ -144,6 +173,7 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
       tokenIn,
       tokenOut,
       costUsd,
+      truncated,
     }
   } catch (error) {
     const elapsed = Date.now() - startTime
@@ -166,21 +196,52 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResponse> {
   }
 }
 
-/**
- * Reads the prompt file for a given agent from the prompts/agents/ directory.
- *
- * @param promptFile - Filename within prompts/agents/ (e.g., 'wave2_2f_career.md').
- * @returns The prompt file contents as a string.
- */
-export async function readPromptFile(promptFile: string): Promise<string> {
+// {{include:relative/path.md}} — expanded by readPromptFile before variable
+// substitution. Paths containing '/' resolve from prompts/ (e.g. domains/career.md);
+// bare filenames resolve from prompts/agents/.
+const INCLUDE_PATTERN = /\{\{include:([^}]+)\}\}/g
+const MAX_INCLUDE_DEPTH = 3
+
+async function readPromptFileRaw(promptFile: string): Promise<string> {
   const fs = await import('fs/promises')
   const path = await import('path')
 
-  const promptPath = path.join(process.cwd(), 'prompts', 'agents', promptFile)
+  const relative = promptFile.includes('/')
+    ? path.join('prompts', promptFile)
+    : path.join('prompts', 'agents', promptFile)
+  const promptPath = path.join(process.cwd(), relative)
 
   try {
     return await fs.readFile(promptPath, 'utf-8')
   } catch (error) {
     throw new Error(`Failed to read prompt file: ${promptFile}. ${error}`)
   }
+}
+
+async function expandIncludes(content: string, depth: number): Promise<string> {
+  if (depth > MAX_INCLUDE_DEPTH) {
+    throw new Error(`Prompt include depth exceeded ${MAX_INCLUDE_DEPTH} — check for an include cycle`)
+  }
+
+  const matches = [...content.matchAll(INCLUDE_PATTERN)]
+  let expanded = content
+  for (const match of matches) {
+    const includePath = match[1].trim()
+    const included = await readPromptFileRaw(includePath)
+    const resolved = await expandIncludes(included, depth + 1)
+    expanded = expanded.replace(match[0], resolved)
+  }
+  return expanded
+}
+
+/**
+ * Reads a prompt file and expands {{include:...}} directives.
+ *
+ * @param promptFile - Filename within prompts/agents/ (e.g., 'wave2_2f_career.md'),
+ *                     or a path relative to prompts/ when it contains '/'.
+ * @returns The prompt contents with all includes inlined.
+ */
+export async function readPromptFile(promptFile: string): Promise<string> {
+  const content = await readPromptFileRaw(promptFile)
+  return expandIncludes(content, 0)
 }

@@ -1,0 +1,797 @@
+/**
+ * DurationComputationResults — renders the deterministic /api/timeline
+ * response for the Duration Analyser tab: scored sub-periods, a per-period
+ * astrological Drivers panel (condition / control / drishti / nakshatra /
+ * association + domain-house focus, built deterministically by
+ * engine/durationAnalysis/periodInsights.ts), transit callouts, divisional
+ * charts, planets, nakshatras, upagrahas, balas, and Ashtakavarga.
+ */
+
+'use client'
+
+import { useState } from 'react'
+import ChartGrid from './ChartGrid'
+import PlanetTable from './PlanetTable'
+import NakshatraTable from './NakshatraTable'
+import AshtakavargaView from './AshtakavargaView'
+import { Card } from '@/components/ui/card'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+import {
+  PLANET_COLORS,
+  planetColorClass,
+  LEVEL_STYLE,
+  DEFAULT_LEVEL_STYLE,
+  SADE_SATI_STYLE,
+  roleChipClass,
+  intensityBadgeClass,
+  planetChipClass,
+  shadbalaGrade,
+} from '@/lib/brandColors'
+import type {
+  PeriodInsights,
+  LordDriver,
+  DomainHouseFocus,
+  DomainContext,
+  HouseRole,
+  TaggedHouse,
+} from '@/lib/durationTypes'
+
+// Human labels for the deterministic scoring engine's 21 ScoringFactorKey values
+// (see lib/durationTypes.ts ScoringFactorKey / engine/durationAnalysis/scoring.ts).
+const FACTOR_LABELS: Record<string, string> = {
+  mdLordDignity: 'MD Lord Dignity',
+  adLordDignity: 'AD Lord Dignity',
+  pdLordDignity: 'PD Lord Dignity',
+  shadbala: 'Shadbala Strength',
+  ishtaKashta: 'Ishta/Kashta Phala',
+  houseOwnership: 'House Ownership',
+  karakaRole: 'Karaka Role',
+  naturalKaraka: 'Natural Karaka',
+  activatedYogas: 'Activated Yogas',
+  bhavaBala: 'Bhava Bala',
+  domainHouseActivation: 'Domain House Activation',
+  mdAdRelationship: 'MD-AD Relationship',
+  natalHouseStrength: 'Natal House Strength',
+  transitBav: 'Transit Ashtakavarga',
+  saturnAfflictions: 'Saturn Afflictions',
+  nakshatraDispositor: 'Nakshatra Dispositor',
+  dashaLordBav: 'Dasha Lord Ashtakavarga',
+  argalaOnDomainHouse: 'Argala on Domain House',
+  divisionalChartStrength: 'Divisional Chart Strength',
+  rashiDrishti: 'Rashi Aspect (Drishti)',
+  rashiDispositorChain: 'Rashi Dispositor Chain',
+}
+
+interface DashaLeg { lord: string; start: string; end: string }
+
+interface ScoreFactorContribution {
+  factor: string
+  value: unknown
+  normalized: number
+  weight: number
+  contribution: number
+}
+interface ScoreBreakdown {
+  factors: ScoreFactorContribution[]
+}
+
+// Structurally match lib/durationTypes.ts TransitOverlay (subset the UI reads).
+interface TransitOverlayRow {
+  adStart: string
+  adLord: string
+  saturn: { sign: string; houseFromLagna: number; retrograde: boolean }
+  jupiter: { sign: string; houseFromLagna: number; retrograde: boolean }
+  sadeSatiActive: boolean
+  sadeSatiPhase: 'rising' | 'peak' | 'setting' | null
+  ashtamaShani: boolean
+  kantakaShani: boolean
+}
+
+interface ScoredSlice {
+  md: DashaLeg
+  ad: DashaLeg
+  pd: DashaLeg
+  score: number
+  intensity: 'high' | 'medium' | 'low'
+  favorable: boolean
+  insights?: PeriodInsights | null
+  scoreBreakdown?: ScoreBreakdown
+}
+
+interface Upagraha { name?: string; abbr: string; sign?: string; signNumber: number; house: number }
+interface ShadbalPlanet { planet: string; components: { total: number } }
+interface ShadbalResult { planets: ShadbalPlanet[]; strengthRanking: { planet: string; ratio: number }[] }
+interface BhavaBalaHouse { house: number; total: number; rupas: number }
+interface BhavaBalaResult { houses: BhavaBalaHouse[] }
+
+// Structurally match the (unexported) prop shapes of the reused table/grid
+// components so we can pass categoryData straight through without `any`.
+interface PlanetRow {
+  planet: string
+  longitude: number
+  sign: string
+  signNumber: number
+  degreeInSign: number
+  house: number
+  retrograde: boolean
+  speed: number
+}
+interface NakshatraRow {
+  planet: string
+  nakshatra: string
+  pada: number
+  nakshatraLord: string
+  degreeInNakshatra: number
+}
+interface RawDivisionalChart {
+  division: number
+  name: string
+  shortName: string
+  lagna: string
+  lagnaSignNumber: number
+  planets: Array<{
+    planet: string
+    signNumber: number
+    house: number
+    retrograde?: boolean
+    dignity?: string
+    vargottama?: boolean
+  }>
+  arudhaPadas?: Array<{ abbr: string; signNumber: number; house_in_chart: number }>
+  specialLagnas?: Array<{ abbr: string; signNumber: number; house: number }>
+  upagrahas?: Array<{ abbr: string; signNumber: number; house: number }>
+}
+
+export interface TimelineResponse {
+  category: string
+  dateFrom: string
+  dateTo: string
+  periodCount: number
+  periods: ScoredSlice[]
+  domainContext?: DomainContext
+  transitOverlay?: TransitOverlayRow[]
+  categoryData?: {
+    planets?: PlanetRow[]
+    nakshatras?: NakshatraRow[]
+    ashtakavarga?: {
+      bav: Record<string, number[]>
+      sav: number[]
+      savTotal: number
+      lagnaSignNumber?: number
+      byHouse?: Array<{ house: number; signNumber: number; sign: string; sav: number; bav: Record<string, number> }>
+    }
+    upagrahas?: Upagraha[] | null
+    shadbala?: ShadbalResult | null
+    bhavaBala?: BhavaBalaResult | null
+    divisionalCharts?: RawDivisionalChart[]
+  }
+}
+
+// ─── Small display helpers ────────────────────────────────────────────────
+
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatFactorValue(value: unknown): string {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (Array.isArray(value)) return value.length ? value.map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join(', ') : '—'
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return '—'
+  }
+}
+
+function findOverlay(period: ScoredSlice, transitOverlay: TransitOverlayRow[]): TransitOverlayRow | null {
+  return (
+    transitOverlay.find((o) => o.adStart === period.ad.start) ??
+    transitOverlay.find((o) => o.adLord === period.ad.lord) ??
+    null
+  )
+}
+
+function HouseChip({ h }: { h: TaggedHouse }) {
+  return (
+    <span className={`text-[11px] px-1.5 py-0.5 rounded border ${roleChipClass(h.role)}`}>
+      {ordinal(h.house)} {h.sign}
+    </span>
+  )
+}
+
+// ─── Existing data tables (reused sections) ───────────────────────────────
+
+function UpagrahaTable({ upagrahas }: { upagrahas: Upagraha[] }) {
+  return (
+    <div className="rounded-lg border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
+        <h3 className="text-sm font-semibold text-ink">Upagrahas</h3>
+        <p className="text-xs text-gray-500 mt-0.5">Shadow sub-points (Gulika, Mandi, …)</p>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Upagraha</TableHead>
+            <TableHead>Sign</TableHead>
+            <TableHead className="text-center">House</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {upagrahas.map((u) => (
+            <TableRow key={u.abbr}>
+              <TableCell className="py-2 text-ink">{u.name ?? u.abbr} <span className="text-muted-foreground">({u.abbr})</span></TableCell>
+              <TableCell className="py-2 text-muted-foreground">{u.sign ?? '—'}</TableCell>
+              <TableCell className="py-2 text-center text-muted-foreground">{u.house}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function ShadbalaTable({ shadbala }: { shadbala: ShadbalResult }) {
+  const ratioByPlanet = new Map(shadbala.strengthRanking.map((r) => [r.planet, r.ratio]))
+  return (
+    <div className="rounded-lg border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
+        <h3 className="text-sm font-semibold text-ink">Shadbala</h3>
+        <p className="text-xs text-gray-500 mt-0.5">Six-fold planetary strength (Rupas)</p>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Planet</TableHead>
+            <TableHead className="text-right">Total (Rupas)</TableHead>
+            <TableHead className="text-right">Ratio</TableHead>
+            <TableHead>Grade</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {shadbala.planets.map((p) => {
+            const ratio = ratioByPlanet.get(p.planet) ?? 0
+            const grade = shadbalaGrade(ratio)
+            return (
+              <TableRow key={p.planet}>
+                <TableCell className={`py-2 font-medium ${PLANET_COLORS[p.planet] ?? 'text-ink'}`}>{p.planet}</TableCell>
+                <TableCell className="py-2 text-right text-muted-foreground font-mono">{p.components.total.toFixed(2)}</TableCell>
+                <TableCell className="py-2 text-right text-muted-foreground font-mono">{ratio.toFixed(2)}</TableCell>
+                <TableCell className="py-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${grade.className}`}>{grade.label}</span>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function BhavaBalaTable({ bhavaBala }: { bhavaBala: BhavaBalaResult }) {
+  return (
+    <div className="rounded-lg border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
+        <h3 className="text-sm font-semibold text-ink">Bhava Bala</h3>
+        <p className="text-xs text-gray-500 mt-0.5">Per-house strength</p>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>House</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="text-right">Rupas</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {bhavaBala.houses.map((h) => (
+            <TableRow key={h.house}>
+              <TableCell className="py-2 text-ink">House {h.house}</TableCell>
+              <TableCell className="py-2 text-right text-muted-foreground font-mono">{h.total.toFixed(2)}</TableCell>
+              <TableCell className="py-2 text-right text-muted-foreground font-mono">{h.rupas.toFixed(2)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+// ─── Drivers panel ────────────────────────────────────────────────────────
+
+function DomainContextHeader({ ctx }: { ctx: DomainContext }) {
+  const karakas = [
+    ...ctx.relevantKarakaRoles,
+    ...ctx.relevantNaturalKarakas,
+  ].join(', ')
+  // Mirrored gray surface + mirrored text (theme-safe); highlights are solid chips.
+  return (
+    <div className="rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-3 text-xs">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-300">
+        <span className="capitalize font-semibold text-ink">{ctx.category} lens</span>
+        <span className="flex items-center gap-1">
+          Key house{ctx.primaryHouses.length > 1 ? 's' : ''}:
+          {ctx.primaryHouses.map((h) => (
+            <span key={h} className="px-1.5 py-0.5 rounded border bg-role-primary-bg text-role-primary-text border-role-primary-border">{ordinal(h)}</span>
+          ))}
+        </span>
+        <span>Primary varga: <span className="text-ink font-medium">D{ctx.primaryDivision}</span></span>
+        {karakas && <span>Karakas: <span className="text-ink font-medium">{karakas}</span></span>}
+      </div>
+      <div className="mt-1 flex flex-wrap gap-x-4 text-[11px] text-gray-400">
+        <span>Benefic houses: {ctx.beneficHouses.join(', ')}</span>
+        <span>Malefic houses: {ctx.maleficHouses.join(', ')}</span>
+      </div>
+    </div>
+  )
+}
+
+/** One-line "what does this lord actually do" summary — the takeaway before the detail. */
+function driverSnapshot(driver: LordDriver): string {
+  const bits: string[] = []
+  const primaryOwned = driver.owns.filter((h) => h.role === 'primary').length
+  if (driver.owns.length > 0) {
+    bits.push(`owns ${driver.owns.length} house${driver.owns.length > 1 ? 's' : ''}${primaryOwned ? ` (${primaryOwned} primary)` : ''}`)
+  }
+  const domainAspectCount = driver.aspectsCast.filter((a) => a.ontoDomain).length + driver.rashiDrishtiOnDomain.length
+  if (domainAspectCount > 0) bits.push(`${domainAspectCount} domain aspect${domainAspectCount > 1 ? 's' : ''}`)
+  if (driver.combust) bits.push('combust')
+  if (driver.retrograde) bits.push('retrograde')
+  if (driver.karakaRole || driver.isNaturalKaraka) bits.push(driver.karakaRole ?? 'karaka')
+  return bits.length > 0 ? bits.join(' · ') : 'no major domain drivers this period'
+}
+
+function LordCard({ driver }: { driver: LordDriver }) {
+  const color = PLANET_COLORS[driver.lord] ?? 'text-ink'
+  const levelStyle = LEVEL_STYLE[driver.level] ?? DEFAULT_LEVEL_STYLE
+  const domainAspects = driver.aspectsCast.filter((a) => a.ontoDomain)
+  const hasDetail = driver.vargas.length > 0 || driver.nakshatra || driver.nakshatraChain.length > 0 ||
+    driver.starExchangeWith || driver.conjunctWith.length > 0 || driver.parivartanaWith
+
+  return (
+    <div className={`h-full ${levelStyle.bar} p-4 flex flex-col`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${levelStyle.pill}`}>{driver.level}</span>
+          <span className={`text-base font-semibold truncate ${color}`}>{driver.lord}</span>
+          {driver.dignity && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 capitalize shrink-0">{driver.dignity}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {driver.karakaRole && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-period-md/20 text-period-md border border-period-md/40">{driver.karakaRole}</span>
+          )}
+          {driver.isNaturalKaraka && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-role-benefic-bg text-role-benefic-text border border-role-benefic-border">karaka</span>
+          )}
+        </div>
+      </div>
+
+      {/* Condition flags */}
+      {(driver.retrograde || driver.combust || driver.cazimi) && (
+        <div className="flex gap-1 flex-wrap mt-1.5">
+          {driver.retrograde && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">Retrograde</span>}
+          {driver.combust && <span className="text-[10px] px-1.5 py-0.5 rounded bg-unfavorable-muted text-unfavorable border border-unfavorable/40">Combust</span>}
+          {driver.cazimi && <span className="text-[10px] px-1.5 py-0.5 rounded bg-cautionary-muted text-cautionary border border-cautionary/40">Cazimi</span>}
+        </div>
+      )}
+
+      {/* Snapshot — the one-line takeaway */}
+      <p className="text-[11px] text-gray-400 italic mt-1.5 pb-2 border-b border-gray-800">{driverSnapshot(driver)}</p>
+
+      {/* Core: Control + Drishti — always visible, this is what a period "does" */}
+      <div className="mt-2 space-y-2.5">
+        <div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Controls</div>
+          {driver.owns.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {driver.owns.map((h) => <HouseChip key={h.house} h={h} />)}
+            </div>
+          ) : (
+            <span className="text-xs text-gray-600">— (node owns no sign)</span>
+          )}
+          {driver.occupies && (
+            <div className="mt-1 text-[11px] text-gray-400">
+              Sits in <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(driver.occupies.role)}`}>{ordinal(driver.occupies.house)} {driver.occupies.sign}</span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Drishti (aspects)</div>
+          {domainAspects.length > 0 && (
+            <div className="text-[11px] text-gray-300">
+              Casts onto domain:{' '}
+              {domainAspects.map((a, i) => (
+                <span key={i} className={`inline-block mr-1 mb-1 px-1.5 py-0.5 rounded border ${roleChipClass(a.toRole)}`}>
+                  {ordinal(a.toHouse)} {a.toSign}{a.toPlanets.length ? ` · ${a.toPlanets.join('/')}` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+          {driver.rashiDrishtiOnDomain.length > 0 && (
+            <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
+              Rashi-drishti →
+              {driver.rashiDrishtiOnDomain.map((h) => (
+                <span key={h} className="px-1.5 py-0.5 rounded border bg-role-primary-bg text-role-primary-text border-role-primary-border">{ordinal(h)}</span>
+              ))}
+            </div>
+          )}
+          {driver.aspectsReceived.length > 0 && (
+            <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 flex-wrap">
+              Aspected by:
+              {driver.aspectsReceived.map((a, i) => (
+                <span key={i} className={`px-1.5 py-0.5 rounded border ${planetChipClass(a.benefic)}`}>{a.from}</span>
+              ))}
+            </div>
+          )}
+          {domainAspects.length === 0 && driver.rashiDrishtiOnDomain.length === 0 && driver.aspectsReceived.length === 0 && (
+            <span className="text-xs text-gray-600">no domain-relevant aspects</span>
+          )}
+        </div>
+      </div>
+
+      {/* Detail: Vargas / Nakshatra / Association — progressive disclosure so the
+          card leads with what matters (control + drishti) instead of an equally-
+          weighted wall of five sections. */}
+      {hasDetail && (
+        <details className="mt-2.5 pt-2 border-t border-gray-800 group">
+          <summary className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold cursor-pointer select-none list-none flex items-center gap-1 hover:text-gray-300">
+            <span className="inline-block transition-transform group-open:rotate-90">▸</span>
+            More detail — vargas, nakshatra, association
+          </summary>
+          <div className="mt-2 space-y-2.5">
+            {/* Vargas — control + drishti within the domain's other divisional charts
+                (e.g. D9/D10 for career, D6/D9 for health) — houses counted from that
+                varga's own lagna. */}
+            {driver.vargas.length > 0 && (
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Vargas</div>
+                <div className="space-y-1">
+                  {driver.vargas.map((v) => (
+                    <div key={v.division} className="text-[11px] text-gray-300">
+                      <span className="text-gray-500">{v.name.split(' — ')[0]}</span>
+                      {v.occupies && (
+                        <span className="ml-1">
+                          sits <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(v.occupies.role)}`}>{ordinal(v.occupies.house)} {v.occupies.sign}</span>
+                        </span>
+                      )}
+                      {v.owns.length > 0 && (
+                        <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
+                          owns {v.owns.map((h) => <HouseChip key={h.house} h={h} />)}
+                        </span>
+                      )}
+                      {v.aspectsOntoPrimary.length > 0 && (
+                        <span className="ml-1 flex items-center gap-1 flex-wrap mt-0.5">
+                          → aspects
+                          {v.aspectsOntoPrimary.map((h) => (
+                            <span key={h} className="px-1.5 py-0.5 rounded border bg-role-primary-bg text-role-primary-text border-role-primary-border">{ordinal(h)}</span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nakshatra */}
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Nakshatra</div>
+              <div className="text-[11px] text-gray-300">
+                {driver.nakshatra || '—'}
+                {driver.nakshatraLord && <span className="text-gray-500"> · lord {driver.nakshatraLord}</span>}
+                {driver.subLord && <span className="text-gray-500"> · sub {driver.subLord}</span>}
+              </div>
+              {driver.nakshatraChain.length > 0 && (
+                <div className="text-[11px] text-gray-400 mt-0.5">Star chain: {driver.nakshatraChain.join(' → ')}</div>
+              )}
+              {driver.starExchangeWith && (
+                <div className="text-[11px] text-gray-400 mt-0.5">
+                  Star exchange with <span className="px-1.5 py-0.5 rounded border bg-role-benefic-bg text-role-benefic-text border-role-benefic-border">{driver.starExchangeWith}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Association */}
+            {(driver.conjunctWith.length > 0 || driver.parivartanaWith) && (
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1 font-semibold">Association</div>
+                {driver.conjunctWith.length > 0 && (
+                  <div className="text-[11px] text-gray-300">Conjunct: {driver.conjunctWith.join(', ')}</div>
+                )}
+                {driver.parivartanaWith && (
+                  <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                    Parivartana with <span className="px-1.5 py-0.5 rounded border bg-role-benefic-bg text-role-benefic-text border-role-benefic-border">{driver.parivartanaWith}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
+
+function DomainHouseCard({ focus }: { focus: DomainHouseFocus }) {
+  return (
+    <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-3 text-xs space-y-1">
+      <div className="flex items-center justify-between">
+        <span className={`px-1.5 py-0.5 rounded border ${roleChipClass(focus.role)}`}>{ordinal(focus.house)} · {focus.sign}</span>
+        {focus.savBindu != null && <span className="text-gray-500">SAV {focus.savBindu}</span>}
+      </div>
+      <div className="text-gray-300">
+        Lord: <span className={PLANET_COLORS[focus.lord ?? ''] ?? 'text-ink'}>{focus.lord ?? '—'}</span>
+        {focus.lordHouse != null && <span className="text-gray-500"> in {ordinal(focus.lordHouse)}</span>}
+        {focus.lordDignity && <span className="text-gray-500"> ({focus.lordDignity})</span>}
+      </div>
+      {focus.occupants.length > 0 && (
+        <div className="text-gray-400">Occupants: {focus.occupants.join(', ')}</div>
+      )}
+      {focus.aspectedBy.length > 0 && (
+        <div className="text-gray-400 flex items-center gap-1 flex-wrap">
+          Aspected by:
+          {focus.aspectedBy.map((a, i) => (
+            <span key={i} className={`px-1.5 py-0.5 rounded border ${planetChipClass(a.benefic)}`}>{a.planet}</span>
+          ))}
+        </div>
+      )}
+      {focus.argalaFrom.length > 0 && (
+        <div className="text-gray-400">
+          Argala from: {focus.argalaFrom.map((a) => `${ordinal(a.house)}${a.planets.length ? ` (${a.planets.join('/')})` : ''}`).join(', ')}
+        </div>
+      )}
+      {focus.bhavaBalaRupas != null && (
+        <div className="text-gray-500">Bhava Bala: {focus.bhavaBalaRupas.toFixed(2)} rupas</div>
+      )}
+    </div>
+  )
+}
+
+function TransitCallouts({ overlay }: { overlay: TransitOverlayRow }) {
+  return (
+    <div className="space-y-2">
+      {overlay.sadeSatiActive && overlay.sadeSatiPhase && (
+        <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${SADE_SATI_STYLE[overlay.sadeSatiPhase]}`}>
+          Sade Sati — {overlay.sadeSatiPhase} phase active
+        </div>
+      )}
+      {overlay.ashtamaShani && (
+        <div className="rounded-lg border border-sade-sati-peak-border bg-sade-sati-peak-bg px-3 py-2 text-xs font-medium text-sade-sati-peak-text">
+          Ashtama Shani — Saturn in 8th from natal Moon
+        </div>
+      )}
+      {overlay.kantakaShani && (
+        <div className="rounded-lg border border-sade-sati-rising-border bg-sade-sati-rising-bg px-3 py-2 text-xs font-medium text-sade-sati-rising-text">
+          Kantaka Shani — Saturn in 4th from natal Moon
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-gray-700 bg-gray-900/40 px-3 py-2 text-xs">
+          <span className="text-planet-saturn font-medium">Saturn</span>
+          <span className="text-gray-400"> transit — House {overlay.saturn.houseFromLagna} from Lagna</span>
+          {overlay.saturn.retrograde && <span className="text-gray-500"> (retrograde)</span>}
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-900/40 px-3 py-2 text-xs">
+          <span className="text-planet-jupiter font-medium">Jupiter</span>
+          <span className="text-gray-400"> transit — House {overlay.jupiter.houseFromLagna} from Lagna</span>
+          {overlay.jupiter.retrograde && <span className="text-gray-500"> (retrograde)</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FactorBreakdown({ factors }: { factors: ScoreFactorContribution[] }) {
+  const top = [...factors].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+  if (top.length === 0) return null
+  return (
+    <Accordion type="single" collapsible className="rounded-lg border border-gray-700 overflow-hidden">
+      <AccordionItem value="factors" className="border-none">
+        <AccordionTrigger className="bg-gray-800/50 px-4 py-3 text-sm font-semibold text-ink hover:no-underline">
+          Full scoring-factor breakdown
+        </AccordionTrigger>
+        <AccordionContent className="pb-0">
+          <div className="divide-y divide-gray-800 border-t border-gray-700">
+            {top.map((f, i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-2 text-xs gap-3">
+                <div className="min-w-0">
+                  <div className="text-ink font-medium">{FACTOR_LABELS[f.factor] ?? f.factor}</div>
+                  <div className="text-gray-500 truncate">{formatFactorValue(f.value)}</div>
+                </div>
+                <span className={`shrink-0 font-mono px-2 py-0.5 rounded ${f.contribution >= 0 ? 'text-favorable bg-favorable-muted' : 'text-unfavorable bg-unfavorable-muted'}`}>
+                  {f.contribution >= 0 ? '+' : ''}{f.contribution.toFixed(1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  )
+}
+
+function PeriodDrivers({
+  period,
+  overlay,
+  domainContext,
+}: {
+  period: ScoredSlice
+  overlay: TransitOverlayRow | null
+  domainContext?: DomainContext
+}) {
+  const insights = period.insights
+  const factors = period.scoreBreakdown?.factors
+
+  return (
+    <section className="space-y-4">
+      <h3 className="text-sm font-semibold text-ink">
+        Period Drivers — {period.md.lord} MD / {period.ad.lord} AD / {period.pd.lord} PD
+      </h3>
+
+      {domainContext && <DomainContextHeader ctx={domainContext} />}
+
+      {insights?.karakaSummary && (insights.karakaSummary.amongRunningLords.length > 0 || insights.karakaSummary.karakaRoleMatch) && (
+        <div className="rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2 text-xs text-gray-300">
+          {insights.karakaSummary.amongRunningLords.length > 0 && (
+            <span>Domain karaka running: <span className="font-medium text-ink">{insights.karakaSummary.amongRunningLords.join(', ')}</span>. </span>
+          )}
+          {insights.karakaSummary.karakaRoleMatch && <span className="text-ink">{insights.karakaSummary.karakaRoleMatch}.</span>}
+        </div>
+      )}
+
+      {insights?.lords && (
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+            {insights.lords.map((d) => <LordCard key={d.level} driver={d} />)}
+          </div>
+        </Card>
+      )}
+
+      {overlay && <TransitCallouts overlay={overlay} />}
+
+      {insights?.domainHouseFocus && insights.domainHouseFocus.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold text-ink mb-2">Domain-House Focus</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {insights.domainHouseFocus.map((f) => <DomainHouseCard key={f.house} focus={f} />)}
+          </div>
+        </div>
+      )}
+
+      {factors && <FactorBreakdown factors={factors} />}
+    </section>
+  )
+}
+
+// ─── Root ─────────────────────────────────────────────────────────────────
+
+export default function DurationComputationResults({
+  result,
+  lagna,
+}: {
+  result: TimelineResponse
+  lagna: string
+}) {
+  const { periods, categoryData, transitOverlay = [], domainContext } = result
+  const first = periods[0]
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const selected = periods[selectedIdx] ?? first
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-ink capitalize">{result.category} — Computation</h3>
+            <p className="text-xs text-gray-400 mt-1">
+              {formatDateShort(result.dateFrom)} → {formatDateShort(result.dateTo)} · {result.periodCount} period{result.periodCount === 1 ? '' : 's'}
+            </p>
+          </div>
+          {first && (
+            <span className={`text-xs px-3 py-1 rounded-full border font-medium ${intensityBadgeClass(first.intensity, first.favorable)}`}>
+              {first.favorable ? 'Favorable' : 'Unfavorable'} · {first.intensity} · score {first.score}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Sub-periods */}
+      {periods.length > 1 && (
+        <div className="rounded-lg border border-gray-700 overflow-hidden">
+          <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
+            <h3 className="text-sm font-semibold text-ink">Scored Sub-Periods</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Click a period to see its drivers below</p>
+          </div>
+          <div className="divide-y divide-gray-800 max-h-80 overflow-y-auto">
+            {periods.map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setSelectedIdx(i)}
+                className={`w-full flex items-center justify-between px-4 py-2 text-xs text-left transition-colors ${
+                  i === selectedIdx ? 'bg-brand-900/60' : 'hover:bg-gray-800/40'
+                }`}
+              >
+                <span className="text-ink">{p.md.lord}-{p.ad.lord}-{p.pd.lord}</span>
+                <span className="text-gray-500">{formatDateShort(p.pd.start)} → {formatDateShort(p.pd.end)}</span>
+                <span className={`px-2 py-0.5 rounded-full border ${intensityBadgeClass(p.intensity, p.favorable)}`}>
+                  {p.score}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!first && (
+        <p className="text-sm text-gray-500">No dasha periods overlap this range.</p>
+      )}
+
+      {/* Period Drivers */}
+      {selected && <PeriodDrivers period={selected} overlay={findOverlay(selected, transitOverlay)} domainContext={domainContext} />}
+
+      {/* Divisional Charts */}
+      {categoryData?.divisionalCharts && categoryData.divisionalCharts.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold text-ink mb-3">Divisional Charts</h3>
+          <ChartGrid charts={categoryData.divisionalCharts} upagrahas={categoryData.upagrahas ?? undefined} />
+        </section>
+      )}
+
+      {/* Planets */}
+      {categoryData?.planets && (
+        <section>
+          <PlanetTable planets={categoryData.planets} lagna={lagna} />
+        </section>
+      )}
+
+      {/* Nakshatras */}
+      {categoryData?.nakshatras && (
+        <section>
+          <NakshatraTable nakshatras={categoryData.nakshatras} />
+        </section>
+      )}
+
+      {/* Upagrahas */}
+      {categoryData?.upagrahas && categoryData.upagrahas.length > 0 && (
+        <section>
+          <UpagrahaTable upagrahas={categoryData.upagrahas} />
+        </section>
+      )}
+
+      {/* Balas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {categoryData?.shadbala && (
+          <section>
+            <ShadbalaTable shadbala={categoryData.shadbala} />
+          </section>
+        )}
+        {categoryData?.bhavaBala && (
+          <section>
+            <BhavaBalaTable bhavaBala={categoryData.bhavaBala} />
+          </section>
+        )}
+      </div>
+
+      {/* Ashtakavarga */}
+      {categoryData?.ashtakavarga && (
+        <section>
+          <h3 className="text-sm font-semibold text-ink mb-3">Ashtakavarga</h3>
+          <AshtakavargaView data={categoryData.ashtakavarga} />
+        </section>
+      )}
+    </div>
+  )
+}

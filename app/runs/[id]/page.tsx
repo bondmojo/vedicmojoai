@@ -148,8 +148,8 @@ export default function RunProgressPage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <Link href={`/charts/${run.chartId}`} className="text-sm text-gray-500 hover:text-gray-300 block mb-2">
-              ← Back to Chart
+            <Link href="/reports" className="text-sm text-gray-500 hover:text-gray-300 block mb-2">
+              ← Back to Reports
             </Link>
             <h1 className="text-2xl font-bold">Run: {run.clientName}</h1>
             <div className="flex items-center gap-3 mt-2">

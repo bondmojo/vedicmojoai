@@ -1,7 +1,7 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.1
-**Last updated:** 2026-07-05
+**Version:** 1.2
+**Last updated:** 2026-07-07
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
@@ -10,7 +10,63 @@
 
 ## What changed in v1.1
 
-The system now organizes around three practitioner-facing features:
+The system now organizes around three practitioner-facing features.
+(See full details in v1.1 below.)
+
+## What changed in v1.4
+
+- Added the **VedicMojo MCP server** (`mcp/`) — a separate, read-only stdio process
+  that lets Claude Desktop act as the astrologer at **$0 API cost**. It exposes the
+  deterministic engine (Tools), the domain rubrics (Resources), and ready-to-run
+  analysis workflows (Prompts), and **never invokes the paid LLM pipelines**. It is a
+  thin HTTP client of the existing Next.js app. See §3.9 and DFD P11.
+- New **read-only, no-LLM** API routes backing the MCP:
+  - `POST /api/timeline` — deterministic dasha-period slice + transit overlay +
+    0–100 scoring + peaks (the Duration Analysis pre-steps, minus the LLM).
+  - `GET /api/knowledge` and `GET /api/knowledge/{domains|frameworks}/{name}` —
+    the prompt rubrics, `{{include:}}`-expanded, allow-listed.
+- New helper `lib/mcpAuth.ts` — optional `MCP_TOKEN` shared-secret guard on the new
+  routes. New guard test `tests/mcp-cost-guard.test.ts` proves the MCP never POSTs a
+  paid route.
+
+## What changed in v1.2
+
+- Added **Duration Analysis** — a fourth practitioner-facing feature: a focused
+  3-agent sequential pipeline (DA-1 → DA-2 (conditional) → DA-3) that answers
+  period-specific questions over a user-selected date range and life domain. Completely
+  separate from the 18-agent wave pipeline.
+- New engine directory: `engine/durationAnalysis/` (slicer, transitOverlay, registry,
+  extractor, agentJson, index/orchestrator).
+- New API routes: `POST + GET /api/duration-analysis` (create + history list),
+  `GET /api/duration-analysis/[id]`, `GET /api/duration-analysis/[id]/events`,
+  `POST /api/duration-analysis/[id]/chat`, `POST /api/duration-analysis/[id]/override`,
+  `POST /api/duration-analysis/[id]/cancel`.
+- New UI pages: `/duration-analysis` (form + run history) and `/duration-analysis/[id]`
+  (results + live SSE + follow-up chat).
+- **Durability:** stale-run reaper (`engine/durationAnalysis/reaper.ts`) marks
+  queued/running rows with no heartbeat for 10 min as failed on every read path;
+  the DA-1 batch loop persists totals per batch as the heartbeat. Cancellation is
+  cooperative: `/cancel` sets `status=cancelled` and the pipeline unwinds at its
+  next checkpoint.
+- **Prompt caching:** `callLLM({ cachedPrefix })` marks a stable prefix with
+  Anthropic `cache_control` — used by DA-1 batches (shared chart data) and DA-3
+  chat follow-ups (chart data + DA-1 + DA-2 sections).
+- New DB tables: `duration_analysis`, `duration_message` (see ERD v1.2).
+- **Full PD storage:** `computeVimshottari` now computes Pratyantardashas for all 9
+  Mahadashas (729 entries). `AntarDasha.pratyantardashas` is now a required field.
+- New prompt files: per-domain `duration_da1_<category>.md` (composed from
+  `prompts/domains/<category>.md` fragments + the `duration_da1_domain_analyser.md`
+  core via `{{include:}}`), `duration_da2_symptom_validator.md`,
+  `duration_da3_future_analyser.md`. The `prompts/domains/` fragments are the
+  canonical domain knowledge, also included by the Wave 2 domain agents (2C–2G).
+- Categories: health, career, wealth, marriage, property, cashflow ("Money Agent" —
+  liquidity, distinct from wealth/accumulation).
+- New `ModelConfig` rows: `DA-1` (legacy), `DA1-HEALTH` … `DA1-CASHFLOW` (one per
+  domain agent), `DA-2`, `DA-3`.
+- DA-1 runs batched (≤25 periods per call, merged deterministically); all DA LLM
+  calls use lenient JSON parsing with one retry.
+- Backfill: `npm run db:backfill-pd` fills missing Pratyantardashas into charts
+  computed before full-PD storage (`scripts/backfill-pratyantardashas.ts`).
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in a single `UnifiedChart` store: `from-compute` (birth data) and
@@ -58,8 +114,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
                              │ HTTP / SSE
 ┌────────────────────────────▼────────────────────────────────────┐
 │                   NEXT.JS API LAYER  (/app/api)                 │
-│  POST /api/runs   GET /api/runs/:id/events   GET /api/charts    │
-│  GET /api/charts/:id/dasha   GET /api/reports/:id               │
+│  POST /api/unified-charts/[id]/analyze  GET /api/runs/:id/events│
+│  POST /api/compute   GET /api/reports   GET /api/runs/:id       │
 └────────────────────────────┬────────────────────────────────────┘
                              │ function calls (same process)
 ┌────────────────────────────▼────────────────────────────────────┐
@@ -94,13 +150,14 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PERSISTENCE LAYER                           │
 │   PostgreSQL (via Prisma)          File System                  │
-│   - Chart                          - reports/{slug}.html        │
-│   - PipelineRun                    - prompts/agents/*.md        │
-│   - WaveOutput                     (prompt files read-only)     │
+│   - Chart (legacy, paste-path)     - reports/{slug}.html        │
+│   - UnifiedChart                   - prompts/agents/*.md        │
+│   - PipelineRun                    (prompt files read-only)     │
+│   - WaveOutput                                                  │
 │   - Wave1Cache                                                  │
 │   - RunMessage                                                  │
 │   - ModelConfig                                                 │
-│   - SavedChart (computed charts)                                │
+│   - SavedChart (legacy, read-only — superseded by UnifiedChart) │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,39 +167,63 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 ### 3.1 UI Layer (`/app`)
 
+> **v1.3 note:** the legacy `/charts` (list/detail/new-run/dasha) pages and the
+> `Chart`-model `POST /api/runs` route were removed. `/` is now the Chart
+> Compute UI directly (formerly at `/compute`); AI Analysis runs are started
+> exclusively via `/unified-charts/[id]/analyze` → `POST
+> /api/unified-charts/[id]/analyze`. The legacy `Chart` table and its
+> read-only detail queries still exist (paste-path runs keep a legacy `Chart`
+> row for the `PipelineRun` FK — see §3.2), but there is no dedicated UI for it.
+
 | Page | Route | Purpose |
 |---|---|---|
-| Chart List | `/` | Lists all submitted charts — client name, lagna, run count, last run |
-| Chart Detail | `/charts/[id]` | Chart summary, run history, "New Run" button, dasha timeline |
-| New Run | `/charts/[id]/run` | Query type selector, free-text field, agent preview, run button |
+| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts; tabs incl. **Varshaphal** (annual solar-return chart per year) |
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
-| Dasha Timeline | `/charts/[id]/dasha` | Interactive lifetime dasha viewer (mahadasha → antardasha → pratyantar) |
-| Chart Compute | `/compute` | Real-time chart computation from birth data + Save/Load computed charts |
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
 | Unified Chart Detail | `/unified-charts/[id]` | Full domain view of a unified chart + run history |
 | Unified Chart Analyze | `/unified-charts/[id]/analyze` | AI Analysis launcher — query-type + agent selection, model override, 202 redirect |
+| Duration Analysis Form | `/duration-analysis` | Date range + category + optional symptoms + question → launches 3-agent pipeline |
+| Duration Analysis Results | `/duration-analysis/[id]` | Live SSE progress, period table (DA-1), symptom gate, DA-3 forecast, follow-up chat |
 
 ### 3.2 API Layer (`/app/api`)
 
+> **v1.3 note:** the legacy `Chart`-model routes (`/api/charts`,
+> `/api/charts/[id]`, `/api/charts/[id]/dasha`, `POST /api/runs`) and the
+> dormant `/api/compute/save`, `/api/compute/charts`, `/api/compute/charts/[id]`,
+> `/api/reports/[id]`, `/api/runs/[id]/rerun` routes were deleted — none had a
+> remaining UI caller. `POST /api/unified-charts/[id]/analyze` is now the only
+> way to start a pipeline run.
+
 | Route | Method | Purpose |
 |---|---|---|
-| `/api/charts` | GET, POST | List charts / submit new chart |
-| `/api/charts/[id]` | GET | Chart detail + run history |
-| `/api/charts/[id]/dasha` | GET | Computed dasha tree (current period derived at request time) |
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
-| `/api/compute/save` | POST | Save a computed chart to the database (with dedup via input hash) |
-| `/api/compute/charts` | GET | List all saved computed charts (metadata only) |
-| `/api/compute/charts/[id]` | GET, DELETE | Load or delete a single saved computed chart |
+| `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
-| `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` |
+| `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` (shared creator: `lib/unified-chart-create.ts`) |
 | `/api/unified-charts/from-paste` | POST | **Generate Chart (Path B)** — validate + persist pasted `ChartInputV1` as `source="paste"` |
-| `/api/unified-charts/[id]` | GET, DELETE | Load full domain data / delete a unified chart (cascades runs) |
+| `/api/unified-charts/[id]` | GET, PATCH, DELETE | Load full domain data / rename / delete (cascades pipeline runs + duration analyses) |
 | `/api/unified-charts/[id]/analyze` | POST | **AI Analysis** — start pipeline on a unified chart (202 + run_id); skips Wave 1 for compute source |
-| `/api/runs` | POST | Start a new pipeline run against a legacy `Chart` (returns 202 + run_id) |
+| `/api/duration-analysis` | POST | **Duration Analysis** — create run for date range + category (202 + analysisId) |
+| `/api/duration-analysis/[id]` | GET | Full Duration Analysis record with all agent outputs and messages |
+| `/api/duration-analysis/[id]/events` | GET | SSE stream for DA pipeline progress |
+| `/api/duration-analysis/[id]/chat` | POST | Follow-up question to DA-3 with conversation history |
+| `/api/duration-analysis/[id]/override` | POST | Override symptom gate and resume to DA-3 |
 | `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
 | `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
+| `/api/runs/[id]/cancel` | POST | Cancel a running/queued pipeline run |
+| `/api/runs/[id]/override` | POST | Override the critical-error halt gate and resume |
+| `/api/runs/[id]/chat` | POST | Follow-up question against a completed report |
+| `/api/runs/[id]/report-content` | GET | Raw markdown report content (for `.md` output format) |
+| `/api/reports` | GET | List all completed pipeline runs (for the Reports page) |
 | `/api/reports/[id]` | GET | Serve HTML report file |
+| `/api/timeline` | POST | **MCP + Duration Analyser UI (no-LLM)** — deterministic dasha-period slice + transit overlay + 0–100 scoring + peaks + per-period driver digest (`insights`) + `domainContext` over a date range + category (Duration Analysis pre-steps without the LLM). Consumed both by MCP (raw → Claude Desktop LLM interprets) and the `/duration-computation` UI (renders the digest directly, no LLM). See `docs/duration-analyser.md`. |
+| `/api/knowledge` | GET | **MCP** — list available domain + framework rubrics |
+| `/api/knowledge/[type]/[name]` | GET | **MCP** — one rubric (`type`=`domains`\|`frameworks`), `{{include:}}`-expanded, name allow-listed |
+
+> The `/api/timeline` and `/api/knowledge/**` routes are read-only and never call
+> an LLM. They back the MCP server (§3.9) and honour the optional `MCP_TOKEN`
+> guard (`lib/mcpAuth.ts`).
 
 ### 3.3 Engine Layer (`/engine`)
 
@@ -172,12 +253,25 @@ engine/
 │   ├── relationships.ts   # NEW — conjunctions, aspects, yuddha, parivartana… (deterministic 1D)
 │   ├── nakshatraRelationships.ts # NEW — sub-lords, depositor chains, parivartana, clusters
 │   ├── jaimini.ts         # NEW — argala, yogi/avayogi, special-lagna aspects
-│   └── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
+│   ├── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
+│   └── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
 └── waves/
     ├── wave1.ts           # LLM path: 1A, 1B, 1C, 1D (compute path skips these)
     ├── wave2.ts           # parallel, planner-selected: 2A–2G
     ├── wave3.ts           # parallel, planner-selected: 3A–3D
     └── wave4.ts           # sequential: 4X → 4A → 4B → 4C
+```
+
+**Duration Analysis engine** (separate from the wave pipeline):
+
+```
+engine/durationAnalysis/
+├── index.ts           # executeDurationPipeline + resumeDurationPipeline orchestrator
+├── slicer.ts          # sliceDashaTree() — pure TS, overlap filter, lord annotation, yoga activation
+├── transitOverlay.ts  # buildTransitOverlay() — per-AD transit snapshots + BAV scores
+├── registry.ts        # DOMAIN_AGENT_REGISTRY — per-category prompt/model/divisions/columns
+├── agentJson.ts       # callAgentJson() — lenient JSON extraction + one retry per agent call
+└── extractor.ts       # extractCategoryData() — registry-driven chart data extraction
 ```
 
 **Deterministic Wave 1 (compute path):** For a `source="compute"` unified chart,
@@ -289,6 +383,35 @@ Every agent receives a **compact context**, not raw accumulated output:
 
 `chart_summary` is pre-computed once from `ChartInputV1` + `dasha_tree` and stored
 in `Wave1Cache`. It is never re-derived by an LLM agent.
+
+### 3.9 MCP Server (`mcp/`)
+
+A **separate Node process** (its own package under `mcp/`) that speaks the Model
+Context Protocol over **stdio** and is launched by Claude Desktop. It holds **no
+astrology logic** — every tool is a thin HTTP call to the routes in §3.2. Its
+purpose is to move the *reasoning* into Claude Desktop (billed to the Desktop
+subscription) instead of the paid API pipelines, so it deliberately **never calls**
+`POST /api/unified-charts/[id]/analyze` or `POST /api/duration-analysis`.
+
+Three primitives:
+
+- **Tools** — deterministic data: discovery (`list_clients`, `get_client_chart`),
+  compute (`compute_chart`, `compute_varshaphal`), focused extractors
+  (`get_shadbala`, `get_divisional_chart`, `get_dasha_tree`, `get_active_dasha`,
+  `get_chara_dasha`, `get_ashtakavarga`, `get_relationships`, `get_jaimini`,
+  `get_bhava_bala`, `get_transits` — each taking a stored `chartId` **or** raw `birthData`),
+  timeline (`get_timeline_periods`, `get_domain_dataset`), knowledge
+  (`list_knowledge`, `get_domain_knowledge`, `get_framework`), and read-only
+  access to already-generated reports.
+- **Resources** — the 6 canonical domain rubrics (`knowledge://domains/{domain}`).
+- **Prompts** — ready-to-run readings (`analyze_{career|health|wealth|marriage|property|cashflow}`,
+  `duration_timeline`, `analyze_full_chart`). Each embeds the domain rubric and
+  instructs Claude which Tools to call for the given client (the "recipe →
+  ingredients → cook" loop).
+
+Backed by two new read-only, no-LLM routes: `POST /api/timeline` and
+`GET /api/knowledge/**` (§3.2). Auth is an optional `MCP_TOKEN` shared secret
+(`lib/mcpAuth.ts`). Full details: `mcp/README.md`.
 
 ---
 
@@ -495,11 +618,20 @@ Next.js background route handlers are sufficient for ~10 reports/month.
 
 ---
 
-## 8.1 Chart Computation & Persistence Flow (NEW)
+## 8.1 Chart Computation & Persistence Flow (SUPERSEDED by §8.2)
 
-Separate from the AI analysis pipeline, the system includes a **deterministic chart computation engine** (`/compute`) that calculates planetary positions, divisional charts, and dasha trees using Swiss Ephemeris. Computed charts can be saved to and loaded from the database.
+> **v1.3:** This section describes the original `SavedChart`-based compute flow.
+> It has been fully superseded by `UnifiedChart` (§8.2) — the `/api/compute/save`,
+> `/api/compute/charts`, and `/api/compute/charts/[id]` routes described below
+> were dormant (no remaining UI caller) and have been **deleted**. The `Chart
+> Compute` UI now lives at `/` (formerly `/compute`) and its "Save Chart" button
+> calls `POST /api/unified-charts/from-compute` instead. `SavedChart` remains in
+> the schema as a read-only legacy table (old rows are not migrated away
+> automatically) but nothing writes to it anymore.
 
-### Architecture
+Separate from the AI analysis pipeline, the system includes a **deterministic chart computation engine** that calculates planetary positions, divisional charts, and dasha trees using Swiss Ephemeris.
+
+### Architecture (historical — `SavedChart` write path, now removed)
 
 ```
 PRACTITIONER
@@ -507,7 +639,7 @@ PRACTITIONER
      │  Birth data (date, time, tz, lat/lon)
      ▼
 ┌────────────────────────┐
-│  /compute (UI)         │
+│  Chart Compute (UI)    │
 │  Client Component      │
 │  • Input form          │
 │  • Chart visualization │
@@ -529,28 +661,23 @@ PRACTITIONER
 │   planets, nakshatras, │
 │   karakas, ashtaka,    │
 │   dasha, transits,     │
-│   pinda)               │
+│   pinda, varshaphal)   │
 └──────────┬─────────────┘
            │ User clicks "Save Chart"
-           │ POST /api/compute/save
+           │ POST /api/unified-charts/from-compute  (was /api/compute/save)
            ▼
 ┌────────────────────────┐           ┌─────────────────────┐
-│  Save API              │─────────►│ D6: SavedChart       │
+│  from-compute API      │─────────►│ UnifiedChart         │
 │  • Validates input     │           │ (PostgreSQL)         │
-│  • SHA-256 dedup hash  │           │ • birth metadata     │
-│  • Upsert record       │           │ • chartData (JSONB)  │
-│                        │           │ • dashaTree (JSONB)  │
+│  • Persists via shared │           │ • one JSONB column   │
+│    creator function    │           │   per domain         │
 └────────────────────────┘           └─────────────────────┘
-                                              ▲
-┌────────────────────────┐                    │
-│  Load APIs             │────────────────────┘
-│  GET /compute/charts   │ (list all)
-│  GET /compute/charts/  │ (load single)
-│      [id]              │
-└────────────────────────┘
 ```
 
-### Data stored in `SavedChart`
+Load/list is now `GET /api/unified-charts` and `GET /api/unified-charts/[id]`
+(§8.2), not the deleted `/api/compute/charts` routes.
+
+### Data historically stored in `SavedChart` (legacy, no longer written)
 
 | Field | Type | Purpose |
 |---|---|---|
@@ -563,15 +690,6 @@ PRACTITIONER
 | `chartData` | JSONB | **Full `ComputedChart` object** — contains all divisional charts, planets, upagrahas, special lagnas, arudha padas, etc. |
 | `dashaTree` | JSONB | Full Vimshottari dasha tree |
 | `inputHash` | TEXT (unique) | SHA-256 of birth input for dedup |
-
-### Relationship to Analysis Pipeline
-
-The **Compute flow** and the **Analysis Pipeline flow** are intentionally independent:
-
-- `/compute` → Deterministic astronomical calculation → `SavedChart` table
-- `/charts` (POST) → Submit pre-computed ChartInputV1 → `Chart` table → triggers AI pipeline
-
-Future enhancement: A saved computed chart could be exported as `ChartInputV1` format and submitted to the AI pipeline for analysis, bridging the two flows.
 
 ---
 
@@ -633,6 +751,86 @@ resulting report is served by the same Reporting flow (section 3.1 / `/api/repor
 
 Follow-up detection: if the unified chart already has a completed run
 (`status="done"`), the new run is flagged `isFollowup` and Wave 1 is not re-run.
+
+---
+
+## 8.3 Duration Analysis — Focused 3-Agent Pipeline (NEW in v1.2)
+
+Duration Analysis is a fourth practitioner-facing feature. Unlike the 18-agent wave
+pipeline that produces a broad holistic report, Duration Analysis answers focused
+questions about a specific date range and life domain using a lightweight 3-agent
+sequential pipeline backed by its own DB tables.
+
+### Architecture
+
+```
+PRACTITIONER
+     │  POST /api/duration-analysis
+     │  { unifiedChartId, dateFrom, dateTo, category, symptoms?, userQuestion? }
+     ▼
+┌────────────────────────────┐
+│  API Route                 │
+│  • Validate (10-year cap,  │
+│    dashaTree present)      │
+│  • Create DurationAnalysis │
+│    (status="queued")       │
+│  • Fire executeDuration-   │
+│    Pipeline (no await)     │
+└──────────────┬─────────────┘
+               │ 202 { analysisId }
+               │
+               ▼ (fire-and-forget background execution)
+┌──────────────────────────────────────────────────────────┐
+│  executeDurationPipeline (engine/durationAnalysis/index.ts)│
+│                                                          │
+│  Step 0a — sliceDashaTree()   [pure TS, ~1ms]            │
+│    • Overlap filter (PD intervals vs date range)         │
+│    • Lord annotations (nakshatra, combustion, yoga)      │
+│    • Yoga activation (parivartana, Raja, Dhana, Neechabhanga)│
+│    • Truncate to 200 periods (flag if truncated)         │
+│                                                          │
+│  Step 0b — buildTransitOverlay()  [calls computeTransits]│
+│    • Saturn/Jupiter/Rahu/Ketu per unique AD boundary     │
+│    • BAV scores (bav['Saturn'][signNumber-1])            │
+│    • Sade Sati phase from stored allPeriods              │
+│    • ashtamaShani / kantakaShani flags                   │
+│                                                          │
+│  Step 1 — DA-1 Domain Analyser  [Claude Sonnet]          │
+│    • Category-scoped chart data + period table + overlay │
+│    • Per-period: analysis, key_factors, transit_factors, │
+│      activated_yogas, intensity, favorable, bahiranga,   │
+│      antaranga                                           │
+│    • Post-LLM merge: transitContext + lordAnnotations    │
+│      joined back deterministically by ad.start           │
+│                                                          │
+│  Step 2 — DA-2 Symptom Validator  [Sonnet, CONDITIONAL]  │
+│    • Only runs when symptoms provided                    │
+│    • Returns: { found, confidence, factors[], analysis } │
+│    • Gate: if found=false → status=symptom_unmatched,    │
+│      emit symptom_gate SSE, STOP (overridable via /override)│
+│                                                          │
+│  Step 3 — DA-3 Future Analyser  [Claude Sonnet]          │
+│    • Per-AD forecast: bahiranga, antaranga, why,         │
+│      transit_why, recommendations                        │
+│    • contextSummary generated post-DA-3 (deterministic,  │
+│      no LLM) for efficient follow-up prompting           │
+└──────────────────────────────────────────────────────────┘
+
+Progress streamed via SSE at GET /api/duration-analysis/[id]/events
+Follow-up questions via POST /api/duration-analysis/[id]/chat
+```
+
+### Key design decisions
+
+| Decision | Rationale |
+|---|---|
+| Separate from 18-agent pipeline | Different access pattern (date range + domain vs broad report); lighter cost |
+| Deterministic Steps 0a/0b before LLM | Period slicing and transit overlay are exact — no LLM needed; reduces prompt tokens |
+| 3 agents sequential (no fan-out) | Each agent depends on the prior; parallelism would not help |
+| Post-LLM merge of transitContext | LLM reliably produces interpretive text; joining structured data back in code avoids asking the model to reproduce large nested objects faithfully |
+| Category-scoped extraction | Minimises input tokens — health query only gets health-relevant columns |
+| contextSummary (deterministic) | After 2+ follow-up turns, substitutes full da1Output in prompt to prevent token growth |
+| Symptom gate override | Mirrors halt-gate UX from Wave 4; practitioner can override and get analysis with caveats |
 
 ---
 

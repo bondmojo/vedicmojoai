@@ -78,6 +78,7 @@ model UnifiedChart {
 
   // ─── Relations ───
   pipelineRuns     PipelineRun[] @relation("UnifiedChartRuns")
+  durationAnalyses DurationAnalysis[]
 
   @@index([name])
   @@index([lagna])
@@ -204,4 +205,59 @@ model SavedChart {
   @@index([name])
   @@index([lagna])
   @@map("saved_chart")
+}
+
+// ─── Duration Analysis ──────────────────────────────────────────────
+// Stores a single duration-analysis pipeline run and all its agent outputs.
+// Pipeline: Step 0 (slicer + transit overlay) → DA-1 → DA-2 (cond.) → DA-3
+// status: queued | running | symptom_unmatched | done | failed | cancelled
+
+model DurationAnalysis {
+  id             String       @id @default(uuid())
+  unifiedChartId String
+  unifiedChart   UnifiedChart @relation(fields: [unifiedChartId], references: [id])
+  dateFrom       DateTime     @db.Timestamptz
+  dateTo         DateTime     @db.Timestamptz
+  category       String       // "health" | "career" | "wealth" | "marriage" | "property" | "cashflow"
+  userQuestion   String?
+  symptoms       String?
+  status         String       @default("queued") // queued | running | symptom_unmatched | done | failed | cancelled
+  overrideProvider String?    // UI-selected LLM provider (anthropic|openai) — applied to all DA agents; null = use seeded ModelConfig
+  overrideModel    String?    // UI-selected model id — applied to all DA agents; null = use seeded ModelConfig
+  periodSlice    Json?        // DashaSlice[] — Step 0a output
+  transitOverlay Json?        // TransitOverlay[] — Step 0b output, one entry per AD boundary
+  foundationOutput Json?      // FoundationOutput — natal foundation sub-agents (Track 2); null = pre-feature run
+  contextSummary String?      // ~500-token summary generated after DA-3 for efficient follow-ups
+  errorMessage   String?      // failure reason when status="failed" (surfaced via SSE)
+  overrideApplied Boolean     @default(false) // true if user overrode symptom_unmatched gate
+  da1Output      Json?        // DA1Output
+  da2Output      Json?        // DA2Output | null (null when no symptoms)
+  da3Output      Json?        // DA3Output
+  totalTokenIn   Int          @default(0)
+  totalTokenOut  Int          @default(0)
+  totalCostUsd   Decimal      @default(0) @db.Decimal(10, 6)
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @db.Timestamptz
+
+  messages DurationMessage[]
+
+  @@index([unifiedChartId])
+  @@index([status])
+  @@map("duration_analysis")
+}
+
+model DurationMessage {
+  id          String           @id @default(uuid())
+  analysisId  String
+  analysis    DurationAnalysis @relation(fields: [analysisId], references: [id])
+  role        String           // "user" | "assistant"
+  content     String
+  agentId     String?          // "DA-3" for follow-ups, "chat" for manual
+  focusPeriod String?          // e.g. "Jupiter MD / Saturn AD 2024-03" — period this message concerns
+  tokenIn     Int              @default(0)
+  tokenOut    Int              @default(0)
+  createdAt   DateTime         @default(now()) @db.Timestamptz
+
+  @@index([analysisId])
+  @@map("duration_message")
 }

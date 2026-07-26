@@ -297,6 +297,98 @@ export function computeSunrise(
 }
 
 /**
+ * Sidereal (Lahiri) longitude of the Sun at an arbitrary Julian Day (UT),
+ * normalised to [0, 360). Used by the Varshaphal solar-return search.
+ */
+export function siderealSunLongitude(julianDay: number): number {
+  ensureEphemerisPath()
+  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
+  const res = swisseph.swe_calc_ut(
+    julianDay,
+    swisseph.SE_SUN,
+    swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL
+  ) as { longitude?: number }
+  return ((( res.longitude ?? 0) % 360) + 360) % 360
+}
+
+/**
+ * Finds the exact Julian Day (UT) at which the transiting sidereal Sun returns
+ * to a given natal longitude (the Varsha Pravesh / solar-return instant).
+ *
+ * Uses Newton iteration seeded near the target: the Sun's mean motion is
+ * ~0.9856°/day, so each step `jd += diff/0.9856` converges within a few
+ * iterations. `seedJulianDay` should be within ~half a year of the true
+ * return (the birthday in the target year works well) so the search does not
+ * lock onto an adjacent year's return.
+ */
+export function findSolarReturnJulianDay(
+  natalSunLongitude: number,
+  seedJulianDay: number
+): number {
+  const SUN_MEAN_MOTION = 0.9856076686 // degrees/day
+  let jd = seedJulianDay
+  for (let i = 0; i < 40; i++) {
+    const lon = siderealSunLongitude(jd)
+    // Signed shortest angular gap natal − current, folded to [-180, 180].
+    const diff = (((natalSunLongitude - lon) % 360) + 540) % 360 - 180
+    if (Math.abs(diff) < 1e-8) break
+    jd += diff / SUN_MEAN_MOTION
+  }
+  return jd
+}
+
+/**
+ * Converts a Julian Day (UT) into a local civil date/time for a given timezone
+ * offset (hours). Returns YYYY-MM-DD / HH:MM:SS strings plus numeric parts,
+ * suitable for feeding back into {@link birthInputToJulianDay} / BirthInput.
+ */
+export function julianDayToLocalCivil(
+  julianDay: number,
+  timezoneHours: number
+): {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  second: number
+  date: string
+  time: string
+  weekday: number
+} {
+  ensureEphemerisPath()
+  const local = swisseph.swe_revjul(
+    julianDay + timezoneHours / 24,
+    swisseph.SE_GREG_CAL
+  ) as { year: number; month: number; day: number; hour: number }
+
+  // Split the decimal hour into H:M:S, rounding to the nearest second and
+  // carrying overflow up through minute/hour/day.
+  let year = local.year
+  let month = local.month
+  let day = local.day
+  let totalSeconds = Math.round(local.hour * 3600)
+  if (totalSeconds >= 86400) {
+    totalSeconds -= 86400
+    const next = new Date(Date.UTC(year, month - 1, day + 1))
+    year = next.getUTCFullYear()
+    month = next.getUTCMonth() + 1
+    day = next.getUTCDate()
+  }
+  const hour = Math.floor(totalSeconds / 3600)
+  const minute = Math.floor((totalSeconds % 3600) / 60)
+  const second = totalSeconds % 60
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const date = `${year}-${pad(month)}-${pad(day)}`
+  const time = `${pad(hour)}:${pad(minute)}:${pad(second)}`
+  // Weekday (0=Sunday) from a UTC-safe date construction.
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+
+  return { year, month, day, hour, minute, second, date, time, weekday }
+}
+
+/**
  * Gets the ayanamsa value for a given Julian Day.
  */
 export function getAyanamsa(julianDay: number): number {

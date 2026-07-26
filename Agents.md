@@ -1,7 +1,7 @@
 # VedicMojoAI — Agent Catalogue
 
-**Version:** 1.1
-**Last updated:** 2026-07-05
+**Version:** 1.2
+**Last updated:** 2026-07-07
 **Status:** Draft
 
 ---
@@ -21,14 +21,16 @@ change** so the architecture reference never drifts from the code:
 | `Claude.md` | Any of the above — keep the Claude Desktop brief current |
 
 The three practitioner-facing features to keep documented are **Generate Chart**
-(deterministic compute + ingestion), **AI Analysis** (the wave pipeline), and
-**Reporting** (synthesis → HTML report).
+(deterministic compute + ingestion), **AI Analysis** (the wave pipeline), **Reporting**
+(synthesis → HTML report), and **Duration Analysis** (the 3-agent sequential pipeline).
 
 ---
 
 ## Overview
 
-VedicMojoAI runs an 18-agent, 4-wave pipeline plus a deterministic pre-analysis engine.
+VedicMojoAI runs an 18-agent, 4-wave pipeline plus a deterministic pre-analysis engine,
+**plus** a separate **Duration Analysis** 3-agent sequential pipeline for focused
+date-range analysis.
 Each agent is an LLM call with a structured prompt file, defined input context, and
 structured JSON output.
 
@@ -163,6 +165,105 @@ Runs after Wave 3 on follow-up queries. Ensures the new analysis doesn't contrad
 
 ---
 
+## Duration Analysis Agents (Separate Pipeline)
+
+A focused sequential pipeline for date-range / domain-specific analysis.
+Completely independent from the 18-agent wave pipeline.
+Entry point: `POST /api/duration-analysis`.
+Engine: `engine/durationAnalysis/` (slicer → transitOverlay → deterministic scoring
+→ **FOUNDATION sub-agents** → DA-1 → DA-2 → DA-3).
+
+The deterministic scorer (`scoring.ts`, `WEIGHTS_VERSION 0.2.0-provisional`) runs **18
+factors** — the 15 originals plus 3 depth factors added in Track 1a: `nakshatraDispositor`
+(dasha-lord nakshatra dispositor → domain house), `dashaLordBav` (lord's own BAV bindus in
+the domain house; node lords omitted), and `argalaOnDomainHouse` (net Jaimini argala on the
+primary house). Its verdict stays authoritative; the LLM agents narrate it.
+
+The domain-analysis step is **registry-driven**: `DOMAIN_AGENT_REGISTRY`
+(`engine/durationAnalysis/registry.ts`) maps each category to its prompt file,
+`model_config` waveId, divisional charts, and extra chart columns. All categories
+currently share the generic DA-1 prompt and the `DA-1` model row; per-domain
+agents (e.g. `DA1-CAREER`) are added by pointing a registry entry at a new
+prompt file + seed row — no orchestrator changes.
+
+**Category → chart data (registry):**
+
+| Category | Agent ID | Prompt File | Divisional charts | Extra columns |
+|---|---|---|---|---|
+| health | DA1-HEALTH | `duration_da1_health.md` | D1, D6, D9 | shadbala |
+| career | DA1-CAREER | `duration_da1_career.md` | D1, D9, D10 | shadbala, jaimini |
+| wealth | DA1-WEALTH | `duration_da1_wealth.md` | D2 | shadbala, jaimini |
+| marriage | DA1-MARRIAGE | `duration_da1_marriage.md` | D9 | jaimini |
+| property | DA1-PROPERTY | `duration_da1_property.md` | D4 | — |
+| cashflow | DA1-CASHFLOW | `duration_da1_cashflow.md` | D1, D2, D9 | shadbala |
+
+`family` is registered in `DOMAIN_AGENT_REGISTRY` (D1, D4, D9; shadbala) but has
+**no prompt file or `model_config` row** — it is not an LLM agent. It only exists
+for the deterministic `/duration-computation` UI (`POST /api/timeline`, see
+`CLAUDE.md`), which is not part of this wave/agent pipeline; it is excluded from
+`/api/duration-analysis`'s category enum and never reaches DA-1/DA-2/DA-3.
+
+The `/duration-computation` UI has no LLM, so it attaches a deterministic **driver
+digest** (`engine/durationAnalysis/periodInsights.ts` → `insights`) to each scored
+period — a pure selection + labeling of the drishti / control / nakshatra / argala the
+payload already carries. This is **not an agent** and never calls an LLM; it is the UI's
+stand-in for the interpretation the MCP path leaves to Claude Desktop. See
+`docs/duration-analyser.md`.
+
+Each per-domain prompt composes `{{include:domains/<category>.md}}` — the canonical
+domain-knowledge fragment, also included by the corresponding Wave 2 agent — with
+the shared DA-1 core (`duration_da1_domain_analyser.md`). `readPromptFile()`
+expands `{{include:...}}` directives at load time.
+
+`cashflow` is the "Money Agent": liquidity (income vs expenses vs debt), distinct
+from `wealth` (long-term accumulation) — mirroring the Wave 2C vs 3A split.
+
+All categories also receive `planets`, `nakshatras`, `relationships`,
+`ashtakavarga`, `upagrahas`, and `dashaTree`.
+
+Each domain also declares `foundationAgents` (registry) — natal foundation sub-agents that
+run once, in parallel, BEFORE DA-1 (Step 0e). They are Haiku-tier, domain-agnostic facet
+readers whose merged output is injected into DA-1 and DA-3. Selection is deterministic and
+an agent is skipped when its chart facet is absent (paste-path); a single failure is
+swallowed (enrichment only).
+
+| Agent ID | Name | Prompt File | Model | Condition | Input | Output |
+|---|---|---|---|---|---|---|
+| **FOUND-PLANETS / -NAKSHATRA / -UPAGRAHA / -BAV** | Foundation facet readers | `duration_found_<facet>.md` | claude-haiku-4-5 | Per `registry.foundationAgents`; skipped when facet data absent | Domain label + the single natal facet (planets / nakshatras+relationships / upagrahas / ashtakavarga) | `{ agent_id, summary, key_findings[] }` — merged to `foundationOutput`, injected into DA-1 + DA-3 |
+| **DA-1** (per-domain: DA1-HEALTH … DA1-CASHFLOW) | Domain Analyser | `duration_da1_<category>.md` (registry-resolved) | claude-sonnet-4-5 | Always; batched (≤25 periods/call, deterministically merged) | Category-scoped chart data (dashaTree stripped) + foundation section + `periodSlice` batch + matching `transitOverlay` entries | Per-period analysis with key_factors, transit_factors, activated_yogas, bahiranga, antaranga |
+| **DA-2** | Symptom Validator | `duration_da2_symptom_validator.md` | claude-sonnet-4-5 | Only when `symptoms` provided | Chart data + DA-1 output + symptoms | `{ found, confidence, supporting_factors[], analysis }` — **gate**: if found=false pipeline halts |
+| **DA-3** | Future Analyser | `duration_da3_future_analyser.md` | claude-sonnet-4-5 | Always (after DA-2 passes) | Chart data + DA-1 + DA-2 (if ran) + conversation history | Per-AD forecast with bahiranga, antaranga, why, transit_why, recommendations |
+
+**Deterministic pre-steps (no LLM):**
+
+| Step | Function | Purpose |
+|---|---|---|
+| 0 | `getDomainAgentSpec()` | Resolve the category's agent (prompt file, model row, chart data) from `DOMAIN_AGENT_REGISTRY` |
+| 0a | `sliceDashaTree()` | Filter all MD/AD/PD periods overlapping the date range; annotate each with lord data and yoga activations. Empty result = fail fast (no LLM call) |
+| 0b | `buildTransitOverlay()` | Compute Saturn/Jupiter/Rahu/Ketu positions at each AD boundary using Swiss Ephemeris; add BAV scores |
+| Post-DA-1 merge | `mergeDA1Outputs()` + `mergePeriodContext()` | Concatenate batched DA-1 outputs, then join `transitContext` and `lordAnnotations` back onto each `period_analysis` entry deterministically |
+| Post-DA-3 | `buildContextSummary()` | Generate ~500-token context summary for efficient follow-up prompting |
+
+**Model tiers (Duration Analysis):**
+
+| Tier | Agent | Model | Temperature | Rationale |
+|---|---|---|---|---|
+| Domain analysis | DA1-HEALTH … DA1-CASHFLOW (one `model_config` row each) | claude-sonnet-4-5 | 0.3 | Structured per-period interpretation; per-domain rows allow independent model upgrades |
+| Validation | DA-2 | claude-sonnet-4-5 | 0.0 | Deterministic gate — zero temperature |
+| Forecasting | DA-3 | claude-sonnet-4-5 | 0.3 | Follow-up chat and future analysis |
+
+All duration-analysis LLM calls go through `callAgentJson()` — lenient JSON
+extraction (markdown fences / preamble stripped) plus ONE retry with a
+correction instruction before the run fails.
+
+**Symptom Gate (between DA-2 and DA-3):**
+If `DA-2.symptom_diagnosis.found === false` → set `status = symptom_unmatched`, emit `symptom_gate` SSE event, stop.
+Practitioner can override via `POST /api/duration-analysis/[id]/override` → DA-3 runs with mismatch context,
+or cancel via `POST /api/duration-analysis/[id]/cancel` → `status=cancelled` (also valid mid-run; the
+pipeline checks the flag between steps and unwinds cooperatively).
+
+---
+
 ## Model Assignment Summary
 
 | Tier | Agents | Default Model | Temperature | Rationale |
@@ -173,6 +274,9 @@ Runs after Wave 3 on follow-up queries. Ensures the new analysis doesn't contrad
 | QA & Consolidation | 4X, 4A, 4B | claude-sonnet-4-5 | 0.0 | Deterministic checks — zero temperature for consistency |
 | Final Synthesis | 4C | claude-opus-4-5 | 0.0 | Highest-quality narrative synthesis — the authoritative report |
 | Verification | verification | claude-sonnet-4-5 | 0.0 | Contradiction detection — deterministic |
+| DA Domain | DA1-HEALTH … DA1-CASHFLOW | claude-sonnet-4-5 | 0.3 | Per-period interpretive analysis (one row per domain agent) |
+| DA Validation | DA-2 | claude-sonnet-4-5 | 0.0 | Symptom gate — deterministic |
+| DA Forecast | DA-3 | claude-sonnet-4-5 | 0.3 | Forward-looking narrative with chat follow-up |
 
 ---
 
@@ -307,5 +411,40 @@ The agent catalogue (this document) defines **what** the pipeline does — the 1
 | `engine-pipeline.md` | Pipeline execution rules, dasha computation, model tiers |
 | `database-prisma.md` | Schema, constraints, Prisma usage, indexes |
 | `docker-deployment.md` | Docker/Cloud Run setup, env vars, health checks |
-| `ai-frontend.md` | AI-assisted frontend development patterns |
-| `ai-backend.md` | AI-assisted backend/pipeline development patterns |
+| `ai-frontend.md` | Index → `skills/frontend/` (11 focused guides) |
+| `ai-backend.md` | Index → `skills/backend/` (14 focused guides) |
+
+#### Backend Guides (`skills/backend/`)
+
+| File | Topic |
+|---|---|
+| `llm-layer.md` | `callLLM()` gateway, provider factory, cost estimation |
+| `orchestrator.md` | Parallel fan-out, sequential waves, context accumulation, DB writes |
+| `planner.md` | Deterministic agent resolution, domain→agent map, conditional logic |
+| `context-assembly.md` | Per-wave token-optimized context injection strategy |
+| `prompt-engineering.md` | Structured JSON output, temperature tiers, anti-hallucination |
+| `model-config.md` | Runtime model swap via `model_config` table, tier assignments |
+| `halt-gate.md` | Critical error detection (4A), halt/resume/override flow |
+| `sse-protocol.md` | Real-time event types and implementation |
+| `compute-engine.md` | Swiss Ephemeris calculations, deterministic Wave 1 |
+| `pre-analysis.md` | 11 rules engine + Vimshottari dasha computation |
+| `duration-analysis.md` | DA pipeline (slicer → transitOverlay → DA-1 → DA-2 → DA-3) |
+| `error-handling.md` | Error types and recovery patterns |
+| `api-routes.md` | All backend API routes reference |
+| `adding-agents.md` | 7-step checklist for new pipeline agents |
+
+#### Frontend Guides (`skills/frontend/`)
+
+| File | Topic |
+|---|---|
+| `architecture.md` | Next.js App Router, RSC vs Client Components, styling |
+| `sse-pattern.md` | `EventSource` consumption, event types, cleanup |
+| `run-progress-ui.md` | Wave-grouped agent status, token/cost display, halt state |
+| `report-viewer.md` | Server Component iframe rendering, toolbar |
+| `unified-charts-ui.md` | Generate Chart + AI Analysis pages, data flow |
+| `chart-visualization.md` | 10 compute components (North/South Indian, Dasha, etc.) |
+| `form-patterns.md` | Query type selection, agent preview, 202 redirect flow |
+| `state-management.md` | Local state + SSE-driven updates, no global store |
+| `duration-analysis-ui.md` | DA form, results page, symptom gate, follow-up chat |
+| `accessibility.md` | Semantic HTML, non-color-only indicators, disabled states |
+| `error-handling.md` | Network errors, 404s, loading states |
