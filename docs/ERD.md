@@ -142,6 +142,7 @@ compute path skip LLM Wave 1 entirely.
 │    transits          JSONB?  TransitAnalysis   │
 │    pindaStrength     JSONB?  PindaStrengthEntry[] │
 │    dashaTree         JSONB?  Serialized DashaTree │
+│    yogas             JSONB?  Yoga[] (named-yoga catalogue) │
 │ ── AI pipeline input ──                        │
 │    chartInputV1      JSONB?  ChartInputV1      │
 │ ── dedup & provenance ──                       │
@@ -166,6 +167,16 @@ compute path skip LLM Wave 1 entirely.
 - `relationships`, `shadbala`, `jaimini`, `bhavaBala` are produced by the
   deterministic engine modules and stand in for the LLM Wave 1 agents (1C/1D)
   on the compute path.
+- `yogas` (`engine/compute/yogas.ts`, added by the `named-yoga-engine` spec) is a
+  chart-wide, evidence-carrying named-yoga catalogue computed deterministically from
+  `relationships` + `dignity.ts` — Pancha Mahapurusha, Raja (incl. a distinctly-keyed
+  `raja.dka` for Dharma-Karmadhipati), Dhana, Viparita (Harsha/Sarala/Vimala),
+  Neechabhanga, the lunar yogas, Gaja Kesari, Budha-Aditya, Parivartana, and Kartari.
+  Injected into the compute-path `wave1_delta` under `1D` so Wave 2A (`2A` Yoga
+  Detection) validates/interprets it instead of re-deriving formation; also read by
+  the Duration-Analysis slicer (`sliceDashaTree`, which filters the catalogue by the
+  running MD/AD lord) and exposed read-only over MCP (`get_yogas`). `null` on
+  `source="paste"` charts, which have no computed geometry to build it from.
 
 ---
 

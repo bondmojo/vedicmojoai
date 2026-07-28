@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
       nakshatras: chart.nakshatras,
       relationships: chart.relationships,
       karakas: chart.karakas,
+      yogas: chart.yogas,
     }
   )
 

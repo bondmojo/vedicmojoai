@@ -213,6 +213,7 @@ export async function executeDurationPipeline(input: DurationPipelineInput): Pro
         nakshatras: chart.nakshatras,
         relationships: chart.relationships,
         karakas: chart.karakas,   // for karakaRole annotation
+        yogas: chart.yogas,       // deterministic named-yoga catalogue (engine/compute/yogas.ts)
       }
     )
 

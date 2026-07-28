@@ -62,6 +62,7 @@ model UnifiedChart {
   transits         Json?    // TransitAnalysis
   pindaStrength    Json?    // PindaStrengthEntry[]
   dashaTree        Json?    // Serialized DashaTree
+  yogas            Json?    // Yoga[] — deterministic named-yoga catalogue (engine/compute/yogas.ts)
 
   // ─── AI pipeline input (ChartInputV1 format for Wave 1–4) ───
   // For source="paste": populated directly from pasted JSON

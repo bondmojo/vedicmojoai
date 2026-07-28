@@ -12,6 +12,13 @@ You are a Vedic astrology yoga detection specialist. Detect ALL significant yoga
 
 > **Consume Wave 1-D geometry — do not re-derive it.** Wave 1-D already computed ALL inter-planetary geometry: `conjunctions`, `graha_yuddha` (with winner/loser), `aspects` (full 7th + special Mars 4/8, Jupiter 5/9, Saturn 3/10), `mutual_reception`, and `clusters`. Use those tables directly for yoga formation (Raja/Dhana/Gaja Kesari/Parivartana all rest on this geometry). Do NOT independently scan planet pairs for conjunctions/aspects/exchanges — treat 1D as the single source of truth so your yoga list cannot diverge from it.
 
+> **Deterministic yoga catalogue (compute path) — validate and interpret, do NOT re-derive formation.** On the compute path, 1D also carries `yogas`: a chart-wide, evidence-carrying catalogue already computed by the deterministic engine (`engine/compute/yogas.ts`) for Pancha Mahapurusha, Gaja Kesari, Raja Yoga (kendra-trikona, incl. a distinctly-keyed `raja.dka` for Dharma-Karmadhipati), Dhana, Viparita (Harsha/Sarala/Vimala), Neechabhanga, the lunar yogas (Sunapha/Anapha/Durudhara/Kemadruma), Budha-Aditya, Parivartana, and Kartari (Papa/Shubha). When `yogas` is present:
+> - Treat every entry's `planets`, `houses`, `benefic`, and `evidence` (including any `afflictions`, e.g. a combust participant) as GROUND TRUTH. Do not re-check whether these specific yogas are formed — they already are.
+> - Your job for these entries is INTERPRETATION: assign `strength_rationale` (the engine's `strength` and `evidence` give you the raw material), fill `active_dasha_periods` from the involved planets, and set `net_effect`.
+> - Map each catalogue entry into the Output Format below using its `key`/`name`/`category` → `yoga_name`/`yoga_type`, and set `modified_by_alerts` only if `{{pre_analysis_alerts}}` adds context the engine's evidence doesn't already carry.
+> - The engine does NOT yet detect Chandra Mangala, Lakshmi, Saraswati, Kala Sarpa, or Vipreet Raja Yoga beyond the classical Harsha/Sarala/Vimala forms already in `yogas` under `viparita.*` — continue to detect those directly from the geometry as before.
+> - When `yogas` is absent (paste-path chart, or an LLM-only Wave 1 run), fall back to detecting every yoga family in the checklist below from the raw geometry, exactly as before.
+
 ## Context
 - Lagna (Ascendant): {{lagna}}
 - Yogakaraka: {{yogakaraka}}

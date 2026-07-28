@@ -239,6 +239,10 @@ export async function POST(
         relationships: unifiedChart.relationships,
         jaimini: unifiedChart.jaimini,
         ashtakavarga: unifiedChart.ashtakavarga,
+        // Deterministic named-yoga catalogue (engine/compute/yogas.ts). Wave 2A
+        // treats this as the authoritative formation list — validate/interpret,
+        // do not re-derive (see prompts/agents/wave2_2a_yogas.md).
+        yogas: unifiedChart.yogas,
       },
     }
   } else {

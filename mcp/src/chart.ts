@@ -48,6 +48,8 @@ export interface NormalizedChart {
   transits: unknown
   pindaStrength: unknown
   dashaTree: unknown
+  /** Deterministic named-yoga catalogue (engine/compute/yogas.ts). Null on paste charts. */
+  yogas: unknown
   /** Birth input (for stored compute-path charts); allows recomputation. */
   birthInput?: unknown
   /** Set for stored paste-source charts, which have no computed domains. */
@@ -84,6 +86,7 @@ export async function resolveChart(args: {
       transits: pick(c, 'transits'),
       pindaStrength: pick(c, 'pindaStrength'),
       dashaTree: pick(c, 'dashaTree'),
+      yogas: pick(c, 'yogas'),
       birthInput: pick(c, 'birthInput'),
       isPasteWithoutComputed: isPaste,
     }
@@ -113,6 +116,7 @@ export async function resolveChart(args: {
       transits: pick(ch, 'transits'),
       pindaStrength: pick(ch, 'pindaStrength'),
       dashaTree: r.dashaTree, // top-level sibling of `chart`
+      yogas: pick(ch, 'yogas'),
     }
   }
 

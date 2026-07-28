@@ -109,6 +109,14 @@ Geometry**) live in `engine/compute/`:
 `shadbala.ts`, `relationships.ts`, `nakshatraRelationships.ts`, `jaimini.ts`,
 `bhavaBala.ts` (plus `D2`, `D3`, `D12` in `divisional.ts`).
 
+> **Named-yoga catalogue:** `engine/compute/yogas.ts` deterministically computes a
+> chart-wide `Yoga[]` catalogue (Pancha Mahapurusha, Raja incl. `raja.dka`, Dhana,
+> Viparita, Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari)
+> from `relationships` + `dignity.ts`. It rides in `wave1_delta` under `1D` so Wave
+> 2A validates/interprets it instead of re-deriving formation, feeds the
+> Duration-Analysis slicer, and is exposed via the `get_yogas` MCP tool. Stored as
+> `UnifiedChart.yogas` (null on paste path). See `.kiro/specs/named-yoga-engine/`.
+
 > **Chara Dasha (Jaimini rasi dasha):** `engine/compute/charaDasha.ts`
 > (`computeCharaDasha`, KN Rao/Parashara method) is an on-demand sibling of the
 > Vimshottari tree — returned by `POST /api/compute` as `charaDasha`, shown in the
@@ -146,8 +154,8 @@ docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
 
 - **`UnifiedChart`** is the canonical chart store: one JSONB column per domain
   (`planets`, `nakshatras`, `divisionalCharts`, `shadbala`, `relationships`,
-  `jaimini`, `bhavaBala`, `ashtakavarga`, `transits`, `dashaTree`, …), plus scalar
-  index fields and `chartInputV1`. `source` is `compute` or `paste`. Dedup on
+  `jaimini`, `bhavaBala`, `ashtakavarga`, `transits`, `dashaTree`, `yogas`, …), plus
+  scalar index fields and `chartInputV1`. `source` is `compute` or `paste`. Dedup on
   `chartHash` (SHA-256).
 - **`PipelineRun`** keeps a required legacy `chartId` (`Chart` FK) and a nullable
   `unifiedChartId` (`UnifiedChart` FK). AI Analysis from a unified chart ensures a

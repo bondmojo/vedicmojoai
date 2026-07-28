@@ -81,7 +81,8 @@ The system now organizes around three practitioner-facing features.
 Additional structural changes:
 - **Deterministic Wave 1 substrate:** new `engine/compute/` modules — `shadbala.ts`
   (1C), `relationships.ts` (1D), `jaimini.ts`, `bhavaBala.ts`,
-  `nakshatraRelationships.ts` — plus `D2`, `D3`, `D12` divisional charts.
+  `nakshatraRelationships.ts`, `yogas.ts` (named-yoga catalogue, injected under 1D) —
+  plus `D2`, `D3`, `D12` divisional charts.
 - **`UnifiedChart` table** with one JSONB column per domain (see ERD).
 - **`lib/chart-mapper.ts`** maps between `ComputedChart`, `ChartInputV1`, and
   `UnifiedChart`.
@@ -254,6 +255,7 @@ engine/
 │   ├── nakshatraRelationships.ts # NEW — sub-lords, depositor chains, parivartana, clusters
 │   ├── jaimini.ts         # NEW — argala, yogi/avayogi, special-lagna aspects
 │   ├── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
+│   ├── yogas.ts           # NEW — deterministic named-yoga catalogue (Mahapurusha, Raja/DKA, Dhana, Viparita, Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari)
 │   └── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
 └── waves/
     ├── wave1.ts           # LLM path: 1A, 1B, 1C, 1D (compute path skips these)
@@ -278,9 +280,17 @@ engine/durationAnalysis/
 the analyze route strips Wave 1 agents from the execution plan and builds
 `wave1_delta` directly from the chart's deterministic domain columns
 (`planets`, `nakshatras`, `shadbala`, `relationships`, `jaimini`, `bhavaBala`,
-`ashtakavarga`, …). Wave 2 then interprets structured data instead of re-deriving
-geometry via LLM. The legacy `Chart` / paste path still runs the LLM Wave 1 agents
-(1A–1D remain in `AGENT_CATALOGUE` and `ALWAYS_RUN_FIRST_QUERY` in `constants.ts`).
+`ashtakavarga`, `yogas`, …). Wave 2 then interprets structured data instead of
+re-deriving geometry via LLM. The legacy `Chart` / paste path still runs the LLM Wave 1
+agents (1A–1D remain in `AGENT_CATALOGUE` and `ALWAYS_RUN_FIRST_QUERY` in `constants.ts`).
+
+`yogas` (`engine/compute/yogas.ts`, `named-yoga-engine` spec) is injected under the
+`1D` key alongside `relationships`/`jaimini`/`ashtakavarga`: a chart-wide, deterministic
+named-yoga catalogue (Pancha Mahapurusha, Raja incl. `raja.dka`, Dhana, Viparita,
+Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari) that Wave 2A
+(Yoga Detection) validates/interprets rather than re-derives. It is also consumed by
+the Duration-Analysis slicer (`sliceDashaTree`, filtered by the running MD/AD lord)
+and exposed read-only via the `get_yogas` MCP tool.
 
 ### 3.4 Pre-Analysis Engine
 

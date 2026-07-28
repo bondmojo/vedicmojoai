@@ -277,31 +277,40 @@ function combustionSurvival(lord: string, chartData: ScoringChartData): number {
 }
 
 /**
- * Karaka Role: running lords (MD/AD only — PD karakaRole not currently read) vs
- * domain relevantKarakaRoles, per-level presence base summed across matches, each
- * scaled by the matched lord's combustion survival (design §2, Requirement 1.3/3.4).
- * MD-only match, not combust → 0.60 (was flat 1.0). MD+AD both match → 0.95. A
- * combust matched lord's contribution is reduced by its survival fraction.
+ * Karaka Role: running lords (MD/AD/PD) vs domain relevantKarakaRoles, per-level
+ * presence base summed across matches, each scaled by the matched lord's combustion
+ * survival (design §2, Requirement 1.3/3.4). Mirrors factorNaturalKaraka's three-level
+ * base so the two parallel karaka factors weight MD/AD/PD identically. MD-only match,
+ * not combust → 0.60; MD+AD → 0.85; PD-only → 0.15. A combust matched lord's
+ * contribution is reduced by its survival fraction.
+ *
+ * PD is read here so a Jaimini role active only at the pratyantardasha level (e.g. the
+ * Darakaraka running as PD in a marriage window) still fires the factor — previously PD
+ * was ignored, so such a match was detected in periodInsights.karakaSummary yet dropped
+ * from scoring as a spurious no-signal primary omission.
  */
 function factorKarakaRole(
   mdLord: string,
   adLord: string,
+  pdLord: string,
   mdKaraka: string | null,
   adKaraka: string | null,
+  pdKaraka: string | null,
   domainWeights: DomainScoringWeights,
   chartData: ScoringChartData
 ): FactorResult {
   const relevant = new Set(domainWeights.relevantKarakaRoles)
   if (relevant.size === 0) return { ok: false, reason: 'no karakaRoles defined for domain', noSignal: true }
 
-  const levelBase = { MD: 0.60, AD: 0.35 } as const
-  const levels: Array<{ level: 'MD' | 'AD'; lord: string; karaka: string | null }> = [
+  const levelBase = { MD: 0.60, AD: 0.25, PD: 0.15 } as const
+  const levels: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string; karaka: string | null }> = [
     { level: 'MD', lord: mdLord, karaka: mdKaraka },
     { level: 'AD', lord: adLord, karaka: adKaraka },
+    { level: 'PD', lord: pdLord, karaka: pdKaraka },
   ]
 
   let sum = 0
-  const matched: Array<{ level: 'MD' | 'AD'; lord: string; survival: number }> = []
+  const matched: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string; survival: number }> = []
   for (const { level, lord, karaka } of levels) {
     if (!karaka || !relevant.has(karaka)) continue
     const survival = combustionSurvival(lord, chartData)
@@ -1191,7 +1200,7 @@ function _scorePeriod(
   apply('shadbala',      factorShadbala([mdLord, adLord, pdLord], chartData))
   apply('ishtaKashta',   factorIshtaKashta([mdLord, adLord, pdLord], chartData))
   apply('houseOwnership', factorHouseOwnership([mdLord, adLord, pdLord], chartData, domainWeights))
-  apply('karakaRole',    factorKarakaRole(mdLord, adLord, mdAnnot.karakaRole, adAnnot.karakaRole, domainWeights, chartData))
+  apply('karakaRole',    factorKarakaRole(mdLord, adLord, pdLord, mdAnnot.karakaRole, adAnnot.karakaRole, pdAnnot.karakaRole, domainWeights, chartData))
   apply('activatedYogas', factorActivatedYogas(activatedYogas))
   apply('bhavaBala',     factorBhavaBala([mdLord, adLord, pdLord], chartData))
   apply('transitBav',    factorTransitBav(transitEntry))

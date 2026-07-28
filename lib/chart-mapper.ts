@@ -106,6 +106,7 @@ export function mapComputedToUnified(
     transits: chart.transits as unknown as Prisma.InputJsonValue,
     pindaStrength: chart.pindaStrength as unknown as Prisma.InputJsonValue,
     dashaTree: dashaTree as unknown as Prisma.InputJsonValue,
+    yogas: chart.yogas as unknown as Prisma.InputJsonValue,
 
     // chartInputV1 is null for compute path initially —
     // generated on-demand when AI analysis is triggered
@@ -175,6 +176,7 @@ export function mapPastedToUnified(
     transits: Prisma.JsonNull,
     pindaStrength: Prisma.JsonNull,
     dashaTree: Prisma.JsonNull,
+    yogas: Prisma.JsonNull,
 
     // Store the full pasted input for AI pipeline consumption
     chartInputV1: chartInput as unknown as Prisma.InputJsonValue,

@@ -90,6 +90,21 @@ interface ChartInput {
   relationships: unknown
   /** Stored CharaKaraka[] from UnifiedChart.karakas (may be absent for paste-path charts). */
   karakas?: unknown
+  /**
+   * Stored Yoga[] catalogue from UnifiedChart.yogas (engine/compute/yogas.ts).
+   * Present (as an array, possibly empty) on compute-path charts; absent/null on
+   * paste-path charts, which have no computed geometry to build a catalogue from.
+   */
+  yogas?: unknown
+}
+
+/** Shape of a catalogue entry as stored in UnifiedChart.yogas (engine/compute/types.ts Yoga). */
+interface RawYoga {
+  key: string
+  name: string
+  category: string
+  planets: string[]
+  activatingPlanets?: string[]
 }
 
 interface RawCharaKaraka {
@@ -239,11 +254,60 @@ function buildAnnotation(
 // ─── Yoga activation ─────────────────────────────────────────────────
 
 /**
+ * Formats one chart-wide catalogue entry (engine/compute/yogas.ts Yoga) into the
+ * legacy string shape `factorActivatedYogas` / `factorLordDignity` (scoring.ts)
+ * already consume. Neechabhanga entries preserve the EXACT
+ * "Neechabhanga active — <lord> debilitation cancelled" format the Neechabhanga
+ * lift in `factorLordDignity` string-matches on.
+ */
+function formatCatalogueYoga(yoga: RawYoga): string {
+  if (yoga.category === 'neechabhanga' && yoga.planets.length > 0) {
+    return `Neechabhanga active — ${yoga.planets[0]} debilitation cancelled`
+  }
+  return `${yoga.name} — ${yoga.planets.join(' + ')}`
+}
+
+/**
+ * Filters the chart-wide named-yoga catalogue (UnifiedChart.yogas, produced by
+ * engine/compute/yogas.ts) to the entries whose participants include the running
+ * MD or AD lord, per Design §"Slicer + scorer" (Requirement 5.1).
+ */
+function filterCatalogueYogas(catalogue: RawYoga[], mdLord: string, adLord: string): string[] {
+  const runningLords = new Set([mdLord, adLord])
+  return catalogue
+    .filter((y) => {
+      const participants = new Set([...(y.planets ?? []), ...(y.activatingPlanets ?? [])])
+      return [...runningLords].some((lord) => participants.has(lord))
+    })
+    .map(formatCatalogueYoga)
+}
+
+/**
  * Computes the activatedYogas[] array for a MD+AD lord combination.
  * The same yogas array is shared across mdLord, adLord, and pdLord annotations
  * since it reflects the MD/AD relationship, not an individual lord.
+ *
+ * PREFERS the chart-wide named-yoga catalogue (`chart.yogas`, engine/compute/yogas.ts)
+ * when present: the catalogue is filtered to entries involving the running MD/AD
+ * lord (Requirement 5.1). Falls back to the legacy pair-scoped re-derivation below
+ * when no catalogue is available — this is the ONLY path for paste-source charts,
+ * which have no computed geometry to build a catalogue from (Requirement 5.2).
  */
 function computeActivatedYogas(
+  mdLord: string,
+  adLord: string,
+  planets: unknown,
+  relationships: unknown,
+  yogasCatalogue?: unknown
+): string[] {
+  if (Array.isArray(yogasCatalogue)) {
+    return filterCatalogueYogas(yogasCatalogue as RawYoga[], mdLord, adLord)
+  }
+  return computeActivatedYogasPairScoped(mdLord, adLord, planets, relationships)
+}
+
+/** Legacy pair-scoped substrate derivation — the paste-path fallback (Requirement 5.2). */
+function computeActivatedYogasPairScoped(
   mdLord: string,
   adLord: string,
   planets: unknown,
@@ -384,6 +448,8 @@ export function sliceDashaTree(
     relationships: unknown
     /** Stored CharaKaraka[] — optional; absent for paste-path/pre-migration charts. */
     karakas?: unknown
+    /** Stored Yoga[] catalogue — optional; absent for paste-path/pre-migration charts. */
+    yogas?: unknown
   }
 ): SliceResult {
   const tree = asRawDashaTree(dashaTree)
@@ -415,7 +481,8 @@ export function sliceDashaTree(
             md.lord,
             ad.lord,
             chart.planets,
-            chart.relationships
+            chart.relationships,
+            chart.yogas
           )
 
           const mdAnnotation = buildAnnotation(

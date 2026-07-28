@@ -74,6 +74,7 @@ export async function GET(
       transits: chart.transits,
       pindaStrength: chart.pindaStrength,
       dashaTree: chart.dashaTree,
+      yogas: chart.yogas,
 
       // AI pipeline data
       chartInputV1: chart.chartInputV1,

@@ -21,6 +21,7 @@ Deterministic astronomical calculations (Swiss Ephemeris):
 | `nakshatraRelationships.ts` | Sub-lords, depositor chains, nakshatra parivartana, clusters, Rahu/Ketu axis |
 | `jaimini.ts` | Argala/Virodha Argala, Yogi/Avayogi points, special-lagna aspects, lord relationship map |
 | `bhavaBala.ts` | Bhavadhipati / Bhava Dig / Bhava Drishti bala |
+| `yogas.ts` | **Deterministic named-yoga catalogue** — Pancha Mahapurusha, Raja Yoga (incl. distinctly-keyed `raja.dka` for Dharma-Karmadhipati), Dhana, Viparita (Harsha/Sarala/Vimala), Neechabhanga, lunar (Sunapha/Anapha/Durudhara/Kemadruma), Gaja Kesari, Budha-Aditya, Parivartana, Kartari. `computeYogas(input)` reads ONLY the already-computed `RelationshipGeometry` tables (`relationships.ts`) + `dignity.ts` — never re-derives conjunctions/aspects/exchanges/dignity. Never throws; a detector missing its required table emits nothing. Runs in `computeFullChart` right after `relationships`, attached as `ComputedChart.yogas` / `UnifiedChart.yogas` (null on paste path). See `.kiro/specs/named-yoga-engine/`. |
 | `varshaphal.ts` | **Tajika annual solar-return chart** — Varsha Pravesh (solar return), annual chart (reuses `computeFullChart`), Muntha, Panchavargeeya Bala, Varshesha (year lord). On-demand only — NOT part of `computeFullChart`/`ComputedChart` |
 
 **Varshaphal note:** `varshaphal.ts` imports `computeFullChart` from `index.ts`
@@ -66,8 +67,8 @@ In `/api/unified-charts/[id]/analyze`:
 - `resolvePlan()` runs, then all Wave 1 (`'1'`-prefixed) agents are stripped and
   wave 1 is marked skipped.
 - `wave1_delta` is assembled from the chart's domain columns (`planets`,
-  `nakshatras`, `shadbala`, `bhavaBala`, `relationships`, `jaimini`, `ashtakavarga`)
-  shaped as `1A`/`1B`/`1C`/`1D` deltas.
+  `nakshatras`, `shadbala`, `bhavaBala`, `relationships`, `jaimini`, `ashtakavarga`,
+  `yogas`) shaped as `1A`/`1B`/`1C`/`1D` deltas — `yogas` rides under `1D`.
 - `executePipeline()` is called with `wave1Source: "compute"`.
 
 The legacy `Chart` / `source="paste"` path still runs LLM Wave 1 (agents 1A–1D

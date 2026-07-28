@@ -485,6 +485,56 @@ export interface JaiminiGeometry {
   computedAt: string
 }
 
+// ─── Named Yogas ─────────────────────────────────────────────────────
+
+export type YogaCategory =
+  | 'mahapurusha'
+  | 'raja'
+  | 'dhana'
+  | 'viparita'
+  | 'lunar'
+  | 'neechabhanga'
+  | 'parivartana'
+  | 'kartari'
+  | 'combination'   // Budha-Aditya, Gaja Kesari, etc.
+
+export type YogaStrength = 'strong' | 'moderate' | 'weak'
+
+/** How a yoga was recognized — the auditable seam downstream analyzers (F3/F4/F5) read. */
+export interface YogaEvidence {
+  /** Machine rule id that fired, e.g. "raja.kendra_trikona.conjunction". */
+  rule: string
+  /** Linkage type when the yoga is an association. */
+  linkage?: 'conjunction' | 'graha_aspect' | 'rashi_aspect' | 'parivartana' | 'placement'
+  /** Houses each involved planet owns (planet → houses), for lord-based yogas. */
+  ownedHouses?: Record<string, number[]>
+  /** Dignity label of each involved planet where dignity gated the rule. */
+  dignity?: Record<string, string>
+  /** Combustion / cancellation context — never dropped (F3 seam). */
+  afflictions?: Array<{ planet: string; kind: 'combust' | 'debilitated' | 'nodal'; detail?: string }>
+  /** Free-form notes (school variant, e.g. Gaja Kesari from Lagna). */
+  notes?: string[]
+}
+
+export interface Yoga {
+  /** Stable machine key, e.g. "mahapurusha.sasa", "raja.dka". */
+  key: string
+  /** Human name, e.g. "Sasa Yoga", "Dharma-Karmadhipati Raja Yoga". */
+  name: string
+  category: YogaCategory
+  /** Participating grahas, sorted for deterministic output. */
+  planets: string[]
+  /** Houses (from lagna) the yoga implicates, sorted. */
+  houses: number[]
+  /** Net classical benefic/malefic disposition of the yoga. */
+  benefic: boolean
+  /** Coarse formation-quality grade (NOT a calibrated score). */
+  strength: YogaStrength
+  /** Planets whose dashas classically fire the yoga (slicer hint; no dates). */
+  activatingPlanets: string[]
+  evidence: YogaEvidence
+}
+
 // ─── Bhava Bala ──────────────────────────────────────────────────────
 
 export interface BhavaBalaHouse {
@@ -607,6 +657,8 @@ export interface ComputedChart {
   computedNakshatra: NakshatraRelationships
   computedJaimini: JaiminiGeometry
   bhavaBala: BhavaBalaResult
+  /** Deterministic named-yoga catalogue (engine/compute/yogas.ts). */
+  yogas: Yoga[]
 }
 
 // ─── Chara Dasha (Jaimini rasi dasha) ────────────────────────────────

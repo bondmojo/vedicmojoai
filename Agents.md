@@ -48,6 +48,15 @@ foundation data those agents would produce — especially **1C (Shadbala)** and
 legacy `Chart` / paste path (`source="paste"`) still runs the LLM Wave 1 agents.
 See `docs/HLD.md §8.2` and the `deterministic-1c-1d` spec.
 
+**Deterministic named-yoga catalogue:** `engine/compute/yogas.ts` computes a
+chart-wide `Yoga[]` catalogue (Pancha Mahapurusha, Raja incl. `raja.dka` for
+Dharma-Karmadhipati, Dhana, Viparita, Neechabhanga, lunar, Gaja Kesari,
+Budha-Aditya, Parivartana, Kartari) from the `relationships` geometry and
+`dignity.ts` — no LLM. It rides in `wave1_delta` under `1D` (compute path only)
+so Wave 2A validates/interprets the supplied catalogue instead of re-deriving
+formation, is consumed by the Duration-Analysis slicer, and is exposed
+read-only via the `get_yogas` MCP tool. See the `named-yoga-engine` spec.
+
 **Prompt files:** `prompts/agents/{wave}_{id}_{name}.md`
 
 ---
@@ -85,7 +94,7 @@ Deep analysis per domain. Agents are selected by the planner based on `query_typ
 
 | Agent ID | Name | Prompt File | Model | Domain | Input | Output |
 |---|---|---|---|---|---|---|
-| **2A** | Yoga Detection | `wave2_2a_yogas.md` | claude-sonnet-4-5 | cross_domain | `chart_summary` + `wave1_delta` | All identified yogas: Raja, Dhana, Viparita, Pancha Mahapurusha, etc. with activation periods |
+| **2A** | Yoga Detection | `wave2_2a_yogas.md` | claude-sonnet-4-5 | cross_domain | `chart_summary` + `wave1_delta` | All identified yogas: Raja, Dhana, Viparita, Pancha Mahapurusha, etc. with activation periods. Compute path: interprets the deterministic `yogas` catalogue (`engine/compute/yogas.ts`, riding under 1D) rather than re-deriving formation |
 | **2B** | Ashtakavarga Analysis | `wave2_2b_ashtakavarga.md` | claude-sonnet-4-5 | cross_domain | `chart_summary` + `wave1_delta` | House-by-house bindhu analysis, transit strength, SAV patterns |
 | **2C** | Wealth Analysis | `wave2_2c_wealth.md` | claude-sonnet-4-5 | wealth | `chart_summary` + `wave1_delta` | H2/H11 analysis, Dhana yogas, wealth accumulation periods, Sree Lagna |
 | **2D** | Property Analysis | `wave2_2d_property.md` | claude-sonnet-4-5 | property | `chart_summary` + `wave1_delta` | H4 analysis, D4 chart, property acquisition windows, land/vehicle yogas |
