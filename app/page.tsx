@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronsUpDown } from 'lucide-react'
 import ChartSummaryTab from './components/ChartSummaryTab'
 import ChartGrid from './components/ChartGrid'
 import PlanetTable from './components/PlanetTable'
@@ -26,6 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { Card, CardContent } from '@/components/ui/card'
 import PageHeader from './components/PageHeader'
 
@@ -312,29 +315,46 @@ export default function ComputePage() {
             subtitle="Compute a Vedic chart from birth data, then save, analyse, or export it."
           />
           <div className="flex items-center gap-2">
-            <Select
-              value=""
-              onValueChange={(chartId) => { if (chartId) handleLoadChart(chartId) }}
-            >
-              <SelectTrigger className="w-[240px] h-9 text-sm">
-                <SelectValue placeholder={
-                  loadingCharts
-                    ? 'Loading charts…'
-                    : loadingChart
-                      ? 'Loading…'
-                      : savedCharts.length > 0
-                        ? 'Load Saved Chart'
-                        : 'No saved charts'
-                } />
-              </SelectTrigger>
-              <SelectContent>
-                {savedCharts.map((chart) => (
-                  <SelectItem key={chart.id} value={chart.id}>
-                    {chart.name} ({chart.lagna})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover modal={false}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-[260px] h-9 justify-between text-sm font-normal"
+                  disabled={loadingCharts || !!loadingChart}
+                >
+                  <span className="truncate">
+                    {loadingCharts
+                      ? 'Loading charts…'
+                      : loadingChart
+                        ? 'Loading…'
+                        : savedCharts.length > 0
+                          ? 'Load Saved Chart'
+                          : 'No saved charts'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[260px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search charts…" />
+                  <CommandList>
+                    <CommandEmpty>No chart found.</CommandEmpty>
+                    <CommandGroup>
+                      {savedCharts.map((chart) => (
+                        <CommandItem
+                          key={chart.id}
+                          value={`${chart.name} ${chart.lagna}`}
+                          onSelect={() => handleLoadChart(chart.id)}
+                        >
+                          {chart.name} ({chart.lagna})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

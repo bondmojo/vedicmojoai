@@ -54,15 +54,15 @@ export const PLANET_ABBR: Record<string, string> = {
 }
 
 export const PLANET_COLORS: Record<string, string> = {
-  Sun: '#f97316',     // orange
-  Moon: '#94a3b8',    // slate
-  Mars: '#ef4444',    // red
-  Mercury: '#22c55e', // green
-  Jupiter: '#eab308', // yellow
-  Venus: '#ec4899',   // pink
-  Saturn: '#60a5fa',  // blue
-  Rahu: '#9ca3af',    // gray
-  Ketu: '#a855f7',    // purple
+  Sun: '#000000',
+  Moon: '#000000',
+  Mars: '#000000',
+  Mercury: '#000000',
+  Jupiter: '#000000',
+  Venus: '#000000',
+  Saturn: '#000000',
+  Rahu: '#000000',
+  Ketu: '#000000',
 }
 
 export const SIGNS_SHORT = ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis']
