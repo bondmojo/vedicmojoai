@@ -21,8 +21,12 @@
  *     Sub-division dignity uses PERMANENT (naisargika) friendship only. Exact
  *     Vishwa scales vary between texts/software; treat values as indicative.
  *   - Hadda uses the Egyptian terms (bounds) table, as is standard for Tajika.
- *   - Day/night (for Dinaratri & Trirashi lords) is taken from the NATAL chart
- *     (Sun above vs below the horizon).
+ *   - Day/night (for Dinaratri & Trirashi lords) is taken from the ANNUAL chart
+ *     — whether the year COMMENCES (Varsha Pravesh) by day or night, i.e. the
+ *     annual Sun above vs below the horizon. This is the Tajika convention
+ *     ("if the year commences by day, take the lord of the Sun's sign; if by
+ *     night, the lord of the Moon's sign in the progressed chart") and matches
+ *     JHora — not the natal birth's day/night.
  *   - Trirashi (triplicity) lord uses the Dorothean day/night rulers applied to
  *     the Varsha Lagna's element.
  *   - Varshesha is selected by lordship count among the five office-bearers,
@@ -349,11 +353,6 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
   const [birthYear] = birth.date.split('-').map(Number)
   const age = varshaYear - birthYear
 
-  // Day/night from the natal chart: Sun above horizon (houses 7–12) ⇒ day.
-  const natalSunSign = Math.floor(natalSunLongitude / 30) + 1
-  const natalSunHouse = ((natalSunSign - natalLagnaSignNumber + 12) % 12) + 1
-  const dayBirth = natalSunHouse >= 7
-
   // ── Varsha Pravesh: solar return for the requested year ──
   // Seed at the natal instant advanced by `age` sidereal years, then refine.
   const seedJulianDay = natalJulianDay + age * 365.25636
@@ -376,13 +375,20 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
   // ── Panchavargeeya Bala (Tajika strength) ──
   const panchavargeeyaBala = computePanchavargeeyaBala(annualChart)
 
+  // ── Day/night of the YEAR'S commencement (Varsha Pravesh) ──
+  // Tajika rule: the Dinaratri & Trirashi lords depend on whether the year
+  // commences by day or night — the annual Sun above (houses 7–12) vs below
+  // (houses 1–6) the horizon — not on the natal birth's day/night.
+  const annualSunHouse = annualChart.planets.find((p) => p.planet === 'Sun')?.house ?? 1
+  const dayVarsha = annualSunHouse >= 7
+
   // ── Year-lord candidates ──
-  const dinaratriLuminary = dayBirth ? 'Sun' : 'Moon'
+  const dinaratriLuminary = dayVarsha ? 'Sun' : 'Moon'
   const dinaratriPos = annualChart.planets.find((p) => p.planet === dinaratriLuminary)
   const dinaratriLord = SIGN_LORDS[dinaratriPos?.signNumber ?? varshaLagnaSignNumber]
 
   const trirashiRuler = TRIPLICITY_RULERS[elementOfSign(varshaLagnaSignNumber)]
-  const trirashiLord = dayBirth ? trirashiRuler.day : trirashiRuler.night
+  const trirashiLord = dayVarsha ? trirashiRuler.day : trirashiRuler.night
 
   const { candidates, varshesha } = computeVarshesha(
     muntha,
@@ -408,16 +414,17 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
     },
     annualChart,
     muntha,
-    dayBirth,
+    dayVarsha,
     panchavargeeyaBala,
     candidates,
     varshesha,
     method:
       'Solar return (sidereal Lahiri). Muntha +1 sign/year from natal lagna. ' +
       'Panchavargeeya Bala per Neelakanthi maxima (Kshetra 30 / Uccha 20 / Hadda 15 / ' +
-      'Drekkana 10 / Navamsa 5, ÷4). Varshesha = office-bearer holding the most of ' +
-      'the five offices, ties broken by Panchavargeeya Bala. Favourable-Lagna-aspect ' +
-      'override deferred (needs Tajika aspects).',
+      'Drekkana 10 / Navamsa 5, ÷4). Dinaratri & Trirashi lords use the year\'s ' +
+      'commencement (Varsha Pravesh) day/night. Varshesha = office-bearer holding the ' +
+      'most of the five offices, ties broken by Panchavargeeya Bala. Favourable-Lagna-' +
+      'aspect override deferred (needs Tajika aspects).',
     computedAt: new Date().toISOString(),
   }
 }

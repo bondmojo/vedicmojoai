@@ -378,7 +378,7 @@ Covers the Next.js/React layer that consumes pipeline output:
 | SSE Consumption | `EventSource` pattern for real-time run progress, event type handling, cleanup |
 | Run Progress UI | Wave-grouped agent status, token/cost display, halt state with override actions |
 | Report Viewer | Server Component iframe rendering, toolbar with metadata |
-| Chart Visualization | 10 compute components (North/South Indian, Dasha, Ashtakavarga, etc.) |
+| Chart Visualization | 17 compute components (North/South Indian, Grahas, Bindu, Yogas, Ashtakavarga, etc.) |
 | Form Patterns | Query type selection, agent preview, 202 redirect flow |
 | State Management | Local state + SSE-driven updates, no global store |
 | Accessibility | Semantic HTML, non-color-only status indicators, disabled states |
@@ -451,7 +451,7 @@ The agent catalogue (this document) defines **what** the pipeline does — the 1
 | `run-progress-ui.md` | Wave-grouped agent status, token/cost display, halt state |
 | `report-viewer.md` | Server Component iframe rendering, toolbar |
 | `unified-charts-ui.md` | Generate Chart + AI Analysis pages, data flow |
-| `chart-visualization.md` | 10 compute components (North/South Indian, Dasha, etc.) |
+| `chart-visualization.md` | 17 compute components (North/South Indian, Grahas, Bindu, Yogas, etc.) + shared modules |
 | `form-patterns.md` | Query type selection, agent preview, 202 redirect flow |
 | `state-management.md` | Local state + SSE-driven updates, no global store |
 | `duration-analysis-ui.md` | DA form, results page, symptom gate, follow-up chat |

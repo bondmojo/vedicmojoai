@@ -53,7 +53,16 @@ all live in one project and one deployment.
    has no prompt file and is not reachable from `/api/duration-analysis`. See
    `docs/duration-analyser.md` for the MCP-vs-UI exposure model.
 
-Alongside these, the home page (`/`, the Chart Compute UI) also offers
+The home page (`/`, the Chart Compute UI) renders a computed chart across **10 tabs**:
+Summary · Grahas · Divisional Charts · Ashtakavarga · Yogas · Dasha (Vimshottari) ·
+Chara Dasha · Transits · Pinda Strength · Varshaphal. It was 11 until the
+`chart-ui-enhancements` spec merged Planets + Nakshatras + Karakas into one **Grahas**
+tab (`app/components/GrahasTable.tsx`; `KarakaTable.tsx` deleted, `PlanetTable.tsx` and
+`NakshatraTable.tsx` kept because `DurationComputationResults` still embeds them) and
+added a **Yogas** tab after Ashtakavarga rendering the deterministic `chart.yogas`
+catalogue.
+
+Alongside these, the home page also offers
 **Varshaphal** (Tajika annual solar-return chart) as an on-demand, stateless
 tool: `POST /api/compute/varshaphal`
 → `engine/compute/varshaphal.ts` computes the Varsha Pravesh (solar return), the
@@ -124,6 +133,32 @@ Geometry**) live in `engine/compute/`:
 > MCP `get_chara_dasha` tool and the `chara_dasha` knowledge framework. Not
 > persisted to `UnifiedChart` (recomputed from `birthInput` on demand). See
 > `docs/computation_chara_dasha.md`.
+
+> **Degree-aware moolatrikona:** `engine/compute/dignity.ts` adds
+> `MOOLATRIKONA_RANGES` — the classical `[fromDeg, toDeg)` span inside the
+> moolatrikona sign — plus an **optional trailing** `degreeInSign` parameter on
+> `getVargaDignityLabel`. With a usable degree, a placement in the moolatrikona
+> sign but outside the span now labels `own`; omit the degree and the whole-sign
+> rule is unchanged. Only callers that genuinely hold a degree pass one (D1 in
+> `divisional.ts`, `yogas.ts`, `durationAnalysis/scoring.ts`); D2–D60 keep the
+> sign rule because this engine computes a varga *sign*, never a varga longitude,
+> and `shadbala.ts` / `varshaphal.ts` deliberately stay sign-only. The module also
+> exposes `getVargaDignityReason()`, returning the one-sentence explanation the
+> Summary tab's dignity chips display.
+
+> **Degree-based Sade Sati:** `engine/compute/transits.ts` adds
+> `computeDegreeSadeSati()` — Saturn within ±45° of the natal Moon's longitude,
+> one contiguous period per passage with no rising/peak/setting phase — surfaced
+> as the optional sibling `TransitAnalysis.sadeSatiByDegree`, beside (never inside)
+> the existing sign-based `sadeSati`. Retrograde fragments within **138 days** are
+> merged (the degree scan's own threshold — smaller than the sign scan's 240 d,
+> calibrated against PVR's reference output). `computeTransits` gained an optional
+> trailing `natalMoonLongitude`, passed by `computeFullChart` but deliberately not
+> by `durationAnalysis/transitOverlay.ts`. Same fix on both readings: `isCurrent`
+> now comes from the `asOfDate` the transit block reports rather than a wall-clock
+> `new Date()`, which disagreed with `sadeSati.active` for historical dates. The UI
+> renders both readings in `app/components/SadeSatiPanel.tsx`. See
+> `docs/computation_transits_sadesati.md`.
 
 ---
 

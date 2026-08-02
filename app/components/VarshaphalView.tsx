@@ -75,7 +75,7 @@ interface VarshaphalData {
     shadbala: { planets: ShadbalPlanetLite[] }
   }
   muntha: { sign: string; signNumber: number; house: number; lord: string }
-  dayBirth: boolean
+  dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaEntry[]
   candidates: Candidate[]
   varshesha: { planet: string; officeLabel: string; panchavargeeyaBala: number }
@@ -190,7 +190,7 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
               <div className="text-xs text-gray-400 mt-1">
                 {data.varshaPravesh.weekday} · lord {data.varshaPravesh.weekdayLord}
               </div>
-              <div className="text-[10px] text-gray-600 mt-1">Year {data.varshaYear} · age {data.age} · {data.dayBirth ? 'day birth' : 'night birth'}</div>
+              <div className="text-[10px] text-gray-600 mt-1">Year {data.varshaYear} · age {data.age} · {data.dayVarsha ? 'day entry' : 'night entry'}</div>
             </div>
 
             <div className="rounded-lg border border-gray-700 bg-gray-800/30 p-4">

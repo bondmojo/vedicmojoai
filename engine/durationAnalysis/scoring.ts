@@ -104,10 +104,10 @@ function houseToSign(house: number, lagnaSign: number): number {
 function findPlanet(
   planets: ScoringChartData['planets'],
   name: string
-): { signNumber: number; house: number } | null {
+): { signNumber: number; house: number; degreeInSign: number } | null {
   if (!planets) return null
   const p = planets.find((pl) => pl.planet === name)
-  return p ? { signNumber: p.signNumber, house: p.house } : null
+  return p ? { signNumber: p.signNumber, house: p.house, degreeInSign: p.degreeInSign } : null
 }
 
 /** Lookup Shadbala data for a planet by name. Returns null when absent. */
@@ -165,7 +165,7 @@ function factorLordDignity(
   // D1. Node lords (Rahu/Ketu) carry no friendship dignity → treated as neutral,
   // preserving the prior behavior for nodes.
   const d1Signs = buildD1SignMap(chartData.planets)
-  let label: string = getVargaDignityLabel(lord, p.signNumber, d1Signs) ?? 'neutral'
+  let label: string = getVargaDignityLabel(lord, p.signNumber, d1Signs, p.degreeInSign) ?? 'neutral'
 
   // Neechabhanga lift: a debilitated lord is lifted to neutral ONLY when the
   // cancellation yoga names THIS lord. The slicer emits

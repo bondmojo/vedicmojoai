@@ -39,9 +39,22 @@ function baseInput(planets: PlanetPosition[], lagnaSignNumber: number, houseLord
 describe('detectPanchaMahapurusha — moolatrikona own-sign (review fix)', () => {
   it('fires Hamsa for Jupiter in its own/moolatrikona sign Sagittarius in a kendra', () => {
     // Sagittarius lagna → Jupiter in Sagittarius is house 1 (a kendra).
-    // getVargaDignityLabel resolves Sagittarius (Jupiter's moolatrikona) to
-    // 'moolatrikona' — which previously slipped through the exalted/own-only gate.
+    // mkPlanet's default degreeInSign (15°) falls OUTSIDE Jupiter's moolatrikona
+    // range [0, 10), so getVargaDignityLabel resolves this placement to 'own' —
+    // still a non-exalted own-sign placement, which is what the gate is proving
+    // it accepts (exalted | own | moolatrikona all satisfy STRONG_DIGNITY).
     const planets = [mkPlanet('Jupiter', 9, 1)]
+    const yogas = computeYogas(baseInput(planets, 9))
+    const hamsa = yogas.find((y) => y.key === 'mahapurusha.hamsa')
+    expect(hamsa).toBeTruthy()
+    expect(hamsa?.planets).toEqual(['Jupiter'])
+    expect(hamsa?.evidence.dignity?.Jupiter).toBe('own')
+  })
+
+  it('fires Hamsa for Jupiter in Sagittarius within its moolatrikona range in a kendra', () => {
+    // Same placement, but at 5° — inside Jupiter's moolatrikona range [0, 10) —
+    // so the dignity label is 'moolatrikona' rather than 'own'.
+    const planets = [mkPlanet('Jupiter', 9, 1, 5)]
     const yogas = computeYogas(baseInput(planets, 9))
     const hamsa = yogas.find((y) => y.key === 'mahapurusha.hamsa')
     expect(hamsa).toBeTruthy()

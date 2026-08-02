@@ -44,6 +44,8 @@ export type {
   TransitPlanet,
   TransitAnalysis,
   SadeSatiInfo,
+  DegreeSadeSatiPeriod,
+  DegreeSadeSatiInfo,
   RelationshipGeometry,
   ShadbalResult,
   NakshatraRelationships,
@@ -208,7 +210,8 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     birthYear,
     new Date(),
     input.latitude,
-    input.longitude
+    input.longitude,
+    moon?.longitude,
   )
 
   // Step 14: Deterministic relationship / strength modules (replaces LLM agents).

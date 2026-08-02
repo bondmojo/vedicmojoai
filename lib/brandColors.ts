@@ -9,6 +9,8 @@
  * color constants, keeping a single source of truth for brand color usage.
  */
 
+import type { BinduBand } from '@/lib/ashtakavargaBands'
+
 // ─── Planet Colors ────────────────────────────────────────────────────────────
 
 /**
@@ -133,4 +135,31 @@ export function shadbalaGrade(ratio: number): { label: string; className: string
   if (ratio >= 1) return { label: 'Strong', className: 'text-favorable bg-favorable-muted border-favorable/40' }
   if (ratio >= 0.75) return { label: 'Average', className: 'text-cautionary bg-cautionary-muted border-cautionary/40' }
   return { label: 'Weak', className: 'text-unfavorable bg-unfavorable-muted border-unfavorable/40' }
+}
+
+// ─── Ashtakavarga Bindu Band ───────────────────────────────────────────────────
+
+/** Four-step favourability ladder used by the Ashtakavarga bindu bands. */
+export const BAND_STYLE: Record<BinduBand, string> = {
+  favorable: 'text-favorable bg-favorable-muted',
+  moderate: 'text-moderate bg-moderate-muted',
+  cautionary: 'text-cautionary bg-cautionary-muted',
+  unfavorable: 'text-unfavorable bg-unfavorable-muted',
+}
+
+/** Class string for a bindu count's band, or the unavailable style when `band` is `null` (R4.9). */
+export function binduBandClass(band: BinduBand | null): string {
+  if (band === null) return 'text-gray-500'
+  return BAND_STYLE[band]
+}
+
+/**
+ * Text-only variant of `binduBandClass` — same band colour, no `bg-*-muted`
+ * box behind the digit. Used by the plain BAV/SAV numeric table, which
+ * otherwise renders every cell as a small filled rectangle; the diagrams
+ * (`BinduChart`) keep the boxed styling since the cell rect IS the diagram.
+ */
+export function binduBandTextClass(band: BinduBand | null): string {
+  if (band === null) return 'text-gray-500'
+  return BAND_STYLE[band].split(' ').filter((c) => c.startsWith('text-')).join(' ')
 }

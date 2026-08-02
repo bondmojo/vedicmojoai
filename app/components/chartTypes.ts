@@ -53,17 +53,16 @@ export const PLANET_ABBR: Record<string, string> = {
   Jupiter: 'Ju', Venus: 'Ve', Saturn: 'Sa', Rahu: 'Ra', Ketu: 'Ke',
 }
 
-export const PLANET_COLORS: Record<string, string> = {
-  Sun: '#000000',
-  Moon: '#000000',
-  Mars: '#000000',
-  Mercury: '#000000',
-  Jupiter: '#000000',
-  Venus: '#000000',
-  Saturn: '#000000',
-  Rahu: '#000000',
-  Ketu: '#000000',
-}
+/**
+ * Static (non-per-planet) SVG text colour for the diagram chart cells — black
+ * on the light theme's white chart background, white on the dark theme's
+ * near-black (`#111827`) chart background. An inline SVG `fill="#000000"`
+ * cannot respond to the `dark` variant, so this is applied as a class rather
+ * than through the old hex-keyed `PLANET_COLORS` map (see `PLANET_TEXT_ITEM`
+ * below, used by `NorthIndianChart`/`SouthIndianChart` for planet cells only —
+ * Arudha/Special-Lagna/Upagraha cells keep their own fixed hex colours).
+ */
+export const PLANET_TEXT_CLASS = 'fill-black dark:fill-white'
 
 export const SIGNS_SHORT = ['Ari','Tau','Gem','Can','Leo','Vir','Lib','Sco','Sag','Cap','Aqu','Pis']
 

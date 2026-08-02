@@ -338,6 +338,7 @@ ComputedChart (root)
 └── transits: TransitAnalysis
     ├── transits[]: TransitPlanet[]
     ├── sadeSati: SadeSatiInfo
+    ├── sadeSatiByDegree?: DegreeSadeSatiInfo  (±45° of natal Moon; absent when natalMoonLongitude not supplied)
     ├── moonTransits[]: MoonTransitPeriod[]
     └── ascendantTransits[]: AscendantTransitPeriod[]
 ```

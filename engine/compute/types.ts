@@ -218,6 +218,44 @@ export interface SadeSatiInfo {
   allPeriods: SadeSatiPeriod[]
 }
 
+/** One contiguous passage of Saturn through the ±45° window (R6.1, R6.2). */
+export interface DegreeSadeSatiPeriod {
+  /** 1-based, contiguous, ascending by start across the whole scan horizon (R6.6). */
+  sequence: number
+  /** ISO-8601 UTC, bisection-refined (R6.8). */
+  start: string
+  end: string
+  /** "Mon YYYY" display form, matching the sign-based reading's convention. */
+  startApprox: string
+  endApprox: string
+  /** end − start in days (fractional). The machine-readable duration (R6.2). */
+  durationDays: number
+  /** True when [start, end) contains TransitAnalysis.asOf (R6.2, R6.10, R6.11). */
+  isCurrent: boolean
+  /** Integer 0–100, rounded half away from zero. Present only when isCurrent (R6.13). */
+  completionPct?: number
+  /** Days from asOf to `start`, fractional. Present only when start > asOf (R6.14). */
+  startsInDays?: number
+  /** R6.15, e.g. "Saturn ±45° from natal Moon (347.76°) - 12th, 1st, 2nd houses". */
+  label: string
+}
+
+export interface DegreeSadeSatiInfo {
+  /** Natal Moon sidereal longitude (0–360) the window is centred on. */
+  natalMoonLongitude: number
+  /** Half-width of the window in degrees. Always 45 for this reading (R6.1). */
+  orbDeg: number
+  /** True when asOf falls inside the window (R6.3). */
+  active: boolean
+  /** Shorter-arc separation |Saturn − natal Moon| at asOf, 0–180 (R6.3). */
+  separationDeg: number
+  /** The horizon actually scanned, so a divergence can be attributed (R6.9). */
+  scanFromYear: number
+  scanToYear: number
+  /** Ascending by start; non-overlapping (R6.12). */
+  allPeriods: DegreeSadeSatiPeriod[]
+}
+
 export interface MoonTransitPeriod {
   signNumber: number
   sign: string
@@ -240,6 +278,12 @@ export interface TransitAnalysis {
   asOf: string
   transits: TransitPlanet[]
   sadeSati: SadeSatiInfo
+  /**
+   * Degree-based Sade Sati — sibling of `sadeSati`, never nested inside it.
+   * Optional: absent on charts computed before this addition, and absent when the
+   * caller supplies no natal Moon longitude.
+   */
+  sadeSatiByDegree?: DegreeSadeSatiInfo
   ashtamaShani: boolean
   kantakaShani: boolean
   currentMoonSign: string
@@ -612,8 +656,11 @@ export interface VarshaphalResult {
   /** Full chart cast for the solar-return instant at the birthplace. */
   annualChart: ComputedChart
   muntha: Muntha
-  /** Whether the birth (natal) was a day birth (Sun above horizon). */
-  dayBirth: boolean
+  /**
+   * Whether the year COMMENCES (Varsha Pravesh) by day — the annual Sun above
+   * the horizon (houses 7–12). Drives the Dinaratri & Trirashi year-lord offices.
+   */
+  dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaBalaEntry[]
   candidates: VarsheshaCandidate[]
   /** The selected year lord (strongest candidate by Panchavargeeya Bala). */

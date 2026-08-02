@@ -9,6 +9,7 @@
 'use client'
 
 import { useState } from 'react'
+import { planetColorClass } from '@/lib/brandColors'
 
 interface CharaAntardasha {
   sign: string
@@ -45,12 +46,6 @@ const SIGN_SHORT = ['Ari', 'Tau', 'Gem', 'Can', 'Leo', 'Vir', 'Lib', 'Sco', 'Sag
 const ELEMENT_COLOR = (signNumber: number): string => {
   const el = (signNumber - 1) % 4 // 0 fire,1 earth,2 air,3 water
   return ['bg-red-600', 'bg-amber-700', 'bg-sky-600', 'bg-teal-600'][el]
-}
-
-const PLANET_TEXT: Record<string, string> = {
-  Sun: 'text-orange-400', Moon: 'text-slate-300', Mars: 'text-red-400',
-  Mercury: 'text-green-400', Jupiter: 'text-yellow-400', Venus: 'text-pink-400',
-  Saturn: 'text-blue-400', Rahu: 'text-neutral-400', Ketu: 'text-purple-400',
 }
 
 function formatDate(s: string): string {
@@ -93,7 +88,7 @@ export default function CharaDashaView({ charaDasha }: { charaDasha: CharaDasha 
           {currentIndex >= 0 && (
             <div className="text-right">
               <span className="text-xs text-gray-400">Current:</span>
-              <span className="ml-2 text-sm font-medium text-indigo-400">
+              <span className="ml-2 text-sm font-medium text-indigo-700 dark:text-indigo-400">
                 {charaDasha.periods[currentIndex].sign} MD
               </span>
             </div>
@@ -114,7 +109,7 @@ export default function CharaDashaView({ charaDasha }: { charaDasha: CharaDasha 
           return (
             <div
               key={i}
-              className={`rounded-lg border transition-colors ${isCurrent ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-700 bg-gray-800/30'}`}
+              className={`rounded-lg border transition-colors ${isCurrent ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10' : 'border-gray-700 bg-gray-800/30'}`}
             >
               <button
                 onClick={() => setExpanded(isExpanded ? null : i)}
@@ -124,10 +119,10 @@ export default function CharaDashaView({ charaDasha }: { charaDasha: CharaDasha 
                   <div className={`w-3 h-3 rounded-full ${ELEMENT_COLOR(p.signNumber)}`} />
                   <span className="font-medium text-sm text-ink">{p.sign} Dasha</span>
                   <span className="text-xs text-gray-500">
-                    lord <span className={PLANET_TEXT[p.lord] ?? 'text-gray-300'}>{p.lord}</span> in {SIGN_SHORT[p.lordSignNumber - 1]}
+                    lord <span className={planetColorClass(p.lord)}>{p.lord}</span> in {SIGN_SHORT[p.lordSignNumber - 1]}
                   </span>
                   {isCurrent && (
-                    <span className="text-xs text-indigo-400 font-medium px-2 py-0.5 rounded-full bg-indigo-900/30 border border-indigo-700">
+                    <span className="text-xs text-indigo-700 dark:text-indigo-400 font-medium px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-300 dark:border-indigo-700">
                       CURRENT
                     </span>
                   )}
@@ -149,12 +144,12 @@ export default function CharaDashaView({ charaDasha }: { charaDasha: CharaDasha 
                       return (
                         <div
                           key={j}
-                          className={`flex items-center justify-between px-3 py-1.5 text-xs rounded ${adActive ? 'bg-indigo-900/30 border border-indigo-700 text-indigo-300' : 'text-gray-400'}`}
+                          className={`flex items-center justify-between px-3 py-1.5 text-xs rounded ${adActive ? 'bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-300' : 'text-gray-400'}`}
                         >
                           <span className="flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full ${ELEMENT_COLOR(ad.signNumber)}`} />
                             {p.sign}-{ad.sign}
-                            {adActive && <span className="text-[10px] text-indigo-400">active</span>}
+                            {adActive && <span className="text-[10px] text-indigo-700 dark:text-indigo-400">active</span>}
                           </span>
                           <span className="text-gray-500">
                             {formatDateShort(ad.start)} → {formatDateShort(ad.end)}

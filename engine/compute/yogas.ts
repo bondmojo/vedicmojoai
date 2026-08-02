@@ -145,7 +145,7 @@ function detectPanchaMahapurusha(input: YogaInput): Yoga[] {
     // moolatrikona sign IS one of its own signs (Mars→Aries, Mercury→Virgo,
     // Jupiter→Sagittarius, Venus→Libra, Saturn→Aquarius) — so it must count here,
     // otherwise the most common own-sign placements would silently never fire.
-    const label = getVargaDignityLabel(planetName, p.signNumber, d1Signs)
+    const label = getVargaDignityLabel(planetName, p.signNumber, d1Signs, p.degreeInSign)
     if (label !== 'exalted' && label !== 'own' && label !== 'moolatrikona') continue
 
     let strength: YogaStrength = label === 'exalted' ? 'strong' : 'moderate'
@@ -193,7 +193,7 @@ function detectGajaKesari(input: YogaInput): Yoga[] {
   if (!KENDRA_HOUSES.has(nthFromMoon)) return []
 
   const d1Signs = buildD1SignMap(planets)
-  const label = getVargaDignityLabel('Jupiter', jupiter.signNumber, d1Signs)
+  const label = getVargaDignityLabel('Jupiter', jupiter.signNumber, d1Signs, jupiter.degreeInSign)
   const combustion = findCombustion(input.combustion, 'Jupiter')
 
   let strength: YogaStrength = 'moderate'
@@ -418,10 +418,10 @@ function detectRajaYoga(input: YogaInput): Yoga[] {
       const trikonaPlanet = findPlanet(planets, trikonaLord)
       const d1Signs = buildD1SignMap(planets)
       const kendraDignity = kendraPlanet
-        ? getVargaDignityLabel(kendraLord, kendraPlanet.signNumber, d1Signs)
+        ? getVargaDignityLabel(kendraLord, kendraPlanet.signNumber, d1Signs, kendraPlanet.degreeInSign)
         : undefined
       const trikonaDignity = trikonaPlanet
-        ? getVargaDignityLabel(trikonaLord, trikonaPlanet.signNumber, d1Signs)
+        ? getVargaDignityLabel(trikonaLord, trikonaPlanet.signNumber, d1Signs, trikonaPlanet.degreeInSign)
         : undefined
 
       const kendraCombust = findCombustion(input.combustion, kendraLord)?.combust ?? false
@@ -520,7 +520,7 @@ function detectDhanaYoga(input: YogaInput): Yoga[] {
       const dignities: Record<string, string> = {}
       for (const lord of [a, b]) {
         const p = findPlanet(planets, lord)
-        const label = p ? getVargaDignityLabel(lord, p.signNumber, d1Signs) : undefined
+        const label = p ? getVargaDignityLabel(lord, p.signNumber, d1Signs, p.degreeInSign) : undefined
         if (label) dignities[lord] = label
       }
       const dignifiedCount = Object.values(dignities).filter((l) => STRONG_DIGNITY.has(l)).length

@@ -18,39 +18,27 @@
  */
 'use client'
 
-import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData, dignitySuffix } from './chartTypes'
+import { PLANET_ABBR, PLANET_TEXT_CLASS, SIGNS_SHORT, ChartData, dignitySuffix } from './chartTypes'
+import { CANVAS, NORTH_LINES, NORTH_CELL, NORTH_SIGN_POS } from './chartGeometry'
 
-const S = 480
+const S = CANVAS
 const M = S / 2 // 240
 
 // Structure lines: outer square, 2 diagonals, inner diamond. No midlines.
-const LINES = [
-  `M 0,0 L ${S},0 L ${S},${S} L 0,${S} Z`,   // outer square
-  `M 0,0 L ${S},${S}`,                         // diagonal TL→BR
-  `M ${S},0 L 0,${S}`,                         // diagonal TR→BL
-  `M ${M},0 L ${S},${M} L ${M},${S} L 0,${M} Z`, // inner diamond
-]
+const LINES = NORTH_LINES
 
 // Cell centroids (counter-clockwise from top). Corner triangles nudged
 // slightly toward center so text fits.
-const CELL: Record<number, [number, number]> = {
-  1:  [M, 118],        // top rhombus
-  2:  [M - 118, 58],   // top-left upper triangle
-  3:  [60, M - 118],   // left upper triangle
-  4:  [118, M],        // left rhombus
-  5:  [60, M + 118],   // left lower triangle
-  6:  [M - 118, S - 58],// bottom-left lower triangle
-  7:  [M, S - 118],    // bottom rhombus
-  8:  [M + 118, S - 58],// bottom-right lower triangle
-  9:  [S - 60, M + 118],// right lower triangle
-  10: [S - 118, M],    // right rhombus
-  11: [S - 60, M - 118],// right upper triangle
-  12: [M + 118, 58],   // top-right upper triangle
-}
+const CELL = NORTH_CELL
 
 // ─── Cell content ──────────────────────────────────────────────────
 
-interface Item { label: string; color: string }
+/**
+ * `color` is an inline hex `fill` for the fixed-hue Arudha/Special-Lagna/
+ * Upagraha markers; `className` is the theme-responsive Tailwind class for
+ * planet cells (`PLANET_TEXT_CLASS`) — exactly one of the two is set.
+ */
+interface Item { label: string; color?: string; className?: string }
 
 function getCellItems(house: number, chart: ChartData): Item[] {
   const items: Item[] = []
@@ -59,10 +47,7 @@ function getCellItems(house: number, chart: ChartData): Item[] {
     if (p.house === house) {
       const abbr = PLANET_ABBR[p.planet] ?? p.planet.substring(0, 2)
       const label = (p.retrograde ? `(${abbr})` : abbr) + dignitySuffix(p.dignity, p.vargottama)
-      items.push({
-        label,
-        color: PLANET_COLORS[p.planet] ?? '#e5e7eb',
-      })
+      items.push({ label, className: PLANET_TEXT_CLASS })
     }
   }
   if (chart.arudhaPadas) {
@@ -104,7 +89,7 @@ function CellText({ house, chart, cx, cy }: { house: number; chart: ChartData; c
           <text key={`${house}-${ri}-${ci}`}
             x={startX + ci * COL_W} y={startY + ri * LH}
             textAnchor="middle" dominantBaseline="central"
-            fontSize="12" fontWeight="500" fill={item.color}>
+            fontSize="12" fontWeight="500" fill={item.color} className={item.className}>
             {item.label}
           </text>
         ))
@@ -143,25 +128,7 @@ export default function NorthIndianChart({
   //   H12: shares corner (480,0) with H11
   //
   // Each pair shares a corner, so offset slightly along the edge they own.
-  const PAD = 22 // padding from outer edge
-  const SIGN_POS: Record<number, [number, number]> = {
-    // Rhombus houses: at the diamond vertex (inner tip toward center)
-    1:  [M, PAD + 10],        // top diamond vertex area
-    4:  [PAD + 10, M],        // left diamond vertex area
-    7:  [M, S - PAD - 10],    // bottom diamond vertex area
-    10: [S - PAD - 10, M],    // right diamond vertex area
-    // Triangle houses: at the outer corner vertex of each triangle
-    2:  [PAD + 40, PAD],         // near (0,0) corner, offset along top edge
-    3:  [PAD, PAD + 40],         // near (0,0) corner, offset along left edge
-    5:  [PAD, S - PAD - 40],     // near (0,480) corner, offset along left edge
-    6:  [PAD + 40, S - PAD],     // near (0,480) corner, offset along bottom edge
-    8:  [S - PAD - 40, S - PAD], // near (480,480) corner, offset along bottom edge
-    9:  [S - PAD, S - PAD - 40], // near (480,480) corner, offset along right edge
-    11: [S - PAD, PAD + 40],     // near (480,0) corner, offset along right edge
-    12: [S - PAD - 40, PAD],     // near (480,0) corner, offset along top edge
-  }
-
-  const signLabelPos = (h: number): [number, number] => SIGN_POS[h]
+  const signLabelPos = (h: number): [number, number] => NORTH_SIGN_POS[h]
 
   return (
     <div className="rounded-xl border border-border bg-card p-3 shadow-sm">

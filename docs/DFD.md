@@ -487,6 +487,9 @@ PRACTITIONER
 │  • Arudha Padas               │
 │  • Pinda Strength             │
 │  • Transits + Sade Sati       │
+│    (sign-based + degree-based │
+│    via moon.longitude → 7th   │
+│    arg to computeTransits)    │
 │                               │
 │  computeVimshottari()         │
 │  • Full dasha tree            │
@@ -528,7 +531,21 @@ BirthInput
     │       ├─► computeSpecialLagnas() → SpecialLagna[]
     │       ├─► computeArudhaPadas() → ArudhaPada[]
     │       ├─► computePindaStrength() → PindaStrengthEntry[]
-    │       └─► computeTransits()    → TransitAnalysis
+    │       └─► computeTransits(moonSign, lagnaSign, birthYear,
+    │               asOfDate, lat, lon, moon.longitude)
+    │               → TransitAnalysis
+    │                 ├── sadeSati (sign-based, isCurrent from asOfDate)
+    │                 ├── sadeSatiByDegree? (±45° of natal Moon,
+    │                 │     138-day merge, populated only when
+    │                 │     natalMoonLongitude supplied — i.e. from
+    │                 │     computeFullChart; absent from transitOverlay)
+    │                 ├── moonTransits[], ascendantTransits[]
+    │                 └── ashtamaShani, kantakaShani
+    │
+    ├─► computeDivisionalCharts() calls dignity.ts:
+    │       getVargaDignityLabel(planet, sign, d1Map, degreeInSign?)
+    │       └── D1 only: passes planet.longitude % 30 as degreeInSign
+    │           (D2–D60 keep whole-sign rule; no varga longitude exists)
     │
     ├─► computeVimshottari(moonLong, birthDate) → DashaTree
     └─► computeCharaDasha(planets, lagnaSign, birthDate) → CharaDashaResult
@@ -814,6 +831,7 @@ CLAUDE DESKTOP
 | `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
 | `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
 | `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
+| `TransitAnalysis.sadeSatiByDegree` | JSON (nested) | ~2KB | computeDegreeSadeSati() via computeTransits(…, moon.longitude) | UnifiedChart.transits (Json), SadeSatiPanel UI. Not passed to transitOverlay.ts |
 | `DashaSlice[]` (with annotations) | JSON (JSONB) | ~30–80KB (200 entries) | slicer.ts | DurationAnalysis.periodSlice; DA-1 prompt |
 | `TransitOverlay[]` | JSON (JSONB) | ~5–15KB (one entry per AD boundary) | transitOverlay.ts | DurationAnalysis.transitOverlay; DA-1 prompt |
 | `DA1Output` | JSON (JSONB) | ~20–50KB | DA-1 agent + post-merge | DurationAnalysis.da1Output; DA-2/DA-3 prompts |

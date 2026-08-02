@@ -42,7 +42,7 @@ This skill is split into focused sub-documents in `skills/frontend/`:
 | [run-progress-ui.md](frontend/run-progress-ui.md) | Wave-grouped agent status, token/cost display, halt state |
 | [report-viewer.md](frontend/report-viewer.md) | Server Component iframe rendering, toolbar |
 | [unified-charts-ui.md](frontend/unified-charts-ui.md) | Generate Chart + AI Analysis pages, data flow |
-| [chart-visualization.md](frontend/chart-visualization.md) | 10 compute components (North/South Indian, Dasha, etc.) |
+| [chart-visualization.md](frontend/chart-visualization.md) | 17 compute components (North/South Indian, Grahas, Bindu, Yogas, etc.) + shared modules |
 | [form-patterns.md](frontend/form-patterns.md) | Query type selection, agent preview, 202 redirect flow |
 | [state-management.md](frontend/state-management.md) | Local state + SSE-driven updates, no global store |
 | [duration-analysis-ui.md](frontend/duration-analysis-ui.md) | DA form, results page, symptom gate, follow-up chat |

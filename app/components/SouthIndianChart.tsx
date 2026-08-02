@@ -6,7 +6,8 @@
  */
 'use client'
 
-import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData, dignitySuffix } from './chartTypes'
+import { PLANET_ABBR, PLANET_TEXT_CLASS, SIGNS_SHORT, ChartData, dignitySuffix } from './chartTypes'
+import { CELL_SIZE, GRID_SIZE, SOUTH_LAYOUT } from './chartGeometry'
 
 // ─── Sign grid layout (South Indian) ────────────────────────────────
 // Fixed 4×4 grid. The 4 center cells are empty.
@@ -16,27 +17,17 @@ import { PLANET_ABBR, PLANET_COLORS, SIGNS_SHORT, ChartData, dignitySuffix } fro
 //  Cap(10) [    ]  [    ]  Leo(5)
 //  Sag(9)  Sco(8)  Lib(7)  Vir(6)
 
-const SI_LAYOUT: { row: number; col: number; signNumber: number }[] = [
-  { row: 0, col: 0, signNumber: 12 },
-  { row: 0, col: 1, signNumber: 1  },
-  { row: 0, col: 2, signNumber: 2  },
-  { row: 0, col: 3, signNumber: 3  },
-  { row: 1, col: 3, signNumber: 4  },
-  { row: 2, col: 3, signNumber: 5  },
-  { row: 3, col: 3, signNumber: 6  },
-  { row: 3, col: 2, signNumber: 7  },
-  { row: 3, col: 1, signNumber: 8  },
-  { row: 3, col: 0, signNumber: 9  },
-  { row: 2, col: 0, signNumber: 10 },
-  { row: 1, col: 0, signNumber: 11 },
-]
+const SI_LAYOUT = SOUTH_LAYOUT
 
-const CELL_SIZE = 120
-const GRID_SIZE = 4 * CELL_SIZE  // 480
-
+/**
+ * `color` is an inline hex `fill` for the fixed-hue Arudha/Special-Lagna/
+ * Upagraha markers; `className` is the theme-responsive Tailwind class for
+ * planet cells (`PLANET_TEXT_CLASS`) — exactly one of the two is set.
+ */
 interface CellContent {
   label: string
-  color: string
+  color?: string
+  className?: string
 }
 
 function getCellContent(signNumber: number, chart: ChartData): CellContent[] {
@@ -47,10 +38,7 @@ function getCellContent(signNumber: number, chart: ChartData): CellContent[] {
     if (p.signNumber === signNumber) {
       const abbr = PLANET_ABBR[p.planet] ?? p.planet.substring(0, 2)
       const label = (p.retrograde ? `(${abbr})` : abbr) + dignitySuffix(p.dignity, p.vargottama)
-      items.push({
-        label,
-        color: PLANET_COLORS[p.planet] ?? '#e5e7eb',
-      })
+      items.push({ label, className: PLANET_TEXT_CLASS })
     }
   }
 
@@ -131,6 +119,7 @@ function SignCell({
             dominantBaseline="central"
             fontSize="10"
             fill={item.color}
+            className={item.className}
           >
             {item.label}
           </text>

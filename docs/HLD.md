@@ -178,7 +178,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 | Page | Route | Purpose |
 |---|---|---|
-| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts; tabs incl. **Varshaphal** (annual solar-return chart per year) |
+| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
@@ -242,6 +242,7 @@ engine/
 │   ├── index.ts           # computeFullChart() — orchestrates all modules below
 │   ├── planets.ts         # planet longitudes, signs, houses
 │   ├── nakshatras.ts      # nakshatra, pada, sub-lord
+│   ├── dignity.ts         # MOOLATRIKONA_RANGES (degree-aware D1 rule), getVargaDignityLabel (optional degreeInSign param), getVargaDignityReason() — consumed by divisional.ts, yogas.ts, scoring.ts, UI KeyDignitiesPanel
 │   ├── divisional.ts      # divisional charts incl. D2, D3, D12 (new) + D4/D7/D9/D10/D30
 │   ├── ashtakavarga.ts    # BAV/SAV
 │   ├── karakas.ts         # Jaimini chara karakas
@@ -249,7 +250,7 @@ engine/
 │   ├── specialLagnas.ts   # HL, GL, SL, etc.
 │   ├── upagrahas.ts       # Gulika, Mandi + solar-derived upagrahas
 │   ├── pindaStrength.ts   # pinda strength
-│   ├── transits.ts        # transits + Sade Sati
+│   ├── transits.ts        # transits + BOTH Sade Sati readings: sign-based (computeSadeSatiPeriods, asOfDate-driven isCurrent) and degree-based (computeDegreeSadeSati → TransitAnalysis.sadeSatiByDegree, Saturn ±45° of natal Moon, 138-day merge threshold)
 │   ├── shadbala.ts        # NEW — full 6-component Shadbala (deterministic 1C)
 │   ├── relationships.ts   # NEW — conjunctions, aspects, yuddha, parivartana… (deterministic 1D)
 │   ├── nakshatraRelationships.ts # NEW — sub-lords, depositor chains, parivartana, clusters
@@ -667,11 +668,12 @@ PRACTITIONER
            ▼
 ┌────────────────────────┐
 │  UI displays results   │
-│  (tabs: divisional,    │
-│   planets, nakshatras, │
-│   karakas, ashtaka,    │
-│   dasha, transits,     │
-│   pinda, varshaphal)   │
+│  (10 tabs: summary,    │
+│   grahas, divisional,  │
+│   ashtakavarga, yogas, │
+│   dasha, chara dasha,  │
+│   transits, pinda,     │
+│   varshaphal)          │
 └──────────┬─────────────┘
            │ User clicks "Save Chart"
            │ POST /api/unified-charts/from-compute  (was /api/compute/save)

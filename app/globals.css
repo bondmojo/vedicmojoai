@@ -37,7 +37,7 @@
 
   /* Primary text color (replaces bare `text-white` usages via the `ink`
      Tailwind color) — near-black in light mode, white in dark mode. */
-  --color-ink: 17, 24, 39;
+  --color-ink: 17 24 39;
 
   /*
    * MIRRORED scale: light-mode gray-N = dark-mode's gray-(mirror of N), so
@@ -46,104 +46,108 @@
    * rarely used) become the darkest — giving correct contrast for text,
    * borders, and surfaces without per-usage rewrites.
    */
-  --color-gray-50: 3, 7, 18;      /* mirrors dark gray-950 */
-  --color-gray-100: 17, 24, 39;   /* mirrors dark gray-900 */
-  --color-gray-200: 31, 41, 55;   /* mirrors dark gray-800 */
-  --color-gray-300: 55, 65, 81;   /* mirrors dark gray-700 */
-  --color-gray-400: 75, 85, 99;   /* mirrors dark gray-600 */
-  --color-gray-500: 107, 114, 128;/* self-paired (midpoint) */
-  --color-gray-600: 156, 163, 175;/* mirrors dark gray-400 */
-  --color-gray-700: 209, 213, 219;/* mirrors dark gray-300 */
-  --color-gray-800: 229, 231, 235;/* mirrors dark gray-200 */
-  --color-gray-900: 243, 244, 246;/* mirrors dark gray-100 */
-  --color-gray-950: 249, 250, 251;/* mirrors dark gray-50 */
+  --color-gray-50: 3 7 18;      /* mirrors dark gray-950 */
+  --color-gray-100: 17 24 39;   /* mirrors dark gray-900 */
+  --color-gray-200: 31 41 55;   /* mirrors dark gray-800 */
+  --color-gray-300: 55 65 81;   /* mirrors dark gray-700 */
+  --color-gray-400: 75 85 99;   /* mirrors dark gray-600 */
+  --color-gray-500: 107 114 128;/* self-paired (midpoint) */
+  --color-gray-600: 156 163 175;/* mirrors dark gray-400 */
+  --color-gray-700: 209 213 219;/* mirrors dark gray-300 */
+  --color-gray-800: 229 231 235;/* mirrors dark gray-200 */
+  --color-gray-900: 243 244 246;/* mirrors dark gray-100 */
+  --color-gray-950: 249 250 251;/* mirrors dark gray-50 */
 
-  --color-slate-50: 2, 6, 23;
-  --color-slate-100: 15, 23, 42;
-  --color-slate-200: 30, 41, 59;
-  --color-slate-300: 51, 65, 85;
-  --color-slate-400: 71, 85, 105;
-  --color-slate-500: 100, 116, 139;
-  --color-slate-600: 148, 163, 184;
-  --color-slate-700: 203, 213, 225;
-  --color-slate-800: 226, 232, 240;
-  --color-slate-900: 241, 245, 249;
-  --color-slate-950: 248, 250, 252;
+  --color-slate-50: 2 6 23;
+  --color-slate-100: 15 23 42;
+  --color-slate-200: 30 41 59;
+  --color-slate-300: 51 65 85;
+  --color-slate-400: 71 85 105;
+  --color-slate-500: 100 116 139;
+  --color-slate-600: 148 163 184;
+  --color-slate-700: 203 213 225;
+  --color-slate-800: 226 232 240;
+  --color-slate-900: 241 245 249;
+  --color-slate-950: 248 250 252;
 
   /* ─── Brand Primary Palette (Indigo) ─── */
-  --brand-primary-50: 238, 240, 255;
-  --brand-primary-100: 215, 219, 254;
-  --brand-primary-200: 183, 190, 253;
-  --brand-primary-300: 145, 155, 250;
-  --brand-primary-400: 114, 125, 246;
-  --brand-primary-500: 79, 90, 213;
-  --brand-primary-600: 63, 71, 179;
-  --brand-primary-700: 52, 57, 148;
-  --brand-primary-800: 42, 46, 115;
-  --brand-primary-900: 35, 38, 90;
-  --brand-primary-950: 24, 25, 59;
+  --brand-primary-50: 238 240 255;
+  --brand-primary-100: 215 219 254;
+  --brand-primary-200: 183 190 253;
+  --brand-primary-300: 145 155 250;
+  --brand-primary-400: 114 125 246;
+  --brand-primary-500: 79 90 213;
+  --brand-primary-600: 63 71 179;
+  --brand-primary-700: 52 57 148;
+  --brand-primary-800: 42 46 115;
+  --brand-primary-900: 35 38 90;
+  --brand-primary-950: 24 25 59;
 
   /* ─── Brand Accent Palette (Gold) ─── */
-  --brand-accent-50: 255, 251, 235;
-  --brand-accent-100: 254, 243, 199;
-  --brand-accent-200: 253, 230, 138;
-  --brand-accent-300: 251, 212, 77;
-  --brand-accent-400: 245, 189, 44;
-  --brand-accent-500: 180, 130, 15;
-  --brand-accent-600: 148, 103, 10;
-  --brand-accent-700: 118, 79, 8;
-  --brand-accent-800: 96, 63, 9;
-  --brand-accent-900: 78, 51, 10;
-  --brand-accent-950: 46, 28, 6;
+  --brand-accent-50: 255 251 235;
+  --brand-accent-100: 254 243 199;
+  --brand-accent-200: 253 230 138;
+  --brand-accent-300: 251 212 77;
+  --brand-accent-400: 245 189 44;
+  --brand-accent-500: 180 130 15;
+  --brand-accent-600: 148 103 10;
+  --brand-accent-700: 118 79 8;
+  --brand-accent-800: 96 63 9;
+  --brand-accent-900: 78 51 10;
+  --brand-accent-950: 46 28 6;
 
   /* ─── Semantic: Favorability ─── */
-  --color-favorable: 22, 101, 52;
-  --color-favorable-muted: 220, 252, 231;
-  --color-unfavorable: 153, 27, 27;
-  --color-unfavorable-muted: 254, 226, 226;
-  --color-cautionary: 146, 98, 8;
-  --color-cautionary-muted: 254, 243, 199;
+  --color-favorable: 22 101 52;
+  --color-favorable-muted: 220 252 231;
+  --color-unfavorable: 153 27 27;
+  --color-unfavorable-muted: 254 226 226;
+  --color-cautionary: 146 98 8;
+  --color-cautionary-muted: 254 243 199;
 
   /* ─── Semantic: Dasha Period Levels ─── */
-  --color-period-md: 79, 90, 213;
-  --color-period-ad: 17, 148, 132;
-  --color-period-pd: 180, 130, 15;
+  --color-period-md: 79 90 213;
+  --color-period-ad: 17 148 132;
+  --color-period-pd: 180 130 15;
 
   /* ─── Semantic: Planet Colors ─── */
-  --color-planet-sun: 194, 88, 10;
-  --color-planet-moon: 51, 65, 85;
-  --color-planet-mars: 185, 28, 28;
-  --color-planet-mercury: 21, 128, 61;
-  --color-planet-jupiter: 161, 130, 7;
-  --color-planet-venus: 190, 24, 93;
-  --color-planet-saturn: 30, 86, 160;
-  --color-planet-rahu: 75, 85, 99;
-  --color-planet-ketu: 126, 58, 191;
+  --color-planet-sun: 194 88 10;
+  --color-planet-moon: 51 65 85;
+  --color-planet-mars: 185 28 28;
+  --color-planet-mercury: 21 128 61;
+  --color-planet-jupiter: 161 130 7;
+  --color-planet-venus: 190 24 93;
+  --color-planet-saturn: 30 86 160;
+  --color-planet-rahu: 75 85 99;
+  --color-planet-ketu: 126 58 191;
 
   /* ─── Semantic: Sade Sati Phases ─── */
-  --color-sade-sati-rising-border: 180, 98, 5;
-  --color-sade-sati-rising-bg: 254, 243, 199;
-  --color-sade-sati-rising-text: 146, 98, 8;
-  --color-sade-sati-peak-border: 185, 28, 28;
-  --color-sade-sati-peak-bg: 254, 226, 226;
-  --color-sade-sati-peak-text: 153, 27, 27;
-  --color-sade-sati-setting-border: 30, 86, 160;
-  --color-sade-sati-setting-bg: 219, 234, 254;
-  --color-sade-sati-setting-text: 30, 64, 175;
+  --color-sade-sati-rising-border: 180 98 5;
+  --color-sade-sati-rising-bg: 254 243 199;
+  --color-sade-sati-rising-text: 146 98 8;
+  --color-sade-sati-peak-border: 185 28 28;
+  --color-sade-sati-peak-bg: 254 226 226;
+  --color-sade-sati-peak-text: 153 27 27;
+  --color-sade-sati-setting-border: 30 86 160;
+  --color-sade-sati-setting-bg: 219 234 254;
+  --color-sade-sati-setting-text: 30 64 175;
 
   /* ─── Semantic: House Role Classification ─── */
-  --color-role-primary-bg: 254, 243, 199;
-  --color-role-primary-text: 146, 98, 8;
-  --color-role-primary-border: 217, 119, 6;
-  --color-role-benefic-bg: 220, 252, 231;
-  --color-role-benefic-text: 22, 101, 52;
-  --color-role-benefic-border: 34, 197, 94;
-  --color-role-malefic-bg: 254, 226, 226;
-  --color-role-malefic-text: 153, 27, 27;
-  --color-role-malefic-border: 185, 28, 28;
-  --color-role-neutral-bg: 229, 231, 235;
-  --color-role-neutral-text: 55, 65, 81;
-  --color-role-neutral-border: 209, 213, 219;
+  --color-role-primary-bg: 254 243 199;
+  --color-role-primary-text: 146 98 8;
+  --color-role-primary-border: 217 119 6;
+  --color-role-benefic-bg: 220 252 231;
+  --color-role-benefic-text: 22 101 52;
+  --color-role-benefic-border: 34 197 94;
+  --color-role-malefic-bg: 254 226 226;
+  --color-role-malefic-text: 153 27 27;
+  --color-role-malefic-border: 185 28 28;
+  --color-role-neutral-bg: 229 231 235;
+  --color-role-neutral-text: 55 65 81;
+  --color-role-neutral-border: 209 213 219;
+
+  /* ─── Semantic: Ashtakavarga Bindu Band (Moderate) ─── */
+  --color-moderate: 55 65 81;          /* gray-700 — text */
+  --color-moderate-muted: 229 231 235; /* gray-200 — surface */
 
   /* shadcn/ui tokens (light) — soft borders, white cards, very light gray
      app background, per the premium SaaS redesign reference. */
@@ -174,107 +178,111 @@
   --background-start-rgb: 15, 15, 20;
   --background-end-rgb: 25, 25, 35;
 
-  --color-ink: 255, 255, 255;
+  --color-ink: 255 255 255;
 
   /* Tailwind's default gray/slate scale (unchanged from before this change). */
-  --color-gray-50: 249, 250, 251;
-  --color-gray-100: 243, 244, 246;
-  --color-gray-200: 229, 231, 235;
-  --color-gray-300: 209, 213, 219;
-  --color-gray-400: 156, 163, 175;
-  --color-gray-500: 107, 114, 128;
-  --color-gray-600: 75, 85, 99;
-  --color-gray-700: 55, 65, 81;
-  --color-gray-800: 31, 41, 55;
-  --color-gray-900: 17, 24, 39;
-  --color-gray-950: 3, 7, 18;
+  --color-gray-50: 249 250 251;
+  --color-gray-100: 243 244 246;
+  --color-gray-200: 229 231 235;
+  --color-gray-300: 209 213 219;
+  --color-gray-400: 156 163 175;
+  --color-gray-500: 107 114 128;
+  --color-gray-600: 75 85 99;
+  --color-gray-700: 55 65 81;
+  --color-gray-800: 31 41 55;
+  --color-gray-900: 17 24 39;
+  --color-gray-950: 3 7 18;
 
-  --color-slate-50: 248, 250, 252;
-  --color-slate-100: 241, 245, 249;
-  --color-slate-200: 226, 232, 240;
-  --color-slate-300: 203, 213, 225;
-  --color-slate-400: 148, 163, 184;
-  --color-slate-500: 100, 116, 139;
-  --color-slate-600: 71, 85, 105;
-  --color-slate-700: 51, 65, 85;
-  --color-slate-800: 30, 41, 59;
-  --color-slate-900: 15, 23, 42;
-  --color-slate-950: 2, 6, 23;
+  --color-slate-50: 248 250 252;
+  --color-slate-100: 241 245 249;
+  --color-slate-200: 226 232 240;
+  --color-slate-300: 203 213 225;
+  --color-slate-400: 148 163 184;
+  --color-slate-500: 100 116 139;
+  --color-slate-600: 71 85 105;
+  --color-slate-700: 51 65 85;
+  --color-slate-800: 30 41 59;
+  --color-slate-900: 15 23 42;
+  --color-slate-950: 2 6 23;
 
   /* ─── Brand Primary Palette (Indigo) — dark mode ─── */
-  --brand-primary-50: 238, 240, 255;
-  --brand-primary-100: 215, 219, 254;
-  --brand-primary-200: 183, 190, 253;
-  --brand-primary-300: 145, 155, 250;
-  --brand-primary-400: 114, 125, 246;
-  --brand-primary-500: 93, 106, 241;
-  --brand-primary-600: 73, 82, 205;
-  --brand-primary-700: 60, 66, 168;
-  --brand-primary-800: 49, 53, 131;
-  --brand-primary-900: 40, 43, 102;
-  --brand-primary-950: 27, 28, 67;
+  --brand-primary-50: 238 240 255;
+  --brand-primary-100: 215 219 254;
+  --brand-primary-200: 183 190 253;
+  --brand-primary-300: 145 155 250;
+  --brand-primary-400: 114 125 246;
+  --brand-primary-500: 93 106 241;
+  --brand-primary-600: 73 82 205;
+  --brand-primary-700: 60 66 168;
+  --brand-primary-800: 49 53 131;
+  --brand-primary-900: 40 43 102;
+  --brand-primary-950: 27 28 67;
 
   /* ─── Brand Accent Palette (Gold) — dark mode ─── */
-  --brand-accent-50: 255, 251, 235;
-  --brand-accent-100: 254, 243, 199;
-  --brand-accent-200: 253, 230, 138;
-  --brand-accent-300: 251, 212, 77;
-  --brand-accent-400: 245, 189, 44;
-  --brand-accent-500: 217, 161, 28;
-  --brand-accent-600: 178, 125, 14;
-  --brand-accent-700: 142, 97, 10;
-  --brand-accent-800: 115, 77, 11;
-  --brand-accent-900: 94, 62, 12;
-  --brand-accent-950: 55, 34, 8;
+  --brand-accent-50: 255 251 235;
+  --brand-accent-100: 254 243 199;
+  --brand-accent-200: 253 230 138;
+  --brand-accent-300: 251 212 77;
+  --brand-accent-400: 245 189 44;
+  --brand-accent-500: 217 161 28;
+  --brand-accent-600: 178 125 14;
+  --brand-accent-700: 142 97 10;
+  --brand-accent-800: 115 77 11;
+  --brand-accent-900: 94 62 12;
+  --brand-accent-950: 55 34 8;
 
   /* ─── Semantic: Favorability — dark mode ─── */
-  --color-favorable: 134, 239, 172;
-  --color-favorable-muted: 20, 83, 45;
-  --color-unfavorable: 252, 165, 165;
-  --color-unfavorable-muted: 127, 29, 29;
-  --color-cautionary: 252, 211, 77;
-  --color-cautionary-muted: 120, 53, 15;
+  --color-favorable: 134 239 172;
+  --color-favorable-muted: 20 83 45;
+  --color-unfavorable: 252 165 165;
+  --color-unfavorable-muted: 127 29 29;
+  --color-cautionary: 252 211 77;
+  --color-cautionary-muted: 120 53 15;
 
   /* ─── Semantic: Dasha Period Levels — dark mode ─── */
-  --color-period-md: 93, 106, 241;
-  --color-period-ad: 45, 212, 191;
-  --color-period-pd: 217, 161, 28;
+  --color-period-md: 93 106 241;
+  --color-period-ad: 45 212 191;
+  --color-period-pd: 217 161 28;
 
   /* ─── Semantic: Planet Colors — dark mode ─── */
-  --color-planet-sun: 251, 146, 60;
-  --color-planet-moon: 203, 213, 225;
-  --color-planet-mars: 248, 113, 113;
-  --color-planet-mercury: 74, 222, 128;
-  --color-planet-jupiter: 250, 204, 21;
-  --color-planet-venus: 244, 114, 182;
-  --color-planet-saturn: 96, 165, 250;
-  --color-planet-rahu: 156, 163, 175;
-  --color-planet-ketu: 192, 132, 252;
+  --color-planet-sun: 251 146 60;
+  --color-planet-moon: 203 213 225;
+  --color-planet-mars: 248 113 113;
+  --color-planet-mercury: 74 222 128;
+  --color-planet-jupiter: 250 204 21;
+  --color-planet-venus: 244 114 182;
+  --color-planet-saturn: 96 165 250;
+  --color-planet-rahu: 156 163 175;
+  --color-planet-ketu: 192 132 252;
 
   /* ─── Semantic: Sade Sati Phases — dark mode ─── */
-  --color-sade-sati-rising-border: 217, 119, 6;
-  --color-sade-sati-rising-bg: 120, 53, 15;
-  --color-sade-sati-rising-text: 253, 230, 138;
-  --color-sade-sati-peak-border: 220, 38, 38;
-  --color-sade-sati-peak-bg: 127, 29, 29;
-  --color-sade-sati-peak-text: 252, 165, 165;
-  --color-sade-sati-setting-border: 37, 99, 235;
-  --color-sade-sati-setting-bg: 30, 58, 138;
-  --color-sade-sati-setting-text: 147, 197, 253;
+  --color-sade-sati-rising-border: 217 119 6;
+  --color-sade-sati-rising-bg: 120 53 15;
+  --color-sade-sati-rising-text: 253 230 138;
+  --color-sade-sati-peak-border: 220 38 38;
+  --color-sade-sati-peak-bg: 127 29 29;
+  --color-sade-sati-peak-text: 252 165 165;
+  --color-sade-sati-setting-border: 37 99 235;
+  --color-sade-sati-setting-bg: 30 58 138;
+  --color-sade-sati-setting-text: 147 197 253;
 
   /* ─── Semantic: House Role Classification — dark mode ─── */
-  --color-role-primary-bg: 120, 53, 15;
-  --color-role-primary-text: 253, 230, 138;
-  --color-role-primary-border: 180, 98, 5;
-  --color-role-benefic-bg: 20, 83, 45;
-  --color-role-benefic-text: 134, 239, 172;
-  --color-role-benefic-border: 22, 163, 74;
-  --color-role-malefic-bg: 127, 29, 29;
-  --color-role-malefic-text: 252, 165, 165;
-  --color-role-malefic-border: 220, 38, 38;
-  --color-role-neutral-bg: 31, 41, 55;
-  --color-role-neutral-text: 209, 213, 219;
-  --color-role-neutral-border: 55, 65, 81;
+  --color-role-primary-bg: 120 53 15;
+  --color-role-primary-text: 253 230 138;
+  --color-role-primary-border: 180 98 5;
+  --color-role-benefic-bg: 20 83 45;
+  --color-role-benefic-text: 134 239 172;
+  --color-role-benefic-border: 22 163 74;
+  --color-role-malefic-bg: 127 29 29;
+  --color-role-malefic-text: 252 165 165;
+  --color-role-malefic-border: 220 38 38;
+  --color-role-neutral-bg: 31 41 55;
+  --color-role-neutral-text: 209 213 219;
+  --color-role-neutral-border: 55 65 81;
+
+  /* ─── Semantic: Ashtakavarga Bindu Band (Moderate) — dark mode ─── */
+  --color-moderate: 209 213 219;       /* gray-300 */
+  --color-moderate-muted: 31 41 55;    /* gray-800 */
 
   /* shadcn/ui tokens (dark) — matches the existing dark panel/border scale
      above (gray-900 cards, gray-800/700 borders) so new components blend in. */

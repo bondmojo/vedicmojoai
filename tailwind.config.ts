@@ -30,6 +30,12 @@ const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
+    // `lib/brandColors.ts` is a class-name source (PLANET_COLORS, LEVEL_STYLE,
+    // SADE_SATI_STYLE, BAND_STYLE, …). Without this glob its classes are only
+    // emitted when the same literal happens to appear in an app/ file — which
+    // silently purged `text-moderate` / `bg-moderate-muted`, the one pair that
+    // exists nowhere else.
+    "./lib/**/*.{ts,tsx}",
   ],
   theme: {
     container: {
@@ -136,6 +142,8 @@ const config: Config = {
         "unfavorable-muted": themedColor("--color-unfavorable-muted"),
         cautionary: themedColor("--color-cautionary"),
         "cautionary-muted": themedColor("--color-cautionary-muted"),
+        moderate: themedColor("--color-moderate"),
+        "moderate-muted": themedColor("--color-moderate-muted"),
         // ─── Semantic: Dasha Period Levels ───
         "period-md": themedColor("--color-period-md"),
         "period-ad": themedColor("--color-period-ad"),
