@@ -34,5 +34,15 @@
 | `/api/duration-analysis/[id]/override` | POST | Override symptom gate (status=symptom_unmatched → resume DA-3) |
 | `/api/duration-analysis/[id]/cancel` | POST | Cancel run (queued/running/symptom_unmatched → cancelled; pipeline unwinds at next checkpoint) |
 | `/api/health` | GET | Health check (DB + reports dir) |
+| `/api/auth/signup`, `/login`, `/logout`, `/forgot-password`, `/reset-password` | POST | User Management (`.kiro/specs/user-management/`) — custom credential routes, bypass Auth.js's own `signIn()`/`signOut()` |
+| `/api/account/mcp-token`, `/api/account/mcp-token/revoke` | GET/POST | Session-only MCP token issuance/revoke — raw token shown once |
 
+> **v1.5 — every route above except `/api/health` and the auth routes
+> themselves now starts with `const userId = await resolveRequestUser(request)`
+> (`lib/auth.ts`) and 401s if null.** Routes touching a specific
+> `UnifiedChart`/`PipelineRun`/`DurationAnalysis` additionally verify
+> `.userId === userId` (404, never 403, on mismatch) or filter list queries by
+> `userId`. `/api/compute` and `/api/compute/varshaphal` check identity only —
+> no ownership filter, since they're stateless with no persisted resource.
+> New routes should follow this same pattern from the start.
 **Pattern:** Long-running operations return 202 immediately. Progress via SSE.

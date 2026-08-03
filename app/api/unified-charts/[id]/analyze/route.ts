@@ -23,6 +23,7 @@ import { executePipeline } from '@/engine/orchestrator'
 import { shouldSkipWave1, getWave1Cache } from '@/engine/waves/wave1'
 import { buildChartInputV1FromUnified } from '@/lib/chart-mapper'
 import { YOGAKARAKA } from '@/engine/constants'
+import { resolveRequestUser } from '@/lib/auth'
 import crypto from 'crypto'
 import type { ChartInputV1, QueryType, SSEEvent } from '@/lib/types'
 
@@ -59,6 +60,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   // Parse request body
   let body: unknown
   try {
@@ -82,7 +88,7 @@ export async function POST(
     where: { id: params.id },
   })
 
-  if (!unifiedChart) {
+  if (!unifiedChart || unifiedChart.userId !== userId) {
     return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
   }
 

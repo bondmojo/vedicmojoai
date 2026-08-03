@@ -15,17 +15,26 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { executeDurationPipeline } from '@/engine/durationAnalysis'
 import { reapStaleAnalyses } from '@/engine/durationAnalysis/reaper'
+import { resolveRequestUser } from '@/lib/auth'
 
 // ─── List Handler ────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   // Sweep stalled runs so history never shows an eternal "running".
   await reapStaleAnalyses()
 
   const unifiedChartId = request.nextUrl.searchParams.get('unifiedChartId') ?? undefined
 
   const analyses = await prisma.durationAnalysis.findMany({
-    where: unifiedChartId ? { unifiedChartId } : undefined,
+    where: {
+      unifiedChart: { userId },
+      ...(unifiedChartId ? { unifiedChartId } : {}),
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
     include: { unifiedChart: { select: { name: true } } },
@@ -68,6 +77,11 @@ const MAX_SPAN_DAYS = 3653 // 10 years
 // ─── Route Handler ───────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   // ── Parse body ──────────────────────────────────────────────────────
   let body: unknown
   try {
@@ -112,10 +126,10 @@ export async function POST(request: NextRequest) {
   // ── Load UnifiedChart ───────────────────────────────────────────────
   const chart = await prisma.unifiedChart.findUnique({
     where: { id: unifiedChartId },
-    select: { id: true, dashaTree: true },
+    select: { id: true, dashaTree: true, userId: true },
   })
 
-  if (!chart) {
+  if (!chart || chart.userId !== userId) {
     return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
   }
 

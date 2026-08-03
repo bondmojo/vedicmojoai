@@ -8,16 +8,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
 const RenameSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
 })
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const chart = await prisma.unifiedChart.findUnique({
       where: { id: params.id },
       include: {
@@ -39,7 +45,7 @@ export async function GET(
       },
     })
 
-    if (!chart) {
+    if (!chart || chart.userId !== userId) {
       return NextResponse.json(
         { error: 'Chart not found' },
         { status: 404 }
@@ -104,6 +110,11 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     let body: unknown
     try {
       body = await request.json()
@@ -121,9 +132,9 @@ export async function PATCH(
 
     const chart = await prisma.unifiedChart.findUnique({
       where: { id: params.id },
-      select: { id: true },
+      select: { id: true, userId: true },
     })
-    if (!chart) {
+    if (!chart || chart.userId !== userId) {
       return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
     }
 
@@ -149,16 +160,21 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const chart = await prisma.unifiedChart.findUnique({
       where: { id: params.id },
-      select: { id: true },
+      select: { id: true, userId: true },
     })
 
-    if (!chart) {
+    if (!chart || chart.userId !== userId) {
       return NextResponse.json(
         { error: 'Chart not found' },
         { status: 404 }

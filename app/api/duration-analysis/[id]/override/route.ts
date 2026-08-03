@@ -8,18 +8,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { resumeDurationPipeline } from '@/engine/durationAnalysis'
+import { resolveRequestUser } from '@/lib/auth'
 import type { DurationSSEEvent } from '@/lib/durationTypes'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   const analysis = await prisma.durationAnalysis.findUnique({
     where: { id: params.id },
-    select: { status: true },
+    select: { status: true, unifiedChart: { select: { userId: true } } },
   })
 
-  if (!analysis) {
+  if (!analysis || analysis.unifiedChart.userId !== userId) {
     return NextResponse.json({ error: 'Analysis not found' }, { status: 404 })
   }
 

@@ -10,15 +10,21 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const lagna = searchParams.get('lagna')
     const source = searchParams.get('source')
 
-    const where: any = {}
+    const where: any = { userId }
 
     if (search) {
       where.name = { contains: search, mode: 'insensitive' }

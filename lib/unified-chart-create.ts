@@ -24,10 +24,12 @@ export interface BirthDataInput {
   /** When set, re-saving edited birth data updates this chart in place
    *  instead of creating a new row (see handleSaveChart in app/page.tsx). */
   existingChartId?: string
+  /** Owning user (Requirement 5.2) — stamped on create, never trusted from the request body. */
+  userId: string
 }
 
 export interface CreateUnifiedResult {
-  status: 'created' | 'updated' | 'duplicate'
+  status: 'created' | 'updated' | 'duplicate' | 'not_found'
   id: string
   name: string
   lagna?: string
@@ -80,11 +82,15 @@ export async function createUnifiedChartFromBirthData(
   const serializedDasha = serializeDashaTree(dashaTree)
 
   // Map to UnifiedChart create input
-  const createInput = mapComputedToUnified(chart, serializedDasha, input.name)
+  const mapped = mapComputedToUnified(chart, serializedDasha, input.name)
+  const createInput = { ...mapped, userId: input.userId }
 
-  // Dedup on chartHash (same birth data)
+  // Dedup on chartHash, scoped to this user — the same birth data may
+  // legitimately be saved by two different practitioners (e.g. a shared
+  // client), so the uniqueness constraint (and this lookup) is per-user,
+  // never global.
   const existing = await prisma.unifiedChart.findUnique({
-    where: { chartHash: createInput.chartHash },
+    where: { userId_chartHash: { userId: input.userId, chartHash: createInput.chartHash } },
     select: { id: true, name: true },
   })
 
@@ -95,6 +101,15 @@ export async function createUnifiedChartFromBirthData(
   }
 
   if (input.existingChartId) {
+    // 404 (never 403, Decision 5) if the caller doesn't own the chart being edited.
+    const owned = await prisma.unifiedChart.findFirst({
+      where: { id: input.existingChartId, userId: input.userId },
+      select: { id: true },
+    })
+    if (!owned) {
+      return { status: 'not_found', id: input.existingChartId, name: input.name }
+    }
+
     const updated = await prisma.unifiedChart.update({
       where: { id: input.existingChartId },
       data: createInput,

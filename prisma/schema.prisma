@@ -70,7 +70,9 @@ model UnifiedChart {
   chartInputV1     Json?
 
   // ─── Deduplication & provenance ───
-  chartHash        String   @unique  // SHA-256 of canonical input
+  // Scoped per-user (not globally unique): two practitioners can each save a
+  // chart for the same birth data (e.g. a shared client) without colliding.
+  chartHash        String   // SHA-256 of canonical input
   sunriseMode      String   @default("precise")
 
   // ─── Timestamps ───
@@ -81,10 +83,112 @@ model UnifiedChart {
   pipelineRuns     PipelineRun[] @relation("UnifiedChartRuns")
   durationAnalyses DurationAnalysis[]
 
+  // ─── Ownership ───
+  // Tightened to required after prisma/backfill-owner.ts assigned every
+  // existing row to an owner (Requirement 6.2's additive-then-tighten step 2).
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, chartHash])
   @@index([name])
   @@index([lagna])
   @@index([source])
+  @@index([userId])
   @@map("unified_chart")
+}
+
+// ─── User Management ────────────────────────────────────────────────
+// Auth.js (NextAuth v5) with @auth/prisma-adapter, using database-backed
+// sessions and NO Credentials provider (providers: [] — @auth/core's
+// assertConfig hard-errors on "Credentials + database sessions" together).
+// See .kiro/specs/user-management/design.md for the integration note:
+// custom routes in app/api/auth/* create/delete Session rows directly via
+// the adapter rather than going through Auth.js's own signIn()/signOut().
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  accounts            Account[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  mcpApiTokens        McpApiToken[]
+  unifiedCharts       UnifiedChart[]
+
+  @@map("user")
+}
+
+// Auth.js PrismaAdapter standard shape — Account/VerificationToken are unused
+// in v1 (no OAuth providers) but kept so the adapter works as documented and
+// OAuth can be added later (still a Non-Goal) without a schema migration.
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+  @@map("account")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime @db.Timestamptz
+
+  @@index([userId])
+  @@map("session")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime @db.Timestamptz
+
+  @@unique([identifier, token])
+  @@map("verification_token")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@map("password_reset_token")
+}
+
+model McpApiToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  label      String?
+  lastUsedAt DateTime? @db.Timestamptz
+  revokedAt  DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@map("mcp_api_token")
 }
 
 model PipelineRun {

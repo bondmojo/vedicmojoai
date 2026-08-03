@@ -38,10 +38,15 @@ vi.mock('@/engine/llm', () => ({
   callLLM: vi.fn(),
 }))
 
+vi.mock('@/lib/auth', () => ({
+  resolveRequestUser: vi.fn().mockResolvedValue('user-1'),
+}))
+
 // ── Import after mocks are registered ────────────────────────────────
 import { POST } from '../app/api/runs/[id]/chat/route'
 import { prisma } from '../lib/db'
 import { callLLM } from '../engine/llm'
+import { resolveRequestUser } from '../lib/auth'
 
 // ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -80,6 +85,7 @@ const MOCK_RUN_DONE = {
   id: 'run-001',
   status: 'done',
   chart: { clientName: 'Test Client', lagna: 'Cancer' },
+  unifiedChart: { userId: 'user-1' },
   waveOutputs: [
     {
       agentId: '4C',
@@ -286,6 +292,24 @@ describe('POST /api/runs/[id]/chat — synthesis context in prompt', () => {
 })
 
 // ── Error handling ─────────────────────────────────────────────────────
+
+describe('POST /api/runs/[id]/chat — ownership', () => {
+  it('returns 401 when the caller has no identity', async () => {
+    ;(resolveRequestUser as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+
+    const req = makeRequest({ message: 'Hello?' })
+    const res = await POST(req, { params: { id: 'run-001' } })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 (never 403) when a different user requests the run', async () => {
+    ;(resolveRequestUser as ReturnType<typeof vi.fn>).mockResolvedValueOnce('someone-else')
+
+    const req = makeRequest({ message: 'Hello?' })
+    const res = await POST(req, { params: { id: 'run-001' } })
+    expect(res.status).toBe(404)
+  })
+})
 
 describe('POST /api/runs/[id]/chat — error handling', () => {
   it('should return 404 if run does not exist', async () => {

@@ -44,11 +44,22 @@ interface SerializedPratyanDasha {
   duration_days: number
 }
 
-/** The Prisma create input shape for UnifiedChart (without id, timestamps). */
+/**
+ * The Prisma create input shape for UnifiedChart (without id, timestamps).
+ * Based on the "Unchecked" variant so callers can set the scalar `userId`
+ * FK directly (Requirement 5.2) without colliding with Prisma's relational
+ * `user` field, which would make the checked/unchecked union ambiguous.
+ *
+ * `userId` is re-added as optional here even though the column is required
+ * in the DB (Requirement 6.2's tightened schema) — the mappers below build
+ * chart data from birth input / pasted JSON and never know the caller's
+ * identity. Callers (lib/unified-chart-create.ts, from-paste/route.ts) always
+ * merge in a concrete `userId` before the object reaches `prisma.*.create()`.
+ */
 export type UnifiedChartCreateInput = Omit<
-  Prisma.UnifiedChartCreateInput,
-  'id' | 'createdAt' | 'updatedAt' | 'pipelineRuns'
->
+  Prisma.UnifiedChartUncheckedCreateInput,
+  'id' | 'createdAt' | 'updatedAt' | 'pipelineRuns' | 'durationAnalyses' | 'userId'
+> & { userId?: string }
 
 // ─── Path A: ComputedChart → UnifiedChart ───────────────────────────
 

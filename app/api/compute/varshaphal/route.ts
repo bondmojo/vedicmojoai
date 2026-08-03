@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { computeVarshaphal } from '@/engine/compute/varshaphal'
+import { resolveRequestUser } from '@/lib/auth'
 
 const VarshaphalInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
@@ -31,6 +32,11 @@ const VarshaphalInputSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const body = await request.json()
     const parsed = VarshaphalInputSchema.safeParse(body)
     if (!parsed.success) {

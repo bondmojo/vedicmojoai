@@ -83,3 +83,19 @@ export class LLMCallError extends Error {
     this.model = model
   }
 }
+
+/** Thrown by signup when the email is already registered to an existing User. */
+export class EmailAlreadyRegisteredError extends Error {
+  constructor(message = 'An account with this email already exists.') {
+    super(message)
+    this.name = 'EmailAlreadyRegisteredError'
+  }
+}
+
+/** Thrown by reset-password when the token is missing, expired, used, or malformed. */
+export class InvalidResetTokenError extends Error {
+  constructor(message = 'This password reset link is invalid or has expired.') {
+    super(message)
+    this.name = 'InvalidResetTokenError'
+  }
+}

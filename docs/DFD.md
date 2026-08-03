@@ -1,12 +1,29 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.3
-**Last updated:** 2026-07-11
+**Version:** 1.5
+**Last updated:** 2026-08-03
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
 > stores, or flows — together with the AI Skills, ERD, and HLD. See
 > `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.5
+
+- Added **P12 — User Management & Auth** and data stores **D10: User**,
+  **D11: Session**, **D12: PasswordResetToken**, **D13: McpApiToken**
+  (`Account`/`VerificationToken` are Auth.js adapter plumbing, unused in v1 —
+  no data flows of their own yet).
+- Every flow into **D7: UnifiedChart** (and anything hung off it — D2, D4,
+  D5, D8, D9, and `FS: reports/`) now carries a `userId`, resolved once via
+  `resolveRequestUser` and enforced as an ownership check before the flow
+  proceeds — a mismatch returns 404, not the data. This isn't drawn as a
+  separate arrow on every existing process box; treat it as a cross-cutting
+  gate this version adds in front of P1, P8, P9, P10, and P11's read flows.
+- **P11 (MCP Server)** auth flow changes: `x-mcp-token` now resolves through
+  D13: McpApiToken to a `userId` (P12.2) instead of a static shared-secret
+  compare. Behavior for `tests/mcp-cost-guard.test.ts` is unchanged — no new
+  `mcp/src` call sites were added.
 
 ## What changed in v1.1
 
@@ -161,6 +178,10 @@ Data Stores:
   D7: UnifiedChart   — canonical chart store, column-per-domain JSONB (source=compute|paste)
   D8: DurationAnalysis — duration analysis runs (periodSlice, transitOverlay, da1-3 outputs, errorMessage)
   D9: DurationMessage  — duration analysis conversation thread (role, content, analysisId)
+  D10: User            — practitioner accounts (email, passwordHash, name)
+  D11: Session         — database-backed sessions (sessionToken, userId, expires)
+  D12: PasswordResetToken — reset tokens (tokenHash, expiresAt, usedAt)
+  D13: McpApiToken     — per-user MCP credentials (tokenHash, label, lastUsedAt, revokedAt)
   FS: reports/       — HTML report files on disk
 ```
 
@@ -807,6 +828,52 @@ CLAUDE DESKTOP
 | timeline | P11 → `/api/timeline` | scored MD/AD/PD periods + peaks + transit overlay |
 | knowledge | P11 → `/api/knowledge` | domain/framework rubric text (include-expanded) |
 | reports | P11 → runs / duration reads | already-generated results (no new cost) |
+
+---
+
+## Level 2 — P12: User Management & Auth (NEW in v1.5)
+
+```
+PRACTITIONER (browser)                          CLAUDE DESKTOP (MCP)
+     │ email + password                                │ x-mcp-token header
+     ▼                                                  ▼
+┌─────────────────────┐                        ┌─────────────────────┐
+│ P12.1 CREDENTIAL     │                        │ P12.2 MCP TOKEN      │
+│ AUTH (signup/login/  │──── Session row ─────► │ RESOLUTION           │
+│ logout/forgot/reset) │      D11: Session      │ (resolveMcpUser)     │
+│ bcrypt hash+verify    │──── User row ────────► │──── userId ─────────► (falls back into
+│ (bypasses Auth.js's   │      D10: User         │      or null          resolveRequestUser
+│  signIn()/signOut())  │──── reset token ─────► │                       when no session
+│                       │      D12: PasswordReset│                       cookie is present)
+└──────────┬────────────┘      Token             └───────────┬──────────┘
+           │ session cookie                                  │ D13: McpApiToken
+           ▼ (authjs.session-token)                           │ (tokenHash → userId,
+┌──────────────────────────────────────────────┐              │  lastUsedAt update)
+│ P12.3 resolveRequestUser (lib/auth.ts)         │◄────────────┘
+│ session cookie → auth() ─┐                     │
+│                          ├─► userId (or null) ─┼───► every ownership check in
+│ no session → P12.2 ──────┘                     │     P1/P8/P9/P10/P11 (404 on
+└────────────────────────────────────────────────┘     mismatch, never 403)
+
+  MCP token issuance is a session-gated WEB action, not something P11 (the
+  MCP process) calls itself:
+  PRACTITIONER → POST /api/account/mcp-token (session-only, P12.1's session
+  required) → raw token shown once → D13: McpApiToken (hash only, stored).
+  This is why P11's HTTP client code (mcp/src/http.ts, mcp/src/tools.ts)
+  needed ZERO changes — it already sent an opaque x-mcp-token string; only
+  what that string resolves to changed.
+```
+
+**P12 data flows**
+
+| Flow | From → To | Payload |
+|---|---|---|
+| signup/login | Practitioner → P12.1 → D10/D11 | email, bcrypt hash, session row |
+| logout | Practitioner → P12.1 → D11 | delete session row |
+| forgot/reset | Practitioner → P12.1 → D10/D12 | reset token hash, new password hash; deletes ALL D11 rows for that user |
+| mcp token issuance | Practitioner (session) → D13 | raw token (shown once), hash persisted |
+| mcp identity resolution | P11 → P12.2 → D13 | `x-mcp-token` → userId, `lastUsedAt` touch |
+| ownership gate | P1/P8/P9/P10/P11 → P12.3 | userId resolved once per request, reused for every ownership check |
 
 ---
 

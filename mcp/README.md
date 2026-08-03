@@ -108,12 +108,30 @@ editing this file; it's only read on launch.
 | Var | Default | Purpose |
 |---|---|---|
 | `VEDICMOJO_BASE_URL` | `http://localhost:3000` | Base URL of the running Next.js app |
-| `MCP_TOKEN` | *(unset)* | Optional shared secret. If set here **and** in the app's env, the server sends it as `x-mcp-token` and the new read routes require it. |
+| `MCP_TOKEN` | *(required)* | Your **personal** MCP token — see "Getting your MCP token" below. Sent as `x-mcp-token` on every request; the app resolves it to your account and enforces the same per-user chart ownership a browser session would. |
 
 If the app is running via Docker Compose, it's still reachable at
 `http://localhost:3000` (the compose file publishes that port to the host),
 so `VEDICMOJO_BASE_URL`'s default is correct either way — nothing to change
 here based on deployment option.
+
+### Getting your MCP token
+
+As of the `user-management` feature, `MCP_TOKEN` is no longer a shared secret
+you invent — it's a per-user credential the web app issues you:
+
+1. Log in to the web app in your browser.
+2. Go to **Account** (`/account`) → **MCP Token** → **Generate token**.
+3. Copy the raw value shown — **it is displayed exactly once and never
+   shown again** (only its hash is stored). If you lose it, generate a new
+   one (this revokes the old one — v1 supports one active token per user).
+4. Paste it as `MCP_TOKEN` in Claude Desktop's config (see above) and fully
+   restart Claude Desktop.
+
+Every chart, run, and report the MCP tools return is scoped to the account
+that token belongs to — the same ownership boundary the web UI enforces.
+There's no local dev bypass unless the app operator has explicitly set
+`MCP_DEV_USER_EMAIL` in a non-production environment.
 
 ## Verify
 

@@ -5,14 +5,21 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   const run = await prisma.pipelineRun.findUnique({
     where: { id: params.id },
     include: {
+      unifiedChart: { select: { userId: true } },
       waveOutputs: {
         orderBy: [{ waveNumber: 'asc' }, { startedAt: 'asc' }],
         select: {
@@ -48,7 +55,7 @@ export async function GET(
     },
   })
 
-  if (!run) {
+  if (!run || run.unifiedChart?.userId !== userId) {
     return NextResponse.json({ error: 'Run not found' }, { status: 404 })
   }
 

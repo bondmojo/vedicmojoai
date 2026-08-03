@@ -1,12 +1,41 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.2
-**Last updated:** 2026-07-07
+**Version:** 1.5
+**Last updated:** 2026-08-03
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.5
+
+- Added **User Management** (`.kiro/specs/user-management/`): real accounts
+  (signup/login/logout/forgot-password), `UnifiedChart` (and everything hung
+  off it — runs, reports, Duration Analysis) is now owned per-user, and the
+  MCP server authenticates as a specific user instead of a shared secret.
+- **Auth.js (NextAuth v5)** + `@auth/prisma-adapter`, database-backed sessions.
+  Credential verification is fully custom (`app/api/auth/{signup,login,logout,
+  forgot-password,reset-password}`) — Auth.js's own `signIn()`/`signOut()` are
+  never called; see `lib/auth.ts`'s file header for why (`@auth/core` hard-
+  errors on "Credentials provider + database session strategy" as a config,
+  regardless of whether `signIn()` is ever invoked with it — so no Credentials
+  provider is registered at all, `providers: []`).
+- New `middleware.ts` — gates UI page routes (`/`, `/compute/**`,
+  `/unified-charts/**`, `/runs/**`, `/duration-analysis/**`,
+  `/duration-computation/**`, `/account/**`, `/reports/**`) on session-cookie
+  *presence* only (cheap, edge-safe, no DB hit); the real session-validity and
+  ownership check happens per-route via `lib/auth.ts`'s `resolveRequestUser`.
+- `lib/mcpAuth.ts`'s `requireMcpToken` (shared `MCP_TOKEN` secret, open when
+  unset) is replaced by `resolveMcpUser` — resolves a per-user `McpApiToken`
+  hash to a `userId`. `resolveRequestUser` tries the session cookie first,
+  then falls back to `resolveMcpUser`, so every route's ownership check is
+  written once and works for both browser and MCP callers.
+- New `lib/rateLimit.ts` — minimal in-memory sliding-window limiter on the
+  auth routes (stated limitation: doesn't survive a restart or work across
+  multiple instances — fine at this app's single-instance scale).
+- See §3.10 (new) and DFD's auth-layer notes for the request path, and
+  ERD v1.3 for the six new tables.
 
 ## What changed in v1.1
 
@@ -421,8 +450,50 @@ Three primitives:
   ingredients → cook" loop).
 
 Backed by two new read-only, no-LLM routes: `POST /api/timeline` and
-`GET /api/knowledge/**` (§3.2). Auth is an optional `MCP_TOKEN` shared secret
-(`lib/mcpAuth.ts`). Full details: `mcp/README.md`.
+`GET /api/knowledge/**` (§3.2). Auth resolves to a specific `User` via a
+per-user `McpApiToken` (§3.10) — the old shared `MCP_TOKEN` secret is gone.
+Full details: `mcp/README.md`.
+
+### 3.10 User Management & Auth Layer (`lib/auth.ts`, `middleware.ts`, v1.5)
+
+Net-new — the repo had zero auth infrastructure before this. **Auth.js
+(NextAuth v5)** + `@auth/prisma-adapter`, database-backed sessions:
+
+- `lib/auth.ts` — `PrismaAdapter(prisma)` configured with `session.strategy =
+  'database'` and `providers: []` (no Credentials provider is registered —
+  `@auth/core`'s config assertion hard-errors on "Credentials + database
+  sessions" as a *config shape*, independent of whether `signIn()` is ever
+  called with it). Exports `auth()` (session reads only), `resolveRequestUser`
+  (session cookie → `lib/mcpAuth.ts`'s `resolveMcpUser` fallback), and
+  `requireSessionUserId` (session-only, no MCP fallback — used by the MCP
+  token issuance routes so a token can't mint another token).
+- Custom routes under `app/api/auth/*` (signup, login, logout,
+  forgot-password, reset-password) bypass Auth.js's own `signIn()`/`signOut()`
+  entirely: they verify the bcrypt hash (`lib/passwords.ts`) and
+  create/delete `Session` rows directly via the Prisma adapter's
+  `createSession`/`deleteSession`, setting the `authjs.session-token` cookie
+  by hand. Password reset emails go through Resend (`lib/email.ts`).
+- `middleware.ts` guards UI page routes on session-cookie *presence* only
+  (edge-safe, no DB call) — redirects to `/login` if absent. It deliberately
+  does not import `lib/auth.ts` (that module pulls in the Prisma adapter,
+  not edge-compatible). The real validity/ownership check is always the
+  per-route `resolveRequestUser` call.
+- Every `UnifiedChart`-adjacent route (§8.2, Duration Analysis §8.3, reports,
+  runs) resolves a `userId` via `resolveRequestUser` and enforces ownership —
+  404 (never 403) on a mismatch, so a non-owner can't distinguish "doesn't
+  exist" from "exists but isn't yours."
+- MCP token lifecycle: `POST /api/account/mcp-token` (session-only,
+  generates + reveals a raw token exactly once, revokes any prior active
+  token — one active token per user in v1) and
+  `POST /api/account/mcp-token/revoke`. `lib/mcpAuth.ts`'s `resolveMcpUser`
+  hashes the incoming `x-mcp-token` header and looks up the owning `userId`;
+  a non-production `MCP_DEV_USER_EMAIL` fallback exists only when **no**
+  token header is sent at all (an invalid/revoked token never falls through
+  to it).
+- `lib/rateLimit.ts` — minimal in-memory sliding-window limiter applied to
+  the auth routes; explicitly does not survive a restart or work across
+  multiple instances (fine at this app's single-instance scale, flagged
+  rather than silently accepted).
 
 ---
 

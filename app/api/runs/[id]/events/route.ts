@@ -9,20 +9,26 @@
 
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   const runId = params.id
 
-  // Verify run exists
+  // Verify run exists and is owned by the caller
   const run = await prisma.pipelineRun.findUnique({
     where: { id: runId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, unifiedChart: { select: { userId: true } } },
   })
 
-  if (!run) {
+  if (!run || run.unifiedChart?.userId !== userId) {
     return new Response('Run not found', { status: 404 })
   }
 

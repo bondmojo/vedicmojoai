@@ -9,20 +9,26 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { isStale, STALE_RUN_MESSAGE } from '@/engine/durationAnalysis/reaper'
+import { resolveRequestUser } from '@/lib/auth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   const { id } = params
 
-  // Verify analysis exists before opening stream
+  // Verify analysis exists and is owned by the caller before opening stream
   const initial = await prisma.durationAnalysis.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, unifiedChart: { select: { userId: true } } },
   })
 
-  if (!initial) {
+  if (!initial || initial.unifiedChart.userId !== userId) {
     return new Response('Analysis not found', { status: 404 })
   }
 

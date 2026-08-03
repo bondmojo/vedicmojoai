@@ -1,12 +1,27 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
-**Version:** 1.2
-**Last updated:** 2026-07-07
+**Version:** 1.3
+**Last updated:** 2026-08-03
 **Status:** Draft
 
 > **Maintenance rule:** Whenever the data model changes (new table, column, index,
 > relation, or ingestion path), update this ERD **and** the AI Skills, HLD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.3
+
+- Added six User Management tables (`.kiro/specs/user-management/`): **`User`**,
+  **`Account`**/**`VerificationToken`** (Auth.js adapter shape, unused in v1 — no
+  OAuth providers), **`Session`** (database-backed sessions), **`PasswordResetToken`**,
+  **`McpApiToken`**.
+- `UnifiedChart` gains a required `userId` FK → `User` (nullable during the
+  `prisma/backfill-owner.ts` migration window, then tightened to `NOT NULL` —
+  see "UnifiedChart ownership" below). All chart CRUD, AI Analysis, Duration
+  Analysis, and MCP-facing routes now resolve a caller identity
+  (`lib/auth.ts`'s `resolveRequestUser`) and enforce ownership, 404 on mismatch.
+- `lib/mcpAuth.ts`'s `requireMcpToken` (static shared-secret gate) is replaced by
+  `resolveMcpUser` — resolves a per-user `McpApiToken` hash to a `userId` instead
+  of a boolean allow/deny.
 
 ## What changed in v1.1
 
@@ -146,8 +161,10 @@ compute path skip LLM Wave 1 entirely.
 │ ── AI pipeline input ──                        │
 │    chartInputV1      JSONB?  ChartInputV1      │
 │ ── dedup & provenance ──                       │
-│    chartHash         TEXT (U) SHA-256          │
+│    chartHash         TEXT     SHA-256          │
 │    sunriseMode       TEXT   default "precise"  │
+│ ── ownership (v1.3) ──                         │
+│ FK userId            TEXT   → User.id          │
 │    createdAt         TSTZ                      │
 │    updatedAt         TSTZ                      │
 └───────────────────────────────────────────────┘
@@ -161,7 +178,10 @@ compute path skip LLM Wave 1 entirely.
 | `paste` | Practitioner-supplied `ChartInputV1` JSON (Path B) | `null` | Full pasted input | **Full Wave 1–4** LLM pipeline |
 
 - Deduplication: `chartHash` is SHA-256 of the canonical input (birth params for
-  compute, full JSON for paste). Duplicate submissions return the existing record.
+  compute, full JSON for paste). Unique per-user (`@@unique([userId, chartHash])`,
+  not globally) — two practitioners can each independently save a chart for the
+  same birth data (e.g. a shared client). Duplicate submissions by the *same*
+  user return their existing record.
 - Format mapping lives in `lib/chart-mapper.ts`
   (`mapComputedToUnified`, `mapPastedToUnified`, `buildChartInputV1FromUnified`).
 - `relationships`, `shadbala`, `jaimini`, `bhavaBala` are produced by the
@@ -172,6 +192,87 @@ compute path skip LLM Wave 1 entirely.
   `relationships` + `dignity.ts` — Pancha Mahapurusha, Raja (incl. a distinctly-keyed
   `raja.dka` for Dharma-Karmadhipati), Dhana, Viparita (Harsha/Sarala/Vimala),
   Neechabhanga, the lunar yogas, Gaja Kesari, Budha-Aditya, Parivartana, and Kartari.
+
+---
+
+## User Management (v1.3) — `.kiro/specs/user-management/`
+
+Six new tables, all net-new (the repo had zero auth infrastructure before this
+feature). Auth.js (NextAuth v5) with `@auth/prisma-adapter`, using
+**database-backed sessions** and **no Credentials provider** (`providers: []`
+— see below for why). `Account` and `VerificationToken` are the adapter's
+standard OAuth shape, unused in v1 (no OAuth providers) but kept so the
+adapter works as documented and OAuth can be added later without a schema
+migration.
+
+```
+┌──────────────────────┐    1:N     ┌──────────────────────┐
+│         User          │───────────▶│       Session         │
+├──────────────────────┤            ├──────────────────────┤
+│ PK id           UUID   │            │ PK id           UUID  │
+│    email        TEXT(U)│            │    sessionToken TEXT(U)│
+│    passwordHash TEXT   │            │ FK userId       UUID  │
+│    name         TEXT?  │            │    expires      TSTZ  │
+│    createdAt    TSTZ   │            └──────────────────────┘
+│    updatedAt    TSTZ   │
+└──────────────────────┘
+   │ 1:N          │ 1:N              │ 1:N               │ 1:N
+   ▼              ▼                  ▼                   ▼
+┌──────────┐ ┌──────────────────┐ ┌──────────────────────┐ ┌──────────────────┐
+│ Account  │ │PasswordResetToken │ │    McpApiToken        │ │  UnifiedChart     │
+│(unused,  │ ├──────────────────┤ ├──────────────────────┤ │ (userId FK, v1.3) │
+│OAuth shape)│PK id        UUID  │ │ PK id           UUID  │ └──────────────────┘
+│          │ │FK userId    UUID  │ │ FK userId       UUID  │
+│          │ │   tokenHash TEXT(U)│ │    tokenHash    TEXT(U)│
+│          │ │   expiresAt TSTZ  │ │    label        TEXT? │
+│          │ │   usedAt    TSTZ? │ │    lastUsedAt   TSTZ? │
+│          │ │   createdAt TSTZ  │ │    revokedAt    TSTZ? │
+│          │ └──────────────────┘ │    createdAt    TSTZ  │
+└──────────┘                      └──────────────────────┘
+
+┌──────────────────────┐
+│  VerificationToken    │  (Auth.js adapter shape, unused in v1 — no OAuth/email providers)
+├──────────────────────┤
+│    identifier   TEXT  │
+│    token        TEXT(U)│
+│    expires      TSTZ  │
+└──────────────────────┘
+```
+
+- **`User`** — one row per practitioner account. `passwordHash` is bcrypt
+  (cost 12, `lib/passwords.ts`). Open self-serve signup, no email verification
+  (`POST /api/auth/signup`).
+- **`Session`** — database-backed sessions (not JWT). Created/deleted directly
+  via the Prisma adapter's `createSession`/`deleteSession` by the custom
+  `app/api/auth/{login,logout,signup}` routes — Auth.js's own `signIn()` is
+  never called for credentials (see `lib/auth.ts`'s file-header comment for
+  why: `@auth/core`'s `assertConfig` hard-errors on "Credentials + database
+  sessions" if a Credentials provider is registered at all, so `providers: []`
+  and credential verification is fully custom).
+- **`PasswordResetToken`** — `tokenHash` is SHA-256 of a random 32-byte token;
+  the raw token is only ever emailed (Resend, `lib/email.ts`), never stored.
+  ~45-minute expiry. On successful reset, every `Session` row for that
+  `userId` is deleted in the same transaction (all other logins invalidated).
+- **`McpApiToken`** — lets the MCP stdio process (`mcp/`) authenticate as a
+  specific `User` via the `x-mcp-token` header, replacing the old
+  `MCP_TOKEN` shared-secret gate. `tokenHash` is SHA-256 of a random 32-byte
+  token; the raw value is shown exactly once at generation
+  (`POST /api/account/mcp-token`, session-only) and never persisted or
+  re-displayed. v1 supports **one active token per user** — generating a new
+  one revokes the old one. `lastUsedAt` is updated best-effort on each
+  successful resolution and surfaced in the account settings UI.
+- **`UnifiedChart.userId`** — required FK to `User` (see the updated
+  `UnifiedChart` diagram above). Added nullable first, backfilled via
+  `prisma/backfill-owner.ts` (assigns every unowned chart to one operator
+  account), then tightened to `NOT NULL` in a follow-up migration —
+  the same additive-then-tighten pattern as `npm run db:migrate-saved`.
+- **Identity resolution** (`lib/auth.ts`'s `resolveRequestUser`): tries the
+  session cookie first (`auth()`), falls back to `lib/mcpAuth.ts`'s
+  `resolveMcpUser` (the `x-mcp-token` header). Every ownership check in the
+  app — `UnifiedChart`, `PipelineRun`, `DurationAnalysis`, reports — is
+  written once against this single function, so browser sessions and MCP
+  tokens are handled identically. Cross-account access returns **404, never
+  403** (avoids confirming a resource's existence to a non-owner).
   Injected into the compute-path `wave1_delta` under `1D` so Wave 2A (`2A` Yoga
   Detection) validates/interprets it instead of re-deriving formation; also read by
   the Duration-Analysis slicer (`sliceDashaTree`, which filters the catalogue by the
@@ -413,6 +514,10 @@ separate from the 18-agent wave pipeline.
 | UnifiedChart → PipelineRun | 1:N (nullable) | Each unified chart can back multiple AI analysis runs (`unifiedChartId`) |
 | UnifiedChart → DurationAnalysis | 1:N | Each unified chart can have multiple Duration Analysis runs |
 | DurationAnalysis → DurationMessage | 1:N | Each analysis has a conversation log |
+| User → UnifiedChart | 1:N | Each user owns multiple charts (`userId`, required) |
+| User → Session | 1:N | Database-backed sessions, one row per active login |
+| User → PasswordResetToken | 1:N | Historical reset attempts; only unexpired/unused rows are valid |
+| User → McpApiToken | 1:N | Historical tokens; only one non-revoked row per user in v1 |
 | SavedChart (standalone) | — | Legacy independent computed chart storage — READ-ONLY since the compute page moved to UnifiedChart; existing rows promoted via `npm run db:migrate-saved` |
 | Wave1Cache (standalone) | — | Caches expensive Wave 1 computations by chartHash |
 | ModelConfig (standalone) | — | AI model configuration per wave/agent — including DA-1, DA-2, DA-3 |

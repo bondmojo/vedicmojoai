@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { callLLM } from '@/engine/llm'
+import { resolveRequestUser } from '@/lib/auth'
 
 // ─── Input validation ───────────────────────────────────────────────
 
@@ -173,6 +174,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   // 1. Parse and validate input
   let body: unknown
   try {
@@ -201,6 +207,7 @@ export async function POST(
       chart: {
         select: { clientName: true, lagna: true },
       },
+      unifiedChart: { select: { userId: true } },
       waveOutputs: {
         where: { agentId: '4C', status: 'done' },
         select: { outputJson: true },
@@ -213,7 +220,7 @@ export async function POST(
     },
   })
 
-  if (!run) {
+  if (!run || run.unifiedChart?.userId !== userId) {
     return NextResponse.json({ error: 'Run not found' }, { status: 404 })
   }
 
