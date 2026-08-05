@@ -16,6 +16,7 @@
 import { NextRequest } from 'next/server'
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/db'
+import { hashOAuthToken, OAUTH_ACCESS_TOKEN_PREFIX } from '@/lib/oauth'
 
 export function hashMcpToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex')
@@ -31,6 +32,18 @@ export async function resolveMcpUser(request: NextRequest): Promise<string | nul
   const provided = request.headers.get('x-mcp-token')?.trim()
 
   if (provided) {
+    // OAuth-issued access tokens (app/api/oauth/token) carry a distinguishing
+    // prefix so this branches to the right table without a blind hash lookup
+    // against both on every single call — the manual McpApiToken path below
+    // is completely unchanged for tokens without this prefix.
+    if (provided.startsWith(OAUTH_ACCESS_TOKEN_PREFIX)) {
+      const tokenHash = hashOAuthToken(provided)
+      const oauthToken = await prisma.oAuthAccessToken.findFirst({
+        where: { tokenHash, expiresAt: { gt: new Date() } },
+      })
+      return oauthToken?.userId ?? null // expired/unknown OAuth token ⇒ never fall through
+    }
+
     const tokenHash = hashMcpToken(provided)
     const token = await prisma.mcpApiToken.findFirst({
       where: { tokenHash, revokedAt: null },

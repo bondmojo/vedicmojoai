@@ -11,12 +11,12 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { api } from './http.js'
+import type { ApiClient } from './http.js'
 
 type Domain = 'career' | 'health' | 'wealth' | 'marriage' | 'property' | 'cashflow'
 const DOMAINS: Domain[] = ['career', 'health', 'wealth', 'marriage', 'property', 'cashflow']
 
-async function loadRubric(domain: Domain): Promise<string> {
+async function loadRubric(api: ApiClient, domain: Domain): Promise<string> {
   try {
     return await api.getText(`/api/knowledge/domains/${domain}`)
   } catch (err) {
@@ -34,7 +34,7 @@ const COMPUTE_FIRST =
   'COMPUTE-FIRST CONTRACT: the engine scores (0–100), intensity, favorable flags, and peak ' +
   'windows are authoritative. Narrate and explain them — never override or invent different scores.'
 
-export function registerPrompts(server: McpServer): void {
+export function registerPrompts(server: McpServer, api: ApiClient): void {
   // ── Per-domain natal + timeline readings ──────────────────────────
   for (const domain of DOMAINS) {
     server.registerPrompt(
@@ -49,7 +49,7 @@ export function registerPrompts(server: McpServer): void {
         },
       },
       async (a) => {
-        const rubric = await loadRubric(domain)
+        const rubric = await loadRubric(api, domain)
         const range =
           a.dateFrom || a.dateTo
             ? `Focus window: ${a.dateFrom ?? 'today'} → ${a.dateTo ?? '+3 years'}.`
@@ -91,7 +91,7 @@ export function registerPrompts(server: McpServer): void {
       },
     },
     async (a) => {
-      const rubric = await loadRubric(a.domain as Domain)
+      const rubric = await loadRubric(api, a.domain as Domain)
       return userMessage(
         [
           `Produce a ${a.domain.toUpperCase()} duration reading for chart "${a.clientId}" over ${a.dateFrom} → ${a.dateTo}.`,

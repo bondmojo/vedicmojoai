@@ -119,6 +119,10 @@ model User {
   mcpApiTokens        McpApiToken[]
   unifiedCharts       UnifiedChart[]
 
+  oauthAuthorizationCodes OAuthAuthorizationCode[]
+  oauthAccessTokens       OAuthAccessToken[]
+  oauthRefreshTokens      OAuthRefreshToken[]
+
   @@map("user")
 }
 
@@ -189,6 +193,92 @@ model McpApiToken {
 
   @@index([userId])
   @@map("mcp_api_token")
+}
+
+// ─── MCP OAuth authorization server ────────────────────────────────
+// A second, additional way to get a token for POST /api/mcp — lets an
+// OAuth-aware remote client (e.g. claude.ai's "Add custom connector") obtain
+// one via browser redirect + login + consent instead of the manual
+// generate-and-paste flow above (McpApiToken, unchanged). Distinct from the
+// "OAuth" mentioned in the Account model's comment above, which refers to
+// social-login providers (this app as an OAuth *client*) — this section
+// makes this app an OAuth *server* issuing its own tokens to MCP clients.
+// See .kiro/specs (mcp-oauth) / docs/HLD.md §3.9 for the full design.
+//
+// v1 simplification, documented deliberately: no refresh-token-family
+// tracking. A replayed (already-rotated) refresh token is rejected on that
+// one request but doesn't cascade-revoke the rest of its lineage.
+model OAuthClient {
+  id                      String   @id @default(uuid())
+  clientId                String   @unique
+  clientSecretHash        String? // always null in v1 — every dynamically-registered client is public/PKCE-only
+  clientName              String?
+  redirectUris            String[]
+  grantTypes              String[] @default(["authorization_code", "refresh_token"])
+  responseTypes           String[] @default(["code"])
+  tokenEndpointAuthMethod String   @default("none")
+  createdAt               DateTime @default(now()) @db.Timestamptz
+
+  authorizationCodes OAuthAuthorizationCode[]
+  accessTokens       OAuthAccessToken[]
+  refreshTokens      OAuthRefreshToken[]
+
+  @@map("oauth_client")
+}
+
+model OAuthAuthorizationCode {
+  id                  String      @id @default(uuid())
+  codeHash            String      @unique
+  clientId            String
+  client              OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri         String
+  codeChallenge       String
+  codeChallengeMethod String      @default("S256")
+  resource            String?
+  scope               String?
+  expiresAt           DateTime    @db.Timestamptz
+  usedAt              DateTime?   @db.Timestamptz
+  createdAt           DateTime    @default(now()) @db.Timestamptz
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauth_authorization_code")
+}
+
+model OAuthAccessToken {
+  id        String      @id @default(uuid())
+  tokenHash String      @unique
+  clientId  String
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource  String?
+  scope     String?
+  expiresAt DateTime    @db.Timestamptz
+  createdAt DateTime    @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@index([clientId])
+  @@map("oauth_access_token")
+}
+
+model OAuthRefreshToken {
+  id        String      @id @default(uuid())
+  tokenHash String      @unique
+  clientId  String
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope     String?
+  expiresAt DateTime    @db.Timestamptz
+  revokedAt DateTime?   @db.Timestamptz
+  createdAt DateTime    @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@index([clientId])
+  @@map("oauth_refresh_token")
 }
 
 model PipelineRun {

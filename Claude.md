@@ -1,7 +1,7 @@
 # VedicMojoAI — Claude Desktop Guide
 
-**Version:** 1.1
-**Last updated:** 2026-08-03
+**Version:** 1.2
+**Last updated:** 2026-08-05
 
 This file orients Claude Desktop (and any AI assistant) working on VedicMojoAI. It
 mirrors the guidance in `Agents.md` and the Kiro AI Skills (`.kiro/skills/`) so the
@@ -98,33 +98,72 @@ it) owned per-user, and per-user MCP tokens.
   (`POST /api/account/mcp-token`, reveal-once, one active token per user) —
   not something the MCP process itself calls, so `mcp/src/*` needed zero
   changes; only what the `x-mcp-token` string resolves to changed.
-- Details: `docs/ERD.md` §User Management, `docs/HLD.md` §3.10, `docs/DFD.md`
-  §P12.
+- **MCP OAuth authorization server** (`app/.well-known/**`,
+  `app/oauth/authorize`, `app/api/oauth/*`) — a second, additional way to
+  get a token for `POST /api/mcp`, alongside the manual flow above (which is
+  unaffected). Lets an OAuth-aware client (e.g. claude.ai's "Add custom
+  connector") redirect the user through login + consent instead of
+  copy-pasting a token. `lib/mcpAuth.ts`'s `resolveMcpUser` resolves either
+  token type (an OAuth-issued access token carries a `mcp_oat_` prefix).
+  Requires `OAUTH_ISSUER_URL`. See "MCP server" below.
+- Details: `docs/ERD.md` §User Management / §MCP OAuth Authorization Server,
+  `docs/HLD.md` §3.9 / §3.10, `docs/DFD.md` §P11-OAuth / §P12.
 
 ---
 
 ## Architecture at a glance
 
 ```
-Browser (Next.js UI)                         Claude Desktop
-  → Next.js API routes (/app/api)  ◄──HTTP──   → MCP server (mcp/, stdio, no LLM)
+Browser (Next.js UI)         Claude Desktop            Remote MCP client
+  → Next.js API routes  ◄─HTTP── MCP server (mcp/,   ◄─HTTPS── POST /api/mcp
+    (/app/api)                    stdio, no LLM)               (in-app, no LLM)
     → Engine (/engine): compute (deterministic) + pipeline (LLM) + renderer
       → LLM providers (Anthropic / OpenAI via Vercel AI SDK)
   → PostgreSQL (Prisma) + HTML reports on disk
 ```
 
-### MCP server (`mcp/`) — Claude Desktop path, $0 API
+### MCP server (`mcp/` + `app/api/mcp/route.ts`) — dual transport, $0 API
 
-A **separate stdio process** (its own package under `mcp/`) that exposes the
-deterministic engine (Tools), the domain rubrics (Resources), and ready-to-run
-analysis workflows (Prompts) to Claude Desktop, so the *reasoning* is billed to the
-Desktop subscription, not the API. It is a thin HTTP client of the app and
-**deliberately never calls the paid pipelines** (`analyze`, `duration-analysis`
-POST) — enforced by `tests/mcp-cost-guard.test.ts`. Backed by two new read-only,
-no-LLM routes: `POST /api/timeline` (deterministic period scoring) and
+Exposes the deterministic engine (Tools), the domain rubrics (Resources), and
+ready-to-run analysis workflows (Prompts) so the *reasoning* is billed to the
+caller's own Claude subscription, not this app's API budget. **Deliberately
+never calls the paid pipelines** (`analyze`, `duration-analysis` POST) —
+enforced by `tests/mcp-cost-guard.test.ts`, which statically scans
+`mcp/src/*.ts` regardless of transport. Backed by two new read-only, no-LLM
+routes: `POST /api/timeline` (deterministic period scoring) and
 `GET /api/knowledge/**` (rubrics). Auth is a per-user `McpApiToken` (see User
 Management above) — each practitioner generates their own token from
-`/account`. Details: `mcp/README.md`, HLD §3.9, DFD P11.
+`/account`.
+
+Two transports, same `mcp/src/{tools,resources,prompts,chart}.ts` code (the
+API client is threaded through as a parameter, not imported as a singleton,
+so the exact same code is safe to reuse per-request):
+
+- **stdio** (`mcp/`) — a separate Node process Claude Desktop spawns locally.
+- **Streamable HTTP** (`POST /api/mcp`) — a normal Route Handler in this same
+  Next.js app, reachable by remote MCP clients on the same Vercel deployment.
+  Stateless (fresh `McpServer` per request via `mcp/src/registerAll.ts`'s
+  `createMcpServer`); auth comes from the request's own `Authorization:
+  Bearer` header (or `x-mcp-token`), not a process-env token. Internally it's
+  still a thin HTTP client — each tool call `fetch()`es back into this same
+  deployment's own `/api/*` routes.
+
+Getting a bearer token for the HTTP transport: manually from `/account` (see
+above), or via the **MCP OAuth 2.1 authorization server**
+(`app/.well-known/oauth-{authorization-server,protected-resource}`,
+`app/api/oauth/{register,token,revoke}`, `app/oauth/authorize` +
+`app/api/oauth/authorize-decision`) — RFC 8414/9728 discovery (surfaced via a
+`WWW-Authenticate` header on `/api/mcp`'s 401), RFC 7591 dynamic client
+registration (public/PKCE-only clients), an authorization-code + PKCE
+(`S256`-only) grant with a real login/consent screen, and refresh-token
+rotation. Hand-rolled Next.js Route Handlers, not the SDK's Express-only
+`server/auth/*` toolkit (incompatible with this app's serverless design) —
+though its framework-agnostic Zod schemas (`shared/auth.js`) are reused for
+response shapes. New tables: `OAuthClient`, `OAuthAuthorizationCode`,
+`OAuthAccessToken`, `OAuthRefreshToken` (docs/ERD.md). Requires
+`OAUTH_ISSUER_URL`.
+
+Details: `mcp/README.md`, HLD §3.9, DFD P11 / P11-HTTP / P11-OAuth.
 
 ### The AI pipeline (LLM path)
 
@@ -202,13 +241,15 @@ app/            Next.js App Router (pages + /api routes)
   runs/[id]/      Run progress (SSE) + report viewer
   login/ signup/ forgot-password/ reset-password/  Auth pages (User Management)
   account/        Account settings — logout, MCP token generate/revoke
-  api/            Route handlers (auth, account, charts, compute, unified-charts, runs, reports, health)
+  oauth/authorize/  MCP OAuth consent screen (Server Component)
+  .well-known/    RFC 8414/9728 OAuth discovery metadata routes
+  api/            Route handlers (auth, account, charts, compute, unified-charts, runs, reports, health, mcp, oauth)
 engine/         Pipeline + deterministic compute
   compute/        Swiss Ephemeris modules (pure functions, no DB)
   waves/          wave1–wave4 utilities
   orchestrator.ts planner.ts llm.ts pre_analysis.ts computeVimshottari.ts renderer.ts
 lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts,
-                auth.ts, mcpAuth.ts, passwords.ts, email.ts, rateLimit.ts
+                auth.ts, mcpAuth.ts, oauth.ts, passwords.ts, email.ts, rateLimit.ts
 middleware.ts   Session-cookie presence gate on UI page routes (User Management)
 prisma/         schema.prisma, migrations, seed.ts, backfill-owner.ts
 prompts/agents/ LLM prompt files (read at runtime, never modified by the app)
@@ -272,7 +313,11 @@ resolved at runtime from the `model_config` table, so provider swaps need no cod
 change. The MCP server reads `VEDICMOJO_BASE_URL` (default `http://localhost:3000`)
 and `MCP_TOKEN` — now a **per-user token** generated from `/account`, not a shared
 secret (see mcp/README.md). `MCP_DEV_USER_EMAIL` is an optional non-production-only
-dev fallback when no `x-mcp-token` is sent at all.
+dev fallback when no `x-mcp-token` is sent at all. `OAUTH_ISSUER_URL` is required
+for the MCP OAuth authorization server (`app/oauth/authorize`, `app/api/oauth/*`)
+to function — a stable, externally-facing URL, distinct from the internal-only
+`VEDICMOJO_INTERNAL_BASE_URL`; without it, that path 404s but the manual
+`MCP_TOKEN`/`McpApiToken` flow is unaffected.
 
 ---
 

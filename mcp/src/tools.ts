@@ -8,7 +8,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { api, ApiError } from './http.js'
+import { ApiError, type ApiClient } from './http.js'
 import {
   birthDataSchema,
   chartRefShape,
@@ -55,7 +55,7 @@ function extractOrGuide(chart: NormalizedChart, value: unknown, domain: string):
   return ok({ source: chart.source, name: chart.name, [domain]: value })
 }
 
-export function registerTools(server: McpServer): void {
+export function registerTools(server: McpServer, api: ApiClient): void {
   // ── Discovery ─────────────────────────────────────────────────────
   server.registerTool(
     'list_clients',
@@ -141,7 +141,7 @@ export function registerTools(server: McpServer): void {
       { title, description, inputSchema: { ...chartRefShape, ...extraShape } },
       async (a) =>
         guard(async () => {
-          const chart = await resolveChart(a as { chartId?: string; birthData?: any })
+          const chart = await resolveChart(api, a as { chartId?: string; birthData?: any })
           const { domain, value } = project(chart)
           return extractOrGuide(chart, value, domain)
         })
@@ -169,7 +169,7 @@ export function registerTools(server: McpServer): void {
     },
     async (a) =>
       guard(async () => {
-        let chart = await resolveChart(a as { chartId?: string; birthData?: any })
+        let chart = await resolveChart(api, a as { chartId?: string; birthData?: any })
         if (chart.isPasteWithoutComputed) {
           return ok({ note: 'Paste-source chart with no computed divisional charts. Compute it first or pass birthData.', divisionalCharts: null })
         }
@@ -190,7 +190,7 @@ export function registerTools(server: McpServer): void {
             | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
             | null
           if (birth?.date && birth?.time) {
-            chart = await resolveChart({
+            chart = await resolveChart(api, {
               birthData: {
                 date: birth.date,
                 time: birth.time,
@@ -222,7 +222,7 @@ export function registerTools(server: McpServer): void {
     },
     async (a) =>
       guard(async () => {
-        const chart = await resolveChart(a as { chartId?: string; birthData?: any })
+        const chart = await resolveChart(api, a as { chartId?: string; birthData?: any })
         const at = (a.asOf as string | undefined) ?? new Date().toISOString().slice(0, 10)
         return ok(activeDashaChain(chart.dashaTree, `${at}T12:00:00.000Z`))
       })
@@ -240,7 +240,7 @@ export function registerTools(server: McpServer): void {
     },
     async (a) =>
       guard(async () => {
-        const { name, charaDasha } = await resolveCharaDasha(a as { chartId?: string; birthData?: any })
+        const { name, charaDasha } = await resolveCharaDasha(api, a as { chartId?: string; birthData?: any })
         if (!charaDasha) {
           return ok({ note: 'Paste-source chart with no birth data — Chara Dasha needs planet positions. Pass birthData to compute on the fly.', charaDasha: null })
         }

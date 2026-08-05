@@ -12,11 +12,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { api } from './http.js'
+import type { ApiClient } from './http.js'
 
 const DOMAINS = ['career', 'health', 'wealth', 'marriage', 'property', 'cashflow'] as const
 
-export function registerResources(server: McpServer): void {
+export function registerResources(server: McpServer, api: ApiClient): void {
   for (const domain of DOMAINS) {
     server.registerResource(
       `domain-${domain}`,

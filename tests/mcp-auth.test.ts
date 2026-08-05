@@ -15,6 +15,9 @@ vi.mock('@/lib/db', () => ({
       findFirst: vi.fn(),
       update: vi.fn().mockResolvedValue({}),
     },
+    oAuthAccessToken: {
+      findFirst: vi.fn(),
+    },
     user: {
       findUnique: vi.fn(),
     },
@@ -23,6 +26,7 @@ vi.mock('@/lib/db', () => ({
 
 import { resolveMcpUser, hashMcpToken } from '@/lib/mcpAuth'
 import { prisma } from '@/lib/db'
+import { generateOAuthToken, hashOAuthToken, OAUTH_ACCESS_TOKEN_PREFIX } from '@/lib/oauth'
 
 function makeRequest(headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('http://localhost:3000/api/timeline', {
@@ -113,5 +117,30 @@ describe('resolveMcpUser', () => {
 
     const userId = await resolveMcpUser(makeRequest())
     expect(userId).toBeNull()
+  })
+
+  describe('OAuth-issued access tokens (mcp_oat_ prefix)', () => {
+    it('resolves an unexpired OAuth access token via the OAuthAccessToken table, not McpApiToken', async () => {
+      const raw = generateOAuthToken(OAUTH_ACCESS_TOKEN_PREFIX)
+      ;(prisma.oAuthAccessToken.findFirst as any).mockResolvedValue({ userId: 'oauth-user-1' })
+
+      const userId = await resolveMcpUser(makeRequest({ 'x-mcp-token': raw }))
+
+      expect(userId).toBe('oauth-user-1')
+      expect(prisma.oAuthAccessToken.findFirst).toHaveBeenCalledWith({
+        where: { tokenHash: hashOAuthToken(raw), expiresAt: { gt: expect.any(Date) } },
+      })
+      expect(prisma.mcpApiToken.findFirst).not.toHaveBeenCalled()
+    })
+
+    it('returns null for an expired/unknown OAuth access token without falling through to McpApiToken', async () => {
+      const raw = generateOAuthToken(OAUTH_ACCESS_TOKEN_PREFIX)
+      ;(prisma.oAuthAccessToken.findFirst as any).mockResolvedValue(null)
+
+      const userId = await resolveMcpUser(makeRequest({ 'x-mcp-token': raw }))
+
+      expect(userId).toBeNull()
+      expect(prisma.mcpApiToken.findFirst).not.toHaveBeenCalled()
+    })
   })
 })

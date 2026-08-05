@@ -1,12 +1,29 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.5
-**Last updated:** 2026-08-03
+**Version:** 1.7
+**Last updated:** 2026-08-05
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
 > stores, or flows — together with the AI Skills, ERD, and HLD. See
 > `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.7
+
+- Added **P11-OAuth**: an MCP OAuth 2.1 authorization server — a second,
+  additional way to obtain a token for P11-HTTP's `POST /api/mcp`, alongside
+  the existing P12.2 manual `McpApiToken` flow (unchanged). New data store
+  **D14** (`OAuthClient`/`OAuthAuthorizationCode`/`OAuthAccessToken`/
+  `OAuthRefreshToken`). See the new subsection under Level 2 — P11.
+- P11-HTTP's no-token 401 now carries a `WWW-Authenticate` header pointing
+  at P11-OAuth's discovery endpoint — the two subsections are now linked.
+
+## What changed in v1.6
+
+- Added **P11-HTTP**: `POST /api/mcp`, a Streamable HTTP transport for the
+  same P11 tools/resources/prompts, living inside the main Next.js process
+  instead of the separate `mcp/` stdio process — see the new subsection under
+  Level 2 — P11. Same never-calls-P4/P10 guarantee, same test coverage.
 
 ## What changed in v1.5
 
@@ -182,6 +199,8 @@ Data Stores:
   D11: Session         — database-backed sessions (sessionToken, userId, expires)
   D12: PasswordResetToken — reset tokens (tokenHash, expiresAt, usedAt)
   D13: McpApiToken     — per-user MCP credentials (tokenHash, label, lastUsedAt, revokedAt)
+  D14: OAuthClient / OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken
+                       — MCP OAuth 2.1 authorization server (P11-OAuth); all secrets hashed at rest
   FS: reports/       — HTML report files on disk
 ```
 
@@ -829,6 +848,89 @@ CLAUDE DESKTOP
 | knowledge | P11 → `/api/knowledge` | domain/framework rubric text (include-expanded) |
 | reports | P11 → runs / duration reads | already-generated results (no new cost) |
 
+### P11-HTTP: the same tools, reachable remotely (`POST /api/mcp`, NEW)
+
+A second transport for the exact same `mcp/src/{tools,resources,prompts}.ts`
+code — not a second process. `app/api/mcp/route.ts` lives **inside** the main
+Next.js app (unlike P11's separate `mcp/` stdio process) and is reachable by
+any remote MCP client, not just a locally-running Claude Desktop:
+
+```
+REMOTE MCP CLIENT
+     │  MCP (Streamable HTTP): Authorization: Bearer <token>
+     ▼
+┌─────────────────────────┐
+│  POST /api/mcp           │  Next.js Route Handler — stateless,
+│  (app/, same process)    │  fresh McpServer per request
+└─────┬────────────────────┘
+      │ HTTP (self: VEDICMOJO_INTERNAL_BASE_URL, falling back to
+      │       new URL(request.url).origin only when unset — see
+      │       mcp/README.md "Deploying it behind a proxy"; forwarded x-mcp-token)
+      └──────────────► same GET/POST targets as P11 above ──────────────►
+
+  ✗ Same guarantee as P11 — never calls P4's analyze route or P10's create
+     route, because it's the same mcp/src/tools.ts, covered by the same
+     tests/mcp-cost-guard.test.ts (a static scan of mcp/src, transport-
+     agnostic).
+```
+
+The only structural difference from P11: the API client (token + base URL)
+is built **per HTTP request** from the caller's own `Authorization` header,
+instead of once at process startup from `MCP_TOKEN`/`VEDICMOJO_BASE_URL` env
+vars — because one shared endpoint serves many users concurrently, where the
+stdio process only ever serves the one user Claude Desktop was configured
+for.
+
+### P11-OAuth: MCP OAuth 2.1 authorization server (NEW in v1.7)
+
+A second, additional way to get a token for P11-HTTP — P12.2's manual
+`McpApiToken` flow is unaffected. Lets an OAuth-aware remote client (e.g.
+claude.ai's "Add custom connector") obtain a token via browser login +
+consent instead of copy-pasting one from `/account`. Hand-rolled Next.js
+Route Handlers (no Express) backed by a new store, **D14**.
+
+```
+REMOTE MCP CLIENT                          BROWSER (same user)
+     │ 1. POST /api/mcp, no token               │
+     ▼                                          │
+  401 + WWW-Authenticate: Bearer                │
+    resource_metadata="…/.well-known/           │
+    oauth-protected-resource/api/mcp"            │
+     │                                          │
+     │ 2. GET that URL (RFC 9728)               │
+     │ 3. GET .well-known/oauth-authorization-  │
+     │    server (RFC 8414) → endpoint list     │
+     │ 4. POST /api/oauth/register (RFC 7591)   │
+     │    → client_id (public/PKCE-only)        │
+     │                                          │
+     │ 5. open authorization_endpoint ─────────►│  GET /oauth/authorize?client_id=…
+     │                                          │  (Server Component: session check,
+     │                                          │   phase-1 client_id/redirect_uri
+     │                                          │   exact-match, phase-2 PKCE/S256)
+     │                                          │  → consent form → user clicks Allow
+     │                                          │  POST /api/oauth/authorize-decision
+     │                                          │  (re-validates client_id/redirect_uri)
+     │                                          │  → D14.OAuthAuthorizationCode (hashed)
+     │◄─── redirect_uri?code=…&state=… ─────────┤
+     │                                          
+     │ 6. POST /api/oauth/token                  
+     │    grant_type=authorization_code          
+     │    (atomic single-use claim, PKCE verify) 
+     ▼                                          
+  { access_token: mcp_oat_…, refresh_token: mcp_ort_…, … }
+     │                                          
+     │ 7. POST /api/mcp, Authorization: Bearer mcp_oat_…
+     ▼                                          
+  same GET/POST targets as P11 above (lib/mcpAuth.ts's resolveMcpUser
+  branches to D14.OAuthAccessToken by the mcp_oat_ prefix, else D13.McpApiToken)
+```
+
+`POST /api/oauth/token`'s `refresh_token` grant rotates on every use (same
+atomic-claim pattern, applied to `D14.OAuthRefreshToken`); `POST
+/api/oauth/revoke` (RFC 7009) always returns 200. Known v1 simplification: no
+refresh-token-family tracking (a replayed, already-rotated refresh token is
+rejected on that one request, not cascade-revoked).
+
 ---
 
 ## Level 2 — P12: User Management & Auth (NEW in v1.5)
@@ -905,3 +1007,4 @@ PRACTITIONER (browser)                          CLAUDE DESKTOP (MCP)
 | `DA2Output` | JSON (JSONB) | ~2–5KB | DA-2 agent | DurationAnalysis.da2Output; symptom gate |
 | `DA3Output` | JSON (JSONB) | ~10–30KB | DA-3 agent | DurationAnalysis.da3Output; report UI |
 | `contextSummary` | TEXT | ~500 tokens (~2KB) | index.ts (deterministic) | DurationAnalysis.contextSummary; DA-3 chat follow-up prompts |
+| `OAuthAuthorizationCode` / `OAuthAccessToken` / `OAuthRefreshToken` (raw values) | opaque string | ~64 bytes each | app/api/oauth/{authorize-decision,token}/route.ts | Remote MCP client; hashed at rest in D14, raw value never persisted |

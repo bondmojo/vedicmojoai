@@ -23,7 +23,11 @@ export function middleware(request: NextRequest) {
   }
 
   const loginUrl = new URL('/login', request.url)
-  loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
+  // Preserve the full query string, not just the path — a guarded page
+  // whose behavior depends on its query params (e.g. /oauth/authorize's
+  // client_id/redirect_uri/code_challenge) would otherwise lose them on the
+  // login round-trip.
+  loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname + request.nextUrl.search)
   return NextResponse.redirect(loginUrl)
 }
 

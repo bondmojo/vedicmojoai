@@ -1,12 +1,61 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.5
-**Last updated:** 2026-08-03
+**Version:** 1.7
+**Last updated:** 2026-08-05
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.7
+
+- Added an **MCP OAuth 2.1 authorization server** — a second, additional way
+  to obtain a token for `POST /api/mcp`, alongside the existing manual
+  `McpApiToken` generate-and-paste flow at `/account` (unchanged). Lets an
+  OAuth-aware remote client (e.g. claude.ai's "Add custom connector") get a
+  token by redirecting the user through login + a consent screen, with no
+  manual copy-pasting. See §3.9.
+- New routes: `GET /.well-known/oauth-authorization-server` (RFC 8414),
+  `GET /.well-known/oauth-protected-resource(/api/mcp)?` (RFC 9728),
+  `POST /api/oauth/register` (RFC 7591 dynamic client registration),
+  `GET /oauth/authorize` (login/consent UI), `POST /api/oauth/authorize-decision`,
+  `POST /api/oauth/token` (authorization_code + refresh_token grants, PKCE
+  S256 only), `POST /api/oauth/revoke` (RFC 7009).
+- New Prisma models: `OAuthClient`, `OAuthAuthorizationCode`,
+  `OAuthAccessToken`, `OAuthRefreshToken` — see `docs/ERD.md`.
+- `lib/mcpAuth.ts`'s `resolveMcpUser` now also resolves OAuth-issued access
+  tokens (distinguished by a `mcp_oat_` prefix) alongside `McpApiToken`, and
+  `app/api/mcp/route.ts`'s no-token 401 gained a `WWW-Authenticate` header
+  pointing at the protected-resource metadata — the discovery breadcrumb an
+  OAuth-aware client reads before attempting the handshake.
+- `middleware.ts` bug fix: the redirect-to-login now preserves the full query
+  string (`request.nextUrl.search`), not just the pathname — needed so
+  `/oauth/authorize`'s params survive a login round-trip; generically
+  correct for any guarded page.
+- New env var `OAUTH_ISSUER_URL` (stable, externally-facing — distinct from
+  the internal-only `VEDICMOJO_INTERNAL_BASE_URL`).
+
+## What changed in v1.6
+
+- Added a second MCP transport: `POST /api/mcp` (Next.js Route Handler,
+  `@modelcontextprotocol/sdk`'s `WebStandardStreamableHTTPServerTransport`) —
+  the same tool/resource/prompt surface as the stdio server, reachable by
+  remote MCP clients on this app's own Vercel deployment. Stateless,
+  auth via `Authorization: Bearer <token>` per request (falls back to
+  `x-mcp-token`). See §3.9.
+- `mcp/src/http.ts`'s module-level `api` singleton became
+  `createApiClient(token?, baseUrl?)`; `registerTools`/`registerResources`/
+  `registerPrompts` (and `resolveChart`/`resolveCharaDasha`/`loadRubric`) now
+  take the client as a parameter instead of importing it — required so one
+  running HTTP endpoint can serve many users concurrently, each with their
+  own token. `mcp/src/registerAll.ts` (new) is the shared factory both
+  entry points call.
+- Root `package.json` gained `@modelcontextprotocol/sdk` as a direct
+  dependency (previously only `mcp/package.json` had it), and
+  `next.config.mjs` gained a `webpack.resolve.extensionAlias` for `.js` →
+  `.ts` so Next.js's bundler can follow `mcp/src/*.ts`'s NodeNext-style
+  relative imports when `app/api/mcp/route.ts` pulls them in.
 
 ## What changed in v1.5
 
@@ -424,14 +473,35 @@ Every agent receives a **compact context**, not raw accumulated output:
 `chart_summary` is pre-computed once from `ChartInputV1` + `dasha_tree` and stored
 in `Wave1Cache`. It is never re-derived by an LLM agent.
 
-### 3.9 MCP Server (`mcp/`)
+### 3.9 MCP Server (`mcp/` + `app/api/mcp/route.ts`)
 
-A **separate Node process** (its own package under `mcp/`) that speaks the Model
-Context Protocol over **stdio** and is launched by Claude Desktop. It holds **no
-astrology logic** — every tool is a thin HTTP call to the routes in §3.2. Its
-purpose is to move the *reasoning* into Claude Desktop (billed to the Desktop
-subscription) instead of the paid API pipelines, so it deliberately **never calls**
-`POST /api/unified-charts/[id]/analyze` or `POST /api/duration-analysis`.
+**Dual transport**, same tool/resource/prompt surface either way:
+
+- **stdio** — a **separate Node process** (its own package under `mcp/`)
+  launched by Claude Desktop for local use. Holds **no astrology logic** —
+  every tool is a thin HTTP call to the routes in §3.2. Its purpose is to move
+  the *reasoning* into Claude Desktop (billed to the Desktop subscription)
+  instead of the paid API pipelines, so it deliberately **never calls**
+  `POST /api/unified-charts/[id]/analyze` or `POST /api/duration-analysis`.
+- **Streamable HTTP** — `POST /api/mcp`, a normal Next.js Route Handler in the
+  main app, reachable by remote MCP clients on the same Vercel deployment (no
+  separate process, no TLS/port management). Stateless (a fresh `McpServer`
+  per request); auth comes from the request's own `Authorization: Bearer`
+  header rather than a process-env token, since one shared endpoint serves
+  many users concurrently. Internally it's still the same thin-HTTP-client
+  design — each tool call `fetch()`es back into this deployment's own
+  `/api/*` routes via `mcp/src/http.ts`'s `createApiClient`, just bound to
+  `new URL(request.url).origin` instead of `VEDICMOJO_BASE_URL`. The route
+  handler constructs the server via `mcp/src/registerAll.ts`'s
+  `createMcpServer` rather than the `McpServer` class directly — the root app
+  and `mcp/` each install their own copy of `@modelcontextprotocol/sdk`, and
+  keeping construction inside `mcp/src` avoids a TypeScript nominal-typing
+  conflict between the two copies' otherwise-identical classes.
+
+Both entry points share the exact same `mcp/src/{tools,resources,prompts,chart}.ts`
+— the API client (token + base URL) is threaded through as a parameter rather
+than imported as a singleton, which is what makes the same code safe to reuse
+per-request.
 
 Three primitives:
 
@@ -453,6 +523,50 @@ Backed by two new read-only, no-LLM routes: `POST /api/timeline` and
 `GET /api/knowledge/**` (§3.2). Auth resolves to a specific `User` via a
 per-user `McpApiToken` (§3.10) — the old shared `MCP_TOKEN` secret is gone.
 Full details: `mcp/README.md`.
+
+#### MCP OAuth authorization server (v1.7)
+
+A second, additional way to get a token for `POST /api/mcp` — the manual
+`McpApiToken` flow above is completely unaffected. Lets an OAuth-aware remote
+client (e.g. claude.ai's "Add custom connector") redirect the user through
+login + consent instead of copy-pasting a token from `/account`. Hand-rolled
+as plain Next.js Route Handlers (Web-standard, no Express) rather than using
+`@modelcontextprotocol/sdk`'s `server/auth/*` toolkit, which is Express-only
+and incompatible with this app's Vercel-serverless-first design; the SDK's
+framework-agnostic Zod schemas (`shared/auth.js`) are reused for
+spec-correct request/response shapes.
+
+- **Discovery**: `app/api/mcp/route.ts`'s no-token 401 carries a
+  `WWW-Authenticate: Bearer resource_metadata="..."` header pointing at
+  `GET /.well-known/oauth-protected-resource/api/mcp` (RFC 9728), which in
+  turn points at `GET /.well-known/oauth-authorization-server` (RFC 8414)
+  for the endpoint list.
+- **Registration**: `POST /api/oauth/register` (RFC 7591) — every
+  dynamically-registered client is treated as public/PKCE-only (no
+  `client_secret`), matching how claude.ai registers.
+- **Authorize**: `GET /oauth/authorize` — a Server Component (the one page
+  in this client-component-heavy app that deliberately isn't one, so the
+  redirect-safety validation and session check run before anything
+  renders). Two-phase validation per RFC 6749 §4.1.2.1: phase 1
+  (`client_id`/`redirect_uri`, exact-match only) fails with a **direct
+  error**, never a redirect — the open-redirect guard; phase 2 (PKCE
+  `S256`-only, `response_type`, etc.) fails with a **redirect** to the
+  now-trusted `redirect_uri`. The consent form posts to
+  `POST /api/oauth/authorize-decision`, which **re-validates**
+  `client_id`/`redirect_uri` itself rather than trusting the submitted
+  hidden fields, and mints a short-lived, hashed `OAuthAuthorizationCode`.
+- **Token**: `POST /api/oauth/token` (form-encoded, not JSON — the OAuth
+  standard) — `authorization_code` (PKCE-verified, RFC 8707 `resource`-bound)
+  and `refresh_token` (rotated on every use) grants. Both consume their
+  single-use secret via an atomic conditional `updateMany` claim (`count ===
+  1` or reject) rather than read-then-write, which would be a replay race.
+  Newly-issued access tokens carry a `mcp_oat_` prefix so
+  `lib/mcpAuth.ts`'s `resolveMcpUser` can branch to the right table without
+  a blind lookup against both on every call.
+- **Revocation**: `POST /api/oauth/revoke` (RFC 7009), always 200.
+- Known v1 simplification: no refresh-token-family tracking — a replayed
+  (already-rotated) refresh token is rejected on that one request but
+  doesn't cascade-revoke the rest of its lineage.
 
 ### 3.10 User Management & Auth Layer (`lib/auth.ts`, `middleware.ts`, v1.5)
 

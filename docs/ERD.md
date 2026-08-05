@@ -1,12 +1,21 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
-**Version:** 1.3
-**Last updated:** 2026-08-03
+**Version:** 1.4
+**Last updated:** 2026-08-05
 **Status:** Draft
 
 > **Maintenance rule:** Whenever the data model changes (new table, column, index,
 > relation, or ingestion path), update this ERD **and** the AI Skills, HLD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.4
+
+- Added four MCP OAuth authorization server tables (migration
+  `20260805152930_add_oauth_provider`): **`OAuthClient`**,
+  **`OAuthAuthorizationCode`**, **`OAuthAccessToken`**,
+  **`OAuthRefreshToken`**. A second, additional way to get a token for
+  `POST /api/mcp` — the existing `McpApiToken` flow is unaffected. See
+  "MCP OAuth Authorization Server" below.
 
 ## What changed in v1.3
 
@@ -281,6 +290,85 @@ migration.
 
 ---
 
+## MCP OAuth Authorization Server (v1.4) — a second way to get a token for `POST /api/mcp`
+
+Four new tables, all net-new. Lets an OAuth-aware remote MCP client (e.g.
+claude.ai's "Add custom connector") obtain a token via browser login +
+consent — the existing `McpApiToken` generate-and-paste flow above is
+completely unaffected; this is an additional path, not a replacement.
+Hand-rolled as plain Next.js Route Handlers rather than using
+`@modelcontextprotocol/sdk`'s Express-only OAuth toolkit (incompatible with
+this app's Vercel-serverless design) — see `docs/HLD.md` §3.9.
+
+```
+┌──────────────────────┐    1:N     ┌──────────────────────────┐
+│         User          │───────────▶│   OAuthAuthorizationCode   │
+└──────────────────────┘            ├──────────────────────────┤
+   │ 1:N              │ 1:N          │ PK id              UUID   │
+   ▼                  ▼              │    codeHash        TEXT(U)│
+┌──────────────────┐ ┌──────────────┐│ FK clientId        UUID   │
+│ OAuthAccessToken  │ │OAuthRefresh  ││ FK userId          UUID   │
+├──────────────────┤ │Token         ││    redirectUri     TEXT   │
+│ PK id       UUID  │ ├──────────────┤│    codeChallenge   TEXT   │
+│    tokenHash TEXT(U)│PK id    UUID │ │    codeChallengeMethod   │
+│ FK clientId UUID  │ │  tokenHash(U)│ │                    TEXT   │
+│ FK userId   UUID  │ │FK clientId   │ │    resource        TEXT? │
+│    resource TEXT? │ │FK userId     │ │    scope           TEXT? │
+│    scope    TEXT? │ │  scope TEXT? │ │    expiresAt       TSTZ  │
+│    expiresAt TSTZ │ │  expiresAt   │ │    usedAt          TSTZ? │
+│    createdAt TSTZ │ │  revokedAt?  │ │    createdAt       TSTZ  │
+└──────────────────┘ │  createdAt   │ └──────────────────────────┘
+        ▲             └──────────────┘              ▲
+        └───────────────────┬─────────────────────────┘
+                             │ N:1
+                      ┌──────────────────────┐
+                      │      OAuthClient       │
+                      ├──────────────────────┤
+                      │ PK id           UUID   │
+                      │    clientId     TEXT(U)│  ← the public RFC 7591 client_id
+                      │    clientSecretHash TEXT?│  ← always null in v1 (PKCE-only clients)
+                      │    clientName   TEXT?  │
+                      │    redirectUris TEXT[] │
+                      │    grantTypes   TEXT[] │
+                      │    responseTypes TEXT[]│
+                      │    tokenEndpointAuthMethod TEXT│
+                      │    createdAt    TSTZ   │
+                      └──────────────────────┘
+```
+
+- **`OAuthClient`** — one row per dynamically-registered client
+  (`POST /api/oauth/register`, RFC 7591). Every v1 client is treated as
+  **public/PKCE-only**: `clientSecretHash` is always `null` and
+  `tokenEndpointAuthMethod` is always `'none'` — matches how claude.ai
+  itself registers. `redirectUris` is the sole trusted destination set for
+  that client; `/oauth/authorize` and `/api/oauth/authorize-decision` both
+  check a candidate `redirect_uri` against it with an **exact string
+  match**, never prefix/substring (the open-redirect guard).
+- **`OAuthAuthorizationCode`** — short-lived (~5 min), single-use. `codeHash`
+  is SHA-256 of a random 32-byte code, hashed at rest for the same
+  defense-in-depth reason as `PasswordResetToken`/`McpApiToken` despite the
+  short TTL. Consumed via an **atomic conditional `updateMany`** claim
+  (`usedAt: null` → set `usedAt`, checking the affected-row count is exactly
+  1) rather than read-then-write, which would be a replay race — the
+  authorization-code analog of the `usedAt` pattern `PasswordResetToken`
+  already uses, but tightened because RFC 6749 §4.1.2 requires the code
+  never be usable twice, not just discouraged.
+- **`OAuthAccessToken`** / **`OAuthRefreshToken`** — bearer tokens minted by
+  `POST /api/oauth/token`. `tokenHash` is SHA-256, same pattern. Access
+  tokens are short-lived (~1 hr); refresh tokens (~90 days) are **rotated on
+  every use** — the presented refresh token is atomically revoked
+  (`revokedAt`) in the same claim that authorizes minting its replacement.
+  Newly-issued access-token raw values carry a `mcp_oat_` prefix (refresh:
+  `mcp_ort_`) so `lib/mcpAuth.ts`'s `resolveMcpUser` can branch to this table
+  instead of `McpApiToken` without a blind lookup against both on every MCP
+  call.
+- **Known v1 simplification**, stated explicitly (same spirit as
+  `McpApiToken`'s "one active token per user"): no refresh-token-family
+  tracking. A replayed (already-rotated) refresh token is rejected on that
+  one request but doesn't cascade-revoke the rest of its lineage.
+
+---
+
 ## Where is D1, D4 Planet Chart Data Stored?
 
 Divisional chart data (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60) is stored **inside the `chartData` JSONB column** of the `saved_chart` table (and similarly inside `chartJson` of the `chart` table for analysis-input charts).
@@ -518,6 +606,8 @@ separate from the 18-agent wave pipeline.
 | User → Session | 1:N | Database-backed sessions, one row per active login |
 | User → PasswordResetToken | 1:N | Historical reset attempts; only unexpired/unused rows are valid |
 | User → McpApiToken | 1:N | Historical tokens; only one non-revoked row per user in v1 |
+| User → OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken | 1:N each | MCP OAuth server grants — see "MCP OAuth Authorization Server" above |
+| OAuthClient → OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken | 1:N each | One dynamically-registered client can hold many grants across users |
 | SavedChart (standalone) | — | Legacy independent computed chart storage — READ-ONLY since the compute page moved to UnifiedChart; existing rows promoted via `npm run db:migrate-saved` |
 | Wave1Cache (standalone) | — | Caches expensive Wave 1 computations by chartHash |
 | ModelConfig (standalone) | — | AI model configuration per wave/agent — including DA-1, DA-2, DA-3 |
