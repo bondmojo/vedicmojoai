@@ -24,6 +24,8 @@ Claude Desktop ──stdio──▶ this server ──HTTP──▶ Next.js app 
     `get_transits`
   - Timeline: `get_timeline_periods` (scored MD/AD/PD "trigger points"),
     `get_domain_dataset` (domain-scoped data + timeline)
+  - Matchmaking: `compute_match` (Ashtakoota/Guna Milan + Mangal Dosha for two
+    saved charts — read-only preview, never persists a `CompatibilityMatch`)
   - Knowledge: `list_knowledge`, `get_domain_knowledge`, `get_framework`
   - Existing reports (read-only): `list_reports`, `get_report`,
     `list_duration_analyses`, `get_duration_analysis`

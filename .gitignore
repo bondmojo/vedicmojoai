@@ -46,3 +46,9 @@ data/postgres/
 
 # Prisma
 prisma/*.db
+
+# PyJHora oracle harness (task 9.1, scripts/oracle/) — its raw generated
+# output must never be committed as-is; see scripts/oracle/README.md and
+# task 9.2 of .kiro/specs/marriage-matchmaking/tasks.md.
+scripts/oracle/output/*
+!scripts/oracle/output/.gitkeep

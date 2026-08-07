@@ -11,7 +11,7 @@
 import crypto from 'crypto'
 import { Prisma } from '@prisma/client'
 import type { ComputedChart, BirthInput, DivisionalChart as ComputeDivisionalChart } from '@/engine/compute/types'
-import type { ChartInputV1, DashaTree, MahaDasha, AntarDasha, PratyanDasha } from '@/lib/types'
+import type { ChartInputV1, DashaTree, MahaDasha, AntarDasha, PratyanDasha, Gender } from '@/lib/types'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -221,6 +221,16 @@ export function buildChartInputV1FromUnified(chart: {
   ayanamsa: number | { toNumber?: () => number }
   birthDatetime: Date
   name: string
+  /**
+   * UnifiedChart.gender column (Requirement OD-6). Preferred over any
+   * gender already present in `chartInputV1.meta` (relevant only if a
+   * compute-path chart ever ends up with a non-null chartInputV1), which in
+   * turn is preferred over leaving `meta.gender` unset — `getValidationWarnings`
+   * / `buildChartSummary`'s own `?? 'male'` default is the last resort, kept
+   * unchanged so W2 still fires exactly when no gender was resolved from
+   * either source.
+   */
+  gender?: string | null
 }): ChartInputV1 | null {
   // For paste-path charts, return stored chartInputV1 directly
   if (chart.source === 'paste' && chart.chartInputV1) {
@@ -238,6 +248,8 @@ export function buildChartInputV1FromUnified(chart: {
     const upagrahasData = chart.upagrahas as any[]
     const specialLagnasData = chart.specialLagnas as any[]
     const birthInput = chart.birthInput as any
+    const existingChartInputV1 = chart.chartInputV1 as { meta?: { gender?: string } } | null
+    const resolvedGender = toGender(chart.gender) ?? toGender(existingChartInputV1?.meta?.gender)
 
     if (!planets || !nakshatras || !divisionalCharts) {
       return null
@@ -330,6 +342,7 @@ export function buildChartInputV1FromUnified(chart: {
         lagna_nakshatra: lagnaNakEntry?.nakshatra,
         lagna_pada: lagnaNakEntry?.pada,
         source: 'VedicMojoAI Compute Engine',
+        gender: resolvedGender,
       },
       natal_nakshatras: natalNakshatras as any,
       divisional_charts: {
@@ -432,6 +445,29 @@ function mapDivisionalName(shortName: string, division: number): string | null {
     30: 'D30_Trimshamsa',
   }
   return map[division] ?? null
+}
+
+/**
+ * Narrows an untyped value (DB column or JSONB field) to the `Gender`
+ * union, or `undefined`. Case/whitespace-tolerant, so it doubles as the
+ * validator `prisma/backfill-gender.ts` uses before writing
+ * `UnifiedChart.gender` from a legacy `chartInputV1.meta.gender` value that
+ * predates Zod's `GenderSchema` (lib/validation.ts) — every *current* write
+ * path already produces exactly lowercase, but old pasted JSON might not.
+ * Exported so both call sites share one definition of "valid gender string"
+ * instead of maintaining the enum comparison twice.
+ *
+ * Takes `unknown`, not `string | null | undefined`: both call sites source
+ * this from untyped JSONB (`chartInputV1.meta.gender`), so a caller that
+ * casts the field to `string` before calling in would be lying to the type
+ * system — pasted JSON can genuinely hold a number/boolean/object here, and
+ * `value.trim()` on a non-string throws. Checking `typeof` first is what
+ * makes this function actually never-throwing, not just documented as such.
+ */
+export function toGender(value: unknown): Gender | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim().toLowerCase()
+  return normalized === 'male' || normalized === 'female' || normalized === 'other' ? normalized : undefined
 }
 
 /** Returns zodiac sign name from 1-based sign number. */

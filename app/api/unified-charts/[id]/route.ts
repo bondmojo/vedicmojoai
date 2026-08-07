@@ -182,7 +182,8 @@ export async function DELETE(
     }
 
     // Cascade isn't automatic with Prisma — remove dependents in FK order:
-    // duration messages → duration analyses → pipeline runs → chart.
+    // duration messages → duration analyses → pipeline runs →
+    // compatibility matches (bride- and groom-side FK) → chart.
     await prisma.$transaction([
       prisma.durationMessage.deleteMany({
         where: { analysis: { unifiedChartId: params.id } },
@@ -192,6 +193,9 @@ export async function DELETE(
       }),
       prisma.pipelineRun.deleteMany({
         where: { unifiedChartId: params.id },
+      }),
+      prisma.compatibilityMatch.deleteMany({
+        where: { OR: [{ brideChartId: params.id }, { groomChartId: params.id }] },
       }),
       prisma.unifiedChart.delete({
         where: { id: params.id },

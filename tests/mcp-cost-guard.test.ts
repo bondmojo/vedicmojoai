@@ -26,8 +26,15 @@ const MCP_SRC = path.resolve(__dirname, '..', 'mcp', 'src')
 const HTTP_ROUTE = path.resolve(__dirname, '..', 'app', 'api', 'mcp', 'route.ts')
 
 // The only routes the MCP is permitted to POST to. All are deterministic /
-// read-style and cost nothing in LLM tokens.
-const ALLOWED_POST_ROUTES = new Set(['/api/compute', '/api/compute/varshaphal', '/api/timeline'])
+// read-style and cost nothing in LLM tokens. NOTE: '/api/matchmaking' (the
+// PERSISTING route) is deliberately excluded — only its read-only sibling
+// '/api/matchmaking/preview' is allow-listed.
+const ALLOWED_POST_ROUTES = new Set([
+  '/api/compute',
+  '/api/compute/varshaphal',
+  '/api/timeline',
+  '/api/matchmaking/preview',
+])
 
 async function readSrcFiles(): Promise<Array<{ file: string; content: string }>> {
   const entries = await fs.readdir(MCP_SRC)

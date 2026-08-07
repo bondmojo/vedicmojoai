@@ -58,10 +58,21 @@ export type {
   YogaCategory,
   YogaStrength,
   YogaEvidence,
+  MatchRole,
+  KootaKey,
+  Cancellation,
+  KootaEvidence,
+  KootaScore,
+  MatchVerdict,
+  BoundaryRisk,
+  AshtakootaResult,
+  MangalDoshaNative,
+  MatchResult,
 } from './types'
 export { computeCharaDasha } from './charaDasha'
 export { computeYogas } from './yogas'
 export type { YogaInput } from './yogas'
+export { MATCHMAKING_TABLES_VERSION } from './matchmakingTables'
 
 /**
  * Computes a complete Vedic chart from birth data.

@@ -45,6 +45,11 @@ model UnifiedChart {
   moonLongitude    Decimal  @db.Decimal(8, 4)
   ayanamsa         Decimal  @db.Decimal(8, 4)
   birthDatetime    DateTime @db.Timestamptz
+  // "male" | "female" | "other" — nullable, additive-only (no tightening step).
+  // Pre-fills the matchmaking role picker only — never used to infer a
+  // bride/groom role structurally. Backfilled from chartInputV1.meta.gender
+  // by prisma/backfill-gender.ts. See design.md §OD-6.
+  gender           String?
 
   // ─── Domain JSONB columns (compute engine output) ───
   planets          Json?    // PlanetPosition[]
@@ -82,6 +87,8 @@ model UnifiedChart {
   // ─── Relations ───
   pipelineRuns     PipelineRun[] @relation("UnifiedChartRuns")
   durationAnalyses DurationAnalysis[]
+  matchesAsBride   CompatibilityMatch[] @relation("MatchBride")
+  matchesAsGroom   CompatibilityMatch[] @relation("MatchGroom")
 
   // ─── Ownership ───
   // Tightened to required after prisma/backfill-owner.ts assigned every
@@ -118,6 +125,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   mcpApiTokens        McpApiToken[]
   unifiedCharts       UnifiedChart[]
+  compatibilityMatches CompatibilityMatch[]
 
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthAccessTokens       OAuthAccessToken[]
@@ -455,4 +463,47 @@ model DurationMessage {
 
   @@index([analysisId])
   @@map("duration_message")
+}
+
+// ─── Marriage Matchmaking ───────────────────────────────────────────
+// Persisted Ashtakoota + Mangal Dosha result for a bride/groom chart pair.
+// Roles are encoded structurally (brideChartId/groomChartId), never as a
+// generic pair + role enum — see .kiro/specs/marriage-matchmaking/design.md
+// §Prisma — CompatibilityMatch. Deleting either referenced UnifiedChart
+// requires deleting dependent CompatibilityMatch rows first (no automatic
+// cascade in Prisma) — see the DELETE /api/unified-charts/[id] handler.
+
+model CompatibilityMatch {
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+
+  brideChartId  String
+  brideChart    UnifiedChart @relation("MatchBride", fields: [brideChartId], references: [id])
+  groomChartId  String
+  groomChart    UnifiedChart @relation("MatchGroom", fields: [groomChartId], references: [id])
+
+  label         String?
+  gunaScore     Decimal      @db.Decimal(4, 1) // 0.5 steps fit exactly; NUMERIC is exact fixed-point
+  // Denormalized off result.ashtakoota.verdict — same rationale as gunaScore
+  // above: GET /api/matchmaking (list) needs this for the summary row and
+  // must not fetch the full `result` JSONB just to read one nested string.
+  // Every live write path (POST /api/matchmaking) sets this to a real
+  // `MatchVerdict` value. The migration's backfill step for any pre-existing
+  // row falls back to the literal string "unknown" (deliberately outside the
+  // `MatchVerdict` union) only if `result.ashtakoota.verdict` were ever
+  // missing/malformed — a defensive floor for data that should not exist,
+  // not a value any code path produces going forward. UI verdict-badge
+  // lookups already default unrecognized values to the "incomplete" style.
+  verdict       String
+  result        Json         // full MatchResult snapshot
+  tablesVersion String
+
+  createdAt     DateTime     @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@index([userId, createdAt]) // GET /api/matchmaking: WHERE userId = ? ORDER BY createdAt DESC
+  @@index([brideChartId])
+  @@index([groomChartId])
+  @@map("compatibility_match")
 }

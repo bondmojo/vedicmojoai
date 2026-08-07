@@ -761,3 +761,131 @@ export interface CharaDashaResult {
   /** Two cycles of dated sign mahadashas (24 periods, 144 years total). */
   periods: CharaDashaPeriod[]
 }
+
+// ─── Marriage Matchmaking (Ashtakoota Guna Milan + Mangal Dosha) ──────
+
+/**
+ * Bride/groom role. Every matchmaking type and scorer parameter is named
+ * `bride`/`groom` — never `a`/`b` — so directional kootas (Varna) cannot be
+ * got wrong by argument order. See engine/compute/matchmaking.ts.
+ */
+export type MatchRole = 'bride' | 'groom'
+
+/** The 8 Ashtakoota kootas, in fixed scoring order. */
+export type KootaKey =
+  | 'varna' | 'vashya' | 'tara' | 'yoni'
+  | 'grahaMaitri' | 'gana' | 'bhakoot' | 'nadi'
+
+/**
+ * A Bhanga (cancellation) rule that fired for a dosha-bearing koota or for
+ * Mangal Dosha. Recorded in evidence — NEVER applied silently by mutating a
+ * score/status out from under the caller (mirrors yogas.ts's Neechabhanga
+ * evidence pattern).
+ */
+export interface Cancellation {
+  /** Stable machine rule id, e.g. "nadi.same_nakshatra_different_rashi". */
+  rule: string
+  /** Human name, e.g. "Nadi Bhanga (same nakshatra, different rashi)". */
+  name: string
+  /** Plain-text description of the satisfying condition. */
+  condition: string
+}
+
+/** Auditable inputs/outputs behind one koota's score — the "why" a point total was reached. */
+export interface KootaEvidence {
+  /** Machine rule id for the scoring path taken, e.g. "gana.matrix". */
+  rule: string
+  /** The bride's relevant attribute values (nakshatra/rashi/gana/yoni/etc.), by name. */
+  bride: Record<string, string | number>
+  /** The groom's relevant attribute values, by name. */
+  groom: Record<string, string | number>
+  /** Free-form notes — e.g. which directional check fired, simplifications taken. */
+  notes?: string[]
+}
+
+export interface KootaScore {
+  key: KootaKey
+  /** Display label, e.g. "Graha Maitri". */
+  name: string
+  /** Fractional — 0.5 steps are legitimate (Vashya, Graha Maitri, Tara). NEVER rounded. */
+  points: number
+  maxPoints: number
+  /** 'unavailable' when required input was missing/malformed — never a throw. */
+  status: 'scored' | 'unavailable'
+  evidence: KootaEvidence
+  /** Set only when a Bhanga rule nullified this koota's dosha (Nadi, Bhakoot). */
+  cancellation?: Cancellation
+}
+
+/**
+ * Presentation-only guidance band for a `gunaScore`. These bands
+ * (<18 / 18-24 / 24-32 / >=32) are ALMANAC / COMMERCIAL-SOFTWARE
+ * CONVENTION — NOT classical Parashari and NOT PVR Narasimha Rao (NFR-8).
+ * They must never be presented as a verdict of record.
+ *
+ * `'incomplete'` is NOT a band — it is returned whenever any koota reported
+ * `status: 'unavailable'`, because a band derived from a partial sum is
+ * actively misleading: an unscored Nadi alone caps the reachable total at
+ * (maxScore - 8), so a strong match would read `good` instead of
+ * `excellent`, and a fully unscorable pair (e.g. two natives carrying the
+ * same role) would otherwise render as a confident `below_average` on a
+ * score of 0.
+ */
+export type MatchVerdict = 'below_average' | 'average' | 'good' | 'excellent' | 'incomplete'
+
+/** Per-native boundary-risk flag — Moon longitude close to a nakshatra edge (OD-12). */
+export interface BoundaryRisk {
+  role: MatchRole
+  /** Present only when the caller supplied a Moon longitude for this native. */
+  moonLongitude?: number
+  /** Degrees to the nearest nakshatra boundary. Present only alongside moonLongitude. */
+  distanceToBoundaryDeg?: number
+  /** True when distanceToBoundaryDeg is within the tunable threshold (see matchmaking.ts). */
+  atRisk: boolean
+}
+
+export interface AshtakootaResult {
+  /**
+   * 0–maxScore, in 0.5 steps — NEVER rounded, floored, or truncated on
+   * store.
+   */
+  gunaScore: number
+  /**
+   * The classical framework's fixed denominator, 36 — computed as
+   * `TOTAL_KOOTA_MAXIMA` (matchmakingTables.ts) rather than hardcoded a
+   * second time, so it can never drift from the koota maxima it is the sum
+   * of. Matches JHora/PyJHora's own display convention: a fixed "X / 36"
+   * regardless of whether a given pair could reach it — NOT a per-pair or
+   * per-implementation "corrected" reachable ceiling (see
+   * `KOOTA_MAXIMA.tara`'s doc comment for why Tara's declared 3 stays 3 even
+   * though no pair can score more than 1.5 of it).
+   */
+  maxScore: number
+  /** Always 8 entries, in fixed order (varna, vashya, tara, yoni, grahaMaitri, gana, bhakoot, nadi). */
+  kootas: KootaScore[]
+  verdict: MatchVerdict
+  /** One entry per native. */
+  boundaryRisk: BoundaryRisk[]
+  /** Requirement 5.5 boilerplate text — rendered, not decorative. */
+  limitations: string[]
+}
+
+/** Per-native Mangal Dosha (Kuja Dosha) result. */
+export interface MangalDoshaNative {
+  status: 'manglik' | 'not_manglik' | 'unavailable'
+  /** Provenance, never a bare boolean — which reference point(s) triggered it. */
+  triggeredFrom: Array<'lagna' | 'moon' | 'venus'>
+  marsHouseFrom: Record<'lagna' | 'moon' | 'venus', number | null>
+  cancellations: Cancellation[]
+}
+
+export interface MatchResult {
+  ashtakoota: AshtakootaResult
+  mangalDosha: {
+    bride: MangalDoshaNative
+    groom: MangalDoshaNative
+    compatibility: 'matched' | 'mismatched' | 'cancelled' | 'unavailable'
+  }
+  /** Bump when a koota table changes — see matchmakingTables.MATCHMAKING_TABLES_VERSION. */
+  tablesVersion: string
+}

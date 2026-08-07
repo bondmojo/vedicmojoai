@@ -1,12 +1,34 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.7
-**Last updated:** 2026-08-05
+**Version:** 1.8
+**Last updated:** 2026-08-06
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.8
+
+- Added **Marriage Matchmaking** (`.kiro/specs/marriage-matchmaking/`) — a
+  fifth practitioner-facing feature. Pure, never-throwing Ashtakoota (Guna
+  Milan, 36-point) + Mangal Dosha (Kuja Dosha) engine
+  (`engine/compute/matchmaking.ts` + `matchmakingTables.ts`), reachable via
+  `POST /api/matchmaking` (persists), `POST /api/matchmaking/preview`
+  (read-only, the only one the MCP tool may call), `GET`/`DELETE
+  /api/matchmaking[/id]`, and the UI at `/matchmaking` + `/matchmaking/[id]`.
+  New MCP tool `compute_match` (§3.9). See §8.4 and `docs/computation_matchmaking.md`.
+- `UnifiedChart` gains a `gender` column (informational picker hint only —
+  never used to infer a bride/groom role) and `lib/chart-mapper.ts`'s
+  `buildChartInputV1FromUnified` now prefers it over the pre-existing
+  `chartInputV1.meta.gender` fallback before Wave 2G's/`getValidationWarnings`'s
+  last-resort `'male'` default (fixes a latent Wave 2G defaulting bug
+  predating this feature).
+- `DELETE /api/unified-charts/[id]` gained a `compatibilityMatch.deleteMany`
+  step in its cascade transaction (regression prevention — a
+  `CompatibilityMatch` FK without this fix would reintroduce an FK-violation-
+  as-500 on chart delete).
+- `middleware.ts`'s route matcher gained `/matchmaking/:path*`.
 
 ## What changed in v1.7
 
@@ -264,6 +286,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | Unified Chart Analyze | `/unified-charts/[id]/analyze` | AI Analysis launcher — query-type + agent selection, model override, 202 redirect |
 | Duration Analysis Form | `/duration-analysis` | Date range + category + optional symptoms + question → launches 3-agent pipeline |
 | Duration Analysis Results | `/duration-analysis/[id]` | Live SSE progress, period table (DA-1), symptom gate, DA-3 forecast, follow-up chat |
+| Marriage Matchmaking | `/matchmaking` | Bride/groom chart picker (gender shown as a label/warning only, never auto-selected) + list of the caller's saved matches |
+| Marriage Matchmaking Result | `/matchmaking/[id]` | Ashtakoota 8-koota breakdown + Mangal Dosha status, rendered from the persisted `result` snapshot (never recomputed) |
 
 ### 3.2 API Layer (`/app/api`)
 
@@ -288,6 +312,9 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | `/api/duration-analysis/[id]/events` | GET | SSE stream for DA pipeline progress |
 | `/api/duration-analysis/[id]/chat` | POST | Follow-up question to DA-3 with conversation history |
 | `/api/duration-analysis/[id]/override` | POST | Override symptom gate and resume to DA-3 |
+| `/api/matchmaking` | POST, GET | **Marriage Matchmaking** — compute + persist a `CompatibilityMatch` (`{brideChartId, groomChartId, label?}`) / list the caller's saved matches (summary fields only — see ERD's `verdict` denormalization note) |
+| `/api/matchmaking/preview` | POST | Identical to the POST above minus persistence — the only matchmaking route the MCP tool (`compute_match`) may call |
+| `/api/matchmaking/[id]` | GET, DELETE | Load the persisted `result` verbatim (never recomputed, OD-5) / delete a saved match, both ownership-checked |
 | `/api/runs/[id]` | GET | Run status, planner output, per-agent results |
 | `/api/runs/[id]/events` | GET | SSE stream of agent_complete / error events |
 | `/api/runs/[id]/cancel` | POST | Cancel a running/queued pipeline run |
@@ -335,7 +362,9 @@ engine/
 │   ├── jaimini.ts         # NEW — argala, yogi/avayogi, special-lagna aspects
 │   ├── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
 │   ├── yogas.ts           # NEW — deterministic named-yoga catalogue (Mahapurusha, Raja/DKA, Dhana, Viparita, Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari)
-│   └── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
+│   ├── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
+│   ├── matchmakingTables.ts # NEW — static Ashtakoota reference tables (nakshatra/rashi attributes, 5 scoring matrices), hand-transcribed + oracle-verified (docs/computation_matchmaking.md)
+│   └── matchmaking.ts     # NEW — pure, never-throwing Ashtakoota (computeAshtakootaMatch) + Mangal Dosha (computeMangalDosha) + composition (computeMatch)
 └── waves/
     ├── wave1.ts           # LLM path: 1A, 1B, 1C, 1D (compute path skips these)
     ├── wave2.ts           # parallel, planner-selected: 2A–2G
@@ -510,9 +539,11 @@ Three primitives:
   (`get_shadbala`, `get_divisional_chart`, `get_dasha_tree`, `get_active_dasha`,
   `get_chara_dasha`, `get_ashtakavarga`, `get_relationships`, `get_jaimini`,
   `get_bhava_bala`, `get_transits` — each taking a stored `chartId` **or** raw `birthData`),
-  timeline (`get_timeline_periods`, `get_domain_dataset`), knowledge
-  (`list_knowledge`, `get_domain_knowledge`, `get_framework`), and read-only
-  access to already-generated reports.
+  timeline (`get_timeline_periods`, `get_domain_dataset`), matchmaking
+  (`compute_match` — Ashtakoota/Mangal Dosha for two stored charts, calling
+  only `POST /api/matchmaking/preview`, never the persisting route — see §8.4),
+  knowledge (`list_knowledge`, `get_domain_knowledge`, `get_framework`), and
+  read-only access to already-generated reports.
 - **Resources** — the 6 canonical domain rubrics (`knowledge://domains/{domain}`).
 - **Prompts** — ready-to-run readings (`analyze_{career|health|wealth|marriage|property|cashflow}`,
   `duration_timeline`, `analyze_full_chart`). Each embeds the domain rubric and
@@ -1028,6 +1059,76 @@ Follow-up questions via POST /api/duration-analysis/[id]/chat
 | Category-scoped extraction | Minimises input tokens — health query only gets health-relevant columns |
 | contextSummary (deterministic) | After 2+ follow-up turns, substitutes full da1Output in prompt to prevent token growth |
 | Symptom gate override | Mirrors halt-gate UX from Wave 4; practitioner can override and get analysis with caveats |
+
+---
+
+## 8.4 Marriage Matchmaking — Ashtakoota + Mangal Dosha (NEW in v1.8)
+
+Marriage Matchmaking is a fifth practitioner-facing feature: a **pure, never-throwing**
+compatibility engine (no ephemeris/LLM/network/DB/file I/O) scoring a bride/groom
+pair of saved `UnifiedChart`s. It does not touch the wave pipeline or Duration
+Analysis at all — the score is derived from each chart's Moon nakshatra/pada
+(Ashtakoota) plus Mars/lagna/aspect data on compute-source charts only (Mangal
+Dosha).
+
+```
+PRACTITIONER
+     │ POST /api/matchmaking { brideChartId, groomChartId, label? }
+     ▼
+┌───────────────────────────────────────────────┐
+│  Ownership check — both charts must resolve    │
+│  to the caller (404 on either mismatch, never  │
+│  403; no distinguishing which chart failed)    │
+└──────────────────┬──────────────────────────────┘
+                   │ derive MatchNativeInput per chart:
+                   │   longitudeToNakshatraPadaRashi(chart.moonLongitude) + role
+                   │ derive MangalNativeInput when source="compute" (else omit → 'unavailable')
+                   ▼
+┌───────────────────────────────────────────────┐
+│  computeMatch(bride, groom)                    │
+│  (engine/compute/matchmaking.ts)               │
+│                                                 │
+│  computeAshtakootaMatch — 8 kootas in fixed     │
+│    order (Varna, Vashya, Tara, Yoni, Graha      │
+│    Maitri, Gana, Bhakoot, Nadi), each wrapped   │
+│    so one scorer error doesn't kill the rest    │
+│    (mirrors yogas.ts's per-detector guard)      │
+│  computeMangalDosha — per native, three         │
+│    reference points (lagna/Moon/Venus)          │
+│  → gunaScore (fractional, half-points load-     │
+│    bearing — Vashya/Graha Maitri/Tara), verdict,│
+│    mangalDoshaCompatibility, boundaryRisk,       │
+│    limitations                                  │
+└──────────────────┬──────────────────────────────┘
+                   │ MatchResult, stamped with tablesVersion
+                   ▼
+              CompatibilityMatch row (POST only — /preview computes and
+              returns the same MatchResult without persisting)
+                   │
+                   ▼
+        PRACTITIONER (`/matchmaking/[id]` renders the persisted result verbatim)
+```
+
+- **Role-awareness is structural.** `brideChartId`/`groomChartId` (distinct
+  Prisma relations `MatchBride`/`MatchGroom`) and `computeAshtakootaMatch`'s
+  explicit `bride`/`groom`-named parameters ARE the role encoding — no
+  argument-order or list-position inference, and `UnifiedChart.gender` never
+  auto-assigns a role (informational picker label + non-blocking warning
+  only).
+- **Paste-source charts still get a full 8-koota score** — `moonLongitude`
+  is a required scalar on both ingestion paths. Only Mangal Dosha (needs
+  `planets` JSONB) degrades to `'unavailable'` on a paste chart, never
+  silently reported `'matched'`.
+- **`/preview` is the MCP-reachable route** (§3.9's `compute_match` tool) —
+  identical computation to `POST /api/matchmaking` minus the
+  `CompatibilityMatch` write, enforced by `tests/mcp-cost-guard.test.ts`.
+- **Chart-delete cascade fix**: `DELETE /api/unified-charts/[id]` explicitly
+  `compatibilityMatch.deleteMany`s dependent rows (bride- and groom-side)
+  before deleting the chart, in the same `$transaction` as the pipeline-run
+  cascade already there — Prisma does not cascade FKs automatically.
+- Full koota rules, provenance, and the PyJHora oracle-verification
+  methodology: `docs/computation_matchmaking.md`. Schema: `docs/ERD.md`
+  §Marriage Matchmaking.
 
 ---
 

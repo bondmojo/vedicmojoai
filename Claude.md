@@ -1,7 +1,7 @@
 # VedicMojoAI — Claude Desktop Guide
 
-**Version:** 1.2
-**Last updated:** 2026-08-05
+**Version:** 1.3
+**Last updated:** 2026-08-06
 
 This file orients Claude Desktop (and any AI assistant) working on VedicMojoAI. It
 mirrors the guidance in `Agents.md` and the Kiro AI Skills (`.kiro/skills/`) so the
@@ -18,7 +18,7 @@ interactive HTML reports. It is one **Next.js 14 (App Router, TypeScript)** mono
 UI, API routes, the deterministic compute engine, the LLM pipeline, and the report
 renderer all live in one project and one deployment.
 
-### Four practitioner-facing features
+### Five practitioner-facing features
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in one `UnifiedChart` store:
@@ -54,6 +54,23 @@ renderer all live in one project and one deployment.
    has no prompt file and is not reachable from `/api/duration-analysis`. See
    `docs/duration-analyser.md` for the MCP-vs-UI exposure model.
 
+5. **Marriage Matchmaking** (`.kiro/specs/marriage-matchmaking/`) — a pure,
+   never-throwing Ashtakoota (Guna Milan, 36-point) + Mangal Dosha (Kuja Dosha)
+   compatibility engine (`engine/compute/matchmaking.ts` +
+   `matchmakingTables.ts`) scoring a bride/groom pair of saved `UnifiedChart`s.
+   No ephemeris, LLM, network, DB, or file I/O — the score is derived from
+   each chart's Moon nakshatra/pada alone (Mangal Dosha additionally needs
+   Mars/lagna/aspect data, so it degrades to `unavailable`, never `matched`,
+   on a paste-source chart). Entry: `POST /api/matchmaking` (persists a
+   `CompatibilityMatch`), `POST /api/matchmaking/preview` (identical, no
+   persistence — the only variant the MCP `compute_match` tool may call), UI
+   at `/matchmaking` (picker + saved-match list) and `/matchmaking/[id]`
+   (result). Role is encoded structurally (`brideChartId`/`groomChartId`
+   field names / Prisma relations — never inferred from
+   `UnifiedChart.gender`, which is an informational picker label only). See
+   `docs/computation_matchmaking.md` for the full koota rules, provenance,
+   and PyJHora oracle-verification methodology.
+
 The home page (`/`, the Chart Compute UI) renders a computed chart across **10 tabs**:
 Summary · Grahas · Divisional Charts · Ashtakavarga · Yogas · Dasha (Vimshottari) ·
 Chara Dasha · Transits · Pinda Strength · Varshaphal. It was 11 until the
@@ -75,9 +92,10 @@ engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord)
 
 ### User Management (`.kiro/specs/user-management/`)
 
-A cross-cutting layer, not a fifth practitioner-facing feature: real accounts
-(signup/login/logout/forgot-password), `UnifiedChart` (and everything hung off
-it) owned per-user, and per-user MCP tokens.
+A cross-cutting layer, not one of the five practitioner-facing features above:
+real accounts (signup/login/logout/forgot-password), `UnifiedChart` (and
+everything hung off it, including `CompatibilityMatch`) owned per-user, and
+per-user MCP tokens.
 
 - **Auth.js (NextAuth v5)** + `@auth/prisma-adapter`, **database-backed
   sessions**. Credential verification is fully custom
@@ -230,6 +248,19 @@ Geometry**) live in `engine/compute/`:
 > renders both readings in `app/components/SadeSatiPanel.tsx`. See
 > `docs/computation_transits_sadesati.md`.
 
+> **Marriage Matchmaking engine:** `engine/compute/matchmaking.ts` +
+> `matchmakingTables.ts` — pure, never-throwing Ashtakoota + Mangal Dosha
+> scoring, completely separate from the wave pipeline and Duration Analysis.
+> `computeAshtakootaMatch` runs 8 kootas in fixed order (Varna→Nadi), each
+> wrapped so one scorer error doesn't kill the rest (mirrors `yogas.ts`'s
+> per-detector guard); `computeMangalDosha` checks Mars against lagna/Moon/
+> Venus. Static tables (nakshatra/rashi attributes, 5 scoring matrices) were
+> hand-transcribed from classical sources then verified against a local,
+> never-vendored PyJHora oracle sweep (`scripts/oracle/`, AGPL-isolated —
+> see `docs/computation_matchmaking.md`'s KNOWN DIVERGENCE table for what was
+> and wasn't adopted from that sweep). `MATCHMAKING_TABLES_VERSION` is
+> stamped onto every persisted `CompatibilityMatch.result`.
+
 ---
 
 ## Key directories
@@ -238,12 +269,13 @@ Geometry**) live in `engine/compute/`:
 app/            Next.js App Router (pages + /api routes)
   compute/        Generate Chart UI + chart visualization components
   unified-charts/ Unified chart list, detail, and AI Analysis launcher
+  matchmaking/    Marriage Matchmaking — bride/groom picker + saved-match list + result view
   runs/[id]/      Run progress (SSE) + report viewer
   login/ signup/ forgot-password/ reset-password/  Auth pages (User Management)
   account/        Account settings — logout, MCP token generate/revoke
   oauth/authorize/  MCP OAuth consent screen (Server Component)
   .well-known/    RFC 8414/9728 OAuth discovery metadata routes
-  api/            Route handlers (auth, account, charts, compute, unified-charts, runs, reports, health, mcp, oauth)
+  api/            Route handlers (auth, account, charts, compute, unified-charts, matchmaking, runs, reports, health, mcp, oauth)
 engine/         Pipeline + deterministic compute
   compute/        Swiss Ephemeris modules (pure functions, no DB)
   waves/          wave1–wave4 utilities
@@ -251,7 +283,7 @@ engine/         Pipeline + deterministic compute
 lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts,
                 auth.ts, mcpAuth.ts, oauth.ts, passwords.ts, email.ts, rateLimit.ts
 middleware.ts   Session-cookie presence gate on UI page routes (User Management)
-prisma/         schema.prisma, migrations, seed.ts, backfill-owner.ts
+prisma/         schema.prisma, migrations, seed.ts, backfill-owner.ts, backfill-gender.ts
 prompts/agents/ LLM prompt files (read at runtime, never modified by the app)
 mcp/            MCP server (separate stdio process; thin HTTP client, no LLM) — see mcp/README.md
 docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
@@ -279,6 +311,14 @@ docs/           ERD.md, HLD.md, DFD.md, computation_*.md, USER_STORIES
 - **User Management (v1.3):** `User`, `Session`, `PasswordResetToken`,
   `McpApiToken`, plus `Account`/`VerificationToken` (Auth.js adapter shape,
   unused — no OAuth providers). `UnifiedChart.userId` is a required FK.
+- **`CompatibilityMatch`** (Marriage Matchmaking): `brideChartId`/
+  `groomChartId` FKs to `UnifiedChart` via two named relations
+  (`MatchBride`/`MatchGroom`) — the role encoding. `gunaScore` (`Decimal(4,1)`,
+  never rounded) and `verdict` are denormalized off the persisted `result`
+  JSONB so the list route doesn't need to fetch the full snapshot.
+  `UnifiedChart` also gains a `gender` column (informational picker hint
+  only). Deleting a `UnifiedChart` cascades dependent `CompatibilityMatch`
+  rows first (no automatic Prisma cascade).
 - Format conversion is centralized in `lib/chart-mapper.ts`.
 - Full details: `docs/ERD.md`.
 
@@ -296,6 +336,7 @@ npm run db:migrate   # prisma migrate dev
 npm run db:push      # prisma db push
 npm run db:seed      # seed model_config defaults (prisma/seed.ts)
 npm run db:backfill-owner  # assign every unowned UnifiedChart to one User (-- <email>)
+npm run db:backfill-gender # populate UnifiedChart.gender from chartInputV1.meta.gender (idempotent)
 npm run db:studio    # Prisma Studio
 npm run docker:up    # docker-compose up -d (Postgres + app)
 npm run docker:down  # docker-compose down
@@ -352,5 +393,5 @@ never drift from the code:
 | Implementation conventions, files, routes, tables, patterns | `.kiro/skills/*.md` |
 | Any of the above | this `Claude.md` |
 
-Keep the three feature areas — Generate Chart, AI Analysis, Reporting — accurately
-described across all of these documents.
+Keep all five feature areas — Generate Chart, AI Analysis, Reporting, Duration
+Analysis, Marriage Matchmaking — accurately described across all of these documents.

@@ -1,12 +1,33 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
-**Version:** 1.4
-**Last updated:** 2026-08-05
+**Version:** 1.5
+**Last updated:** 2026-08-06
 **Status:** Draft
 
 > **Maintenance rule:** Whenever the data model changes (new table, column, index,
 > relation, or ingestion path), update this ERD **and** the AI Skills, HLD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.5
+
+- Added **`CompatibilityMatch`** (migration `20260806083347_add_matchmaking_and_gender`,
+  denormalized `verdict` column + `(userId, createdAt)` index added in
+  `20260806100000_matchmaking_verdict_index`) — persisted Ashtakoota (Guna
+  Milan) + Mangal Dosha results for the **Marriage Matchmaking**
+  (`.kiro/specs/marriage-matchmaking/`) feature. Two named relations to
+  `UnifiedChart` (`MatchBride`/`MatchGroom`) encode bride/groom role
+  structurally — never a generic pair + role enum. See "Marriage Matchmaking"
+  below.
+- `UnifiedChart` gains `gender String?` — nullable, additive-only. Pre-fills
+  the matchmaking picker's chart labels only; never used to infer a
+  bride/groom role. Backfilled from `chartInputV1.meta.gender` by
+  `prisma/backfill-gender.ts` (values normalized/validated via
+  `lib/chart-mapper.ts`'s exported `toGender`).
+- `DELETE /api/unified-charts/[id]` gained a `compatibilityMatch.deleteMany`
+  step in its existing cascade `$transaction`, before the chart delete — a
+  chart referenced by a saved match is no longer left dangling (a regression
+  this feature would otherwise have reintroduced into an existing, shipped
+  delete path).
 
 ## What changed in v1.4
 
@@ -150,6 +171,7 @@ compute path skip LLM Wave 1 entirely.
 │    moonLongitude     DEC                       │
 │    ayanamsa          DEC                       │
 │    birthDatetime     TSTZ                      │
+│    gender            TEXT?  "male"|"female"|"other" (v1.5) │
 │ ── domain JSONB columns (compute engine) ──    │
 │    planets           JSONB?  PlanetPosition[]  │
 │    nakshatras        JSONB?  NakshatraInfo[]   │
@@ -287,6 +309,66 @@ migration.
   the Duration-Analysis slicer (`sliceDashaTree`, which filters the catalogue by the
   running MD/AD lord) and exposed read-only over MCP (`get_yogas`). `null` on
   `source="paste"` charts, which have no computed geometry to build it from.
+
+---
+
+## Marriage Matchmaking (v1.5) — `.kiro/specs/marriage-matchmaking/`
+
+One new table. Persists an Ashtakoota (Guna Milan, 36-point) + Mangal Dosha
+(Kuja Dosha) result for a bride/groom pair of `UnifiedChart` rows.
+
+```
+┌──────────────────────┐  N:1 (MatchBride)  ┌──────────────────────────┐
+│      UnifiedChart      │◀────────────────────│   CompatibilityMatch      │
+│  (as bride)            │                     ├──────────────────────────┤
+└──────────────────────┘  N:1 (MatchGroom)    │ PK id              UUID   │
+┌──────────────────────┐◀────────────────────│ FK userId          UUID   │
+│      UnifiedChart      │                     │ FK brideChartId    UUID   │──▶ UnifiedChart
+│  (as groom)            │                     │ FK groomChartId    UUID   │──▶ UnifiedChart
+└──────────────────────┘                     │    label           TEXT?  │
+                                              │    gunaScore       DEC(4,1)│
+                                              │    verdict         TEXT   │ ← denormalized (v1.5),
+                                              │    result          JSONB  │   avoids fetching the
+                                              │    tablesVersion   TEXT   │   full result JSONB just
+                                              │    createdAt       TSTZ   │   for the list view
+                                              │                          │
+                                              │ IDX: userId, brideChartId,│
+                                              │      groomChartId,        │
+                                              │      (userId, createdAt)  │
+                                              │ MAP: compatibility_match  │
+                                              └──────────────────────────┘
+```
+
+- **Role encoding is structural, not conventional.** `brideChartId`/
+  `groomChartId` (two distinct named FK relations, `MatchBride`/`MatchGroom`)
+  ARE the role — there is no separate `roles` object or generic pair + enum.
+  `UnifiedChart.gender` is only ever an informational label in the UI picker;
+  nothing in the schema or API infers a role from it.
+- **`gunaScore` and `verdict` are denormalized off `result`** (the persisted
+  full `MatchResult` JSON) for the same reason `PipelineRun` keeps scalar
+  `totalTokenIn`/`totalCostUsd` alongside its JSONB columns — `GET
+  /api/matchmaking` (the list route) needs both for its summary rows and must
+  not fetch the full `result` blob just to read two nested fields.
+  `gunaScore` is `Decimal(4,1)` (never rounded — half-points from Vashya,
+  Graha Maitri, and Tara are load-bearing) and MUST be written from the raw
+  JS number, never `.toFixed()`'d.
+- **`result` is the verbatim, never-recomputed snapshot** — `GET
+  /api/matchmaking/[id]` renders it as-is (OD-5); a later change to
+  `matchmakingTables.ts` does not retroactively change what a practitioner
+  already saw. `tablesVersion` (from `engine/compute/matchmakingTables.ts`'s
+  `MATCHMAKING_TABLES_VERSION`) records which table version produced the
+  stored score, mirroring `WEIGHTS_VERSION`'s precedent elsewhere.
+- **No automatic cascade on chart delete** — Prisma doesn't cascade by
+  default, so `DELETE /api/unified-charts/[id]` explicitly
+  `compatibilityMatch.deleteMany`s any row referencing the chart as bride
+  *or* groom, in the same `$transaction`, before deleting the chart itself.
+- **Ownership**: `userId` stamped from `resolveRequestUser` at create time,
+  same pattern as `UnifiedChart.userId`. Cross-account access to a match, or
+  to either referenced chart, returns 404 (never 403).
+- **No dedup / uniqueness constraint on `(brideChartId, groomChartId)`** —
+  deliberate, not an oversight: a practitioner may legitimately re-score the
+  same pair after `MATCHMAKING_TABLES_VERSION` bumps, or want multiple
+  labeled attempts. A hard uniqueness constraint would block that.
 
 ---
 
@@ -607,6 +689,8 @@ separate from the 18-agent wave pipeline.
 | User → PasswordResetToken | 1:N | Historical reset attempts; only unexpired/unused rows are valid |
 | User → McpApiToken | 1:N | Historical tokens; only one non-revoked row per user in v1 |
 | User → OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken | 1:N each | MCP OAuth server grants — see "MCP OAuth Authorization Server" above |
+| User → CompatibilityMatch | 1:N | Each user owns multiple saved matchmaking results |
+| UnifiedChart → CompatibilityMatch | 1:N each, via `MatchBride`/`MatchGroom` | A chart can appear as bride and/or groom across many saved matches; deleting the chart deletes dependent matches first (no automatic FK cascade) |
 | OAuthClient → OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken | 1:N each | One dynamically-registered client can hold many grants across users |
 | SavedChart (standalone) | — | Legacy independent computed chart storage — READ-ONLY since the compute page moved to UnifiedChart; existing rows promoted via `npm run db:migrate-saved` |
 | Wave1Cache (standalone) | — | Caches expensive Wave 1 computations by chartHash |

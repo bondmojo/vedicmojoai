@@ -16,6 +16,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: '/duration-computation', label: 'Duration Analyser' },
   { href: '/duration-analysis', label: 'Duration AI' },
   { href: '/unified-charts', label: 'Charts' },
+  { href: '/matchmaking', label: 'Matchmaking' },
   { href: '/reports', label: 'Reports' },
   { href: '/account', label: 'Account' },
 ]

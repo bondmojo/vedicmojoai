@@ -36,6 +36,7 @@ export const config = {
     '/',
     '/compute/:path*',
     '/unified-charts/:path*',
+    '/matchmaking/:path*',
     '/runs/:path*',
     '/duration-analysis/:path*',
     '/duration-computation/:path*',

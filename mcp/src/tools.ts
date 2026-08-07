@@ -314,6 +314,44 @@ export function registerTools(server: McpServer, api: ApiClient): void {
       })
   )
 
+  // ── Matchmaking (read-only preview — NEVER persists a CompatibilityMatch,
+  //    and only ever POSTs to /api/matchmaking/preview, never the persisting
+  //    /api/matchmaking — see tests/mcp-cost-guard.test.ts) ────────────
+  server.registerTool(
+    'compute_match',
+    {
+      title: 'Compute an Ashtakoota (Guna Milan) + Mangal Dosha marriage match',
+      description:
+        'Score marriage compatibility between two SAVED charts: the 8-koota Ashtakoota (Guna Milan, ' +
+        'max 36 points) score plus Mangal Dosha (Kuja Dosha) compatibility. Both charts must already be ' +
+        'saved (use list_clients to find their ids) and owned by the caller — this tool does not accept ' +
+        'raw birthData. Read-only: it never saves a CompatibilityMatch record; use the app UI to persist ' +
+        'a match. The bride/groom role is encoded by which parameter each id is passed as, matching the ' +
+        "app's own POST /api/matchmaking request shape. IMPORTANT: several kootas (Varna, Vashya, Gana) " +
+        'are directional — swapping which chart is bride vs groom can change the score. This tool has no ' +
+        "way to read a chart's gender, so do not infer the role from the client's name; confirm which " +
+        'chart is the bride and which is the groom with the user before calling.',
+      inputSchema: {
+        brideChartId: z.string().uuid().describe('Saved chart id for the bride (from list_clients)'),
+        groomChartId: z.string().uuid().describe('Saved chart id for the groom (from list_clients)'),
+      },
+    },
+    async (a) =>
+      // Ownership/not-found handling: /api/matchmaking/preview already returns
+      // a single undifferentiated 404 ("Chart not found") whether a chart id
+      // doesn't exist or belongs to a different user — the same pattern
+      // get_client_chart's underlying route uses. `guard()` turns that into a
+      // clean tool-error message here too, never a stack trace.
+      guard(async () =>
+        ok(
+          await api.post('/api/matchmaking/preview', {
+            brideChartId: a.brideChartId,
+            groomChartId: a.groomChartId,
+          })
+        )
+      )
+  )
+
   // ── Knowledge base (rubrics) ──────────────────────────────────────
   server.registerTool(
     'list_knowledge',

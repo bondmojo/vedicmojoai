@@ -24,6 +24,7 @@ vi.mock('@/lib/db', () => ({
     durationMessage: { deleteMany: vi.fn() },
     durationAnalysis: { deleteMany: vi.fn() },
     pipelineRun: { deleteMany: vi.fn() },
+    compatibilityMatch: { deleteMany: vi.fn() },
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   },
 }))
@@ -109,5 +110,46 @@ describe('DELETE /api/unified-charts/[id] — ownership', () => {
     const res = await DELETE(makeGetRequest(), { params: { id: 'chart-1' } })
     expect(res.status).toBe(200)
     expect(prisma.$transaction).toHaveBeenCalled()
+  })
+})
+
+// ─── CompatibilityMatch delete-cascade (task 7.6, NOT optional) ───────────
+//
+// The route only *mocks* compatibilityMatch.deleteMany above — these tests
+// assert the cascade actually fires, on the correct FK, in the correct
+// position relative to the chart delete.
+
+describe('DELETE /api/unified-charts/[id] — CompatibilityMatch cascade', () => {
+  it('deleting a chart that participates in a CompatibilityMatch succeeds (not 500)', async () => {
+    ;(resolveRequestUser as any).mockResolvedValue(OWNER_ID)
+    const res = await DELETE(makeGetRequest(), { params: { id: 'chart-1' } })
+    expect(res.status).toBe(200)
+  })
+
+  it('calls compatibilityMatch.deleteMany with an OR covering both the bride-side and groom-side FK', async () => {
+    ;(resolveRequestUser as any).mockResolvedValue(OWNER_ID)
+    await DELETE(makeGetRequest(), { params: { id: 'chart-1' } })
+
+    expect(prisma.compatibilityMatch.deleteMany).toHaveBeenCalledTimes(1)
+    const call = (prisma.compatibilityMatch.deleteMany as any).mock.calls[0][0]
+    expect(call.where.OR).toContainEqual({ brideChartId: 'chart-1' })
+    expect(call.where.OR).toContainEqual({ groomChartId: 'chart-1' })
+  })
+
+  it('fires compatibilityMatch.deleteMany as one of the 5 ops passed to $transaction, before unifiedChart.delete in FK order', async () => {
+    ;(resolveRequestUser as any).mockResolvedValue(OWNER_ID)
+    await DELETE(makeGetRequest(), { params: { id: 'chart-1' } })
+
+    // The op array is built by calling each mocked prisma method as an
+    // array-literal element — so every element (durationMessage,
+    // durationAnalysis, pipelineRun, compatibilityMatch, unifiedChart) is
+    // itself a call that already happened by the time $transaction runs.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    const ops = (prisma.$transaction as any).mock.calls[0][0]
+    expect(ops).toHaveLength(5)
+
+    const deleteManyOrder = (prisma.compatibilityMatch.deleteMany as any).mock.invocationCallOrder[0]
+    const chartDeleteOrder = (prisma.unifiedChart.delete as any).mock.invocationCallOrder[0]
+    expect(deleteManyOrder).toBeLessThan(chartDeleteOrder)
   })
 })

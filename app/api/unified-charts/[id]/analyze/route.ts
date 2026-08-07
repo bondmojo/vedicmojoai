@@ -119,6 +119,7 @@ export async function POST(
       ayanamsa: Number(unifiedChart.ayanamsa),
       birthDatetime: unifiedChart.birthDatetime,
       name: unifiedChart.name,
+      gender: unifiedChart.gender,
     })
 
     if (!chartInput) {

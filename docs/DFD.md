@@ -1,12 +1,25 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.7
-**Last updated:** 2026-08-05
+**Version:** 1.8
+**Last updated:** 2026-08-06
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
 > stores, or flows — together with the AI Skills, ERD, and HLD. See
 > `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.8
+
+- Added **P13 — Marriage Matchmaking** and data store **D15:
+  CompatibilityMatch**. A pure, never-throwing engine (no ephemeris/LLM/
+  network/DB/file I/O) scoring a bride/groom `UnifiedChart` pair — see the
+  new subsection under Level 2 — P13.
+- **P11 (MCP Server)** gains a new tool, `compute_match`, which flows into
+  **P13-preview** only (`POST /api/matchmaking/preview`) — never into P13's
+  persisting flow. Same never-writes guarantee as P11's existing tools,
+  covered by the same `tests/mcp-cost-guard.test.ts`.
+- **D7: UnifiedChart** gains a `gender` field (informational only — flows
+  into P13's picker as a label/warning, never as a role-inference input).
 
 ## What changed in v1.7
 
@@ -185,6 +198,14 @@ PRACTITIONER
 │                    │◄─── loadedChart ─────────────────────────────── D6: SavedChart
 └────────────────────┘
 
+┌────────────────────┐
+│  P13                │
+│  MARRIAGE           │◄─── bride/groom UnifiedChart pair ──────────── D7: UnifiedChart
+│  MATCHMAKING        │
+│  (pure, never-      │──── CompatibilityMatch (POST only) ───────────► D15: CompatibilityMatch
+│   throwing)         │──── MatchResult JSON ──────────────────────────► PRACTITIONER
+└────────────────────┘
+
 Data Stores:
   D1: Chart          — immutable chart record (chart_id, lagna, chart_json, hash)
   D2: PipelineRun    — run record (status, planner_output, report_path, cost)
@@ -201,6 +222,8 @@ Data Stores:
   D13: McpApiToken     — per-user MCP credentials (tokenHash, label, lastUsedAt, revokedAt)
   D14: OAuthClient / OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken
                        — MCP OAuth 2.1 authorization server (P11-OAuth); all secrets hashed at rest
+  D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB,
+                       tablesVersion, brideChartId/groomChartId → D7)
   FS: reports/       — HTML report files on disk
 ```
 
@@ -827,6 +850,9 @@ CLAUDE DESKTOP
       │                                                    + deterministic scorePeriod + identifyPeaks
       │                                                    + buildPeriodInsights (driver digest) + domainContext
       │                                                    (NO DA-1/2/3, NO LLM)
+      ├──────────────► POST /api/matchmaking/preview ────► P13.1 + P13.2 (Ashtakoota + Mangal Dosha,
+      │                                                    NO D15 write — compute_match tool only calls
+      │                                                    /preview, never POST /api/matchmaking)
       ├──────────────► GET  /api/knowledge/**  ──────────► prompts/domains + prompts/agents (readPromptFile)
       └──────────────► GET  /api/reports, /api/runs/[id], /api/duration-analysis[/id]   read-only
 
@@ -979,6 +1005,86 @@ PRACTITIONER (browser)                          CLAUDE DESKTOP (MCP)
 
 ---
 
+## Level 2 — P13: Marriage Matchmaking (NEW in v1.8)
+
+A pure, never-throwing engine — no ephemeris, LLM, network, DB, or file I/O.
+Reads two `UnifiedChart` rows and produces a fractional `gunaScore` + Mangal
+Dosha verdict; only the `POST /api/matchmaking` variant writes to D15.
+
+```
+PRACTITIONER
+     │ POST /api/matchmaking { brideChartId, groomChartId, label? }
+     │ (or POST /api/matchmaking/preview — identical, no D15 write)
+     ▼
+┌───────────────────────────┐
+│ P13.1  OWNERSHIP + INPUT  │◄─── moonLongitude, planets, lagna, ──────── D7: UnifiedChart
+│  RESOLUTION                │      relationships.aspects (bride + groom)
+│  • both charts must        │
+│    resolve to caller       │
+│    (404 on either          │
+│    mismatch, no leak)      │
+│  • longitudeToNakshatra-   │
+│    PadaRashi() per chart   │
+│  • MangalNativeInput only  │
+│    when source="compute"   │
+│    (else omitted → the     │
+│    Mangal koota reports    │
+│    'unavailable', never    │
+│    'matched')               │
+└──────────────┬─────────────┘
+               │ MatchNativeInput × 2 (+ optional MangalNativeInput × 2)
+               ▼
+┌───────────────────────────┐
+│ P13.2  computeMatch()      │
+│  (engine/compute/          │
+│   matchmaking.ts)          │
+│                            │
+│  computeAshtakootaMatch:   │
+│   8 kootas in fixed order  │
+│   (Varna→Nadi), each       │
+│   error-contained          │
+│   individually             │
+│  computeMangalDosha:       │
+│   per native, 3 reference  │
+│   points (lagna/Moon/Venus)│
+│                            │
+│  → gunaScore (fractional,  │
+│    never rounded), verdict,│
+│    mangalDoshaCompat-      │
+│    ibility, boundaryRisk,  │
+│    limitations             │
+│  stamped: tablesVersion    │
+│  (MATCHMAKING_TABLES_      │
+│   VERSION)                 │
+└──────────────┬─────────────┘
+               │ MatchResult JSON
+               ├── POST /api/matchmaking only ──► D15: CompatibilityMatch
+               │     (gunaScore, verdict denormalized; result = full snapshot)
+               ▼
+         PRACTITIONER (`/matchmaking/[id]` renders D15.result verbatim — never
+         recomputed, OD-5)
+
+DELETE /api/unified-charts/[id] (chart-delete cascade fix, regression
+  prevention): compatibilityMatch.deleteMany({ brideChartId: id OR
+  groomChartId: id }) runs BEFORE the chart delete, in the same
+  $transaction as the pre-existing pipeline-run cascade — Prisma does not
+  cascade FKs automatically, so a CompatibilityMatch FK without this fix
+  would turn "delete a matched chart" into a 500.
+
+DELETE /api/matchmaking/[id]: plain delete, no dependents ──► D15
+```
+
+**P13 data flows**
+
+| Flow | From → To | Payload |
+|---|---|---|
+| chart resolution | P13.1 → D7 | ownership-checked read of both charts |
+| score (persist) | P13.2 → D15 | `CompatibilityMatch` row (POST only) |
+| score (preview) | P13.2 → PRACTITIONER / P11 | `MatchResult` JSON, not persisted |
+| cascade | P1 (chart delete) → D15 | dependent match rows deleted first |
+
+---
+
 ## Data Dictionary
 
 | Data Item | Format | Size (approx) | Source | Consumers |
@@ -1008,3 +1114,4 @@ PRACTITIONER (browser)                          CLAUDE DESKTOP (MCP)
 | `DA3Output` | JSON (JSONB) | ~10–30KB | DA-3 agent | DurationAnalysis.da3Output; report UI |
 | `contextSummary` | TEXT | ~500 tokens (~2KB) | index.ts (deterministic) | DurationAnalysis.contextSummary; DA-3 chat follow-up prompts |
 | `OAuthAuthorizationCode` / `OAuthAccessToken` / `OAuthRefreshToken` (raw values) | opaque string | ~64 bytes each | app/api/oauth/{authorize-decision,token}/route.ts | Remote MCP client; hashed at rest in D14, raw value never persisted |
+| `MatchResult` | JSON (JSONB) | ~3–6KB | matchmaking.ts's `computeMatch()` | D15.result (POST only); `/matchmaking/[id]` UI; `compute_match` MCP response (preview, not persisted) |
