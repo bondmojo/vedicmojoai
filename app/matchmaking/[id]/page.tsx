@@ -353,11 +353,11 @@ function MangalNativeCard({ title, native }: { title: string; native: MangalDosh
 
 function VerdictBadge({ verdict, large }: { verdict: string; large?: boolean }) {
   const colors: Record<string, string> = {
-    excellent: 'bg-green-900/50 text-green-400',
-    good: 'bg-cyan-900/50 text-cyan-400',
-    average: 'bg-amber-900/50 text-amber-400',
-    below_average: 'bg-red-900/50 text-red-400',
-    incomplete: 'bg-gray-700/50 text-gray-400',
+    excellent: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400',
+    good: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-400',
+    average: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400',
+    below_average: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
+    incomplete: 'bg-gray-200 text-gray-700 dark:bg-gray-700/50 dark:text-gray-400',
   }
   return (
     <span
