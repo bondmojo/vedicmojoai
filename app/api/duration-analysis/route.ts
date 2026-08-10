@@ -8,14 +8,24 @@
  * awaiting it (fire-and-forget), and returns 202 with the new analysisId.
  *
  * Client connects to GET /api/duration-analysis/[id]/events for SSE progress.
+ *
+ * The pipeline is kept alive past the response via waitUntil() — on Vercel the
+ * invocation would otherwise be frozen/torn down once the response is sent.
+ * This only extends the invocation up to maxDuration; a run that legitimately
+ * exceeds it is left non-terminal and is swept by reapStaleAnalyses() (see the
+ * GET handler below) rather than left stuck forever.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { waitUntil } from '@vercel/functions'
 import { prisma } from '@/lib/db'
 import { executeDurationPipeline } from '@/engine/durationAnalysis'
 import { reapStaleAnalyses } from '@/engine/durationAnalysis/reaper'
 import { resolveRequestUser } from '@/lib/auth'
+
+// Vercel function-duration ceiling — see file header.
+export const maxDuration = 800
 
 // ─── List Handler ────────────────────────────────────────────────────
 
@@ -169,22 +179,24 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // ── Fire pipeline without await (fire-and-forget) ────────────────────
-  executeDurationPipeline({
-    analysisId: record.id,
-    unifiedChartId,
-    dateFrom: dateFromDate,
-    dateTo: dateToDate,
-    category,
-    userQuestion: userQuestion ?? undefined,
-    symptoms: symptoms ?? undefined,
-    overrideProvider: provider ?? undefined,
-    overrideModel: model ?? undefined,
-    apiKey: apiKey ?? undefined,
-    emitEvent: (_event) => {}, // events served via SSE at /api/duration-analysis/[id]/events
-  }).catch((err) => {
-    console.error(`[duration-analysis] Pipeline ${record.id} failed:`, err)
-  })
+  // ── Fire pipeline without await (fire-and-forget), kept alive via waitUntil ──
+  waitUntil(
+    executeDurationPipeline({
+      analysisId: record.id,
+      unifiedChartId,
+      dateFrom: dateFromDate,
+      dateTo: dateToDate,
+      category,
+      userQuestion: userQuestion ?? undefined,
+      symptoms: symptoms ?? undefined,
+      overrideProvider: provider ?? undefined,
+      overrideModel: model ?? undefined,
+      apiKey: apiKey ?? undefined,
+      emitEvent: (_event) => {}, // events served via SSE at /api/duration-analysis/[id]/events
+    }).catch((err) => {
+      console.error(`[duration-analysis] Pipeline ${record.id} failed:`, err)
+    })
+  )
 
   // ── Return 202 immediately ───────────────────────────────────────────
   return NextResponse.json(

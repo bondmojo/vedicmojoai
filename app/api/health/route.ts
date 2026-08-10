@@ -19,13 +19,19 @@ export async function GET() {
     checks.database = 'error'
   }
 
-  // Check reports directory is writable
-  try {
-    const reportsDir = process.env.REPORTS_DIR || path.join(process.cwd(), 'data', 'reports')
-    await fs.access(reportsDir, fs.constants.W_OK)
+  // Check reports directory is writable — not applicable on Vercel, where reports are
+  // stored in the database and the filesystem is read-only (see PipelineRun.reportHtml/
+  // reportMarkdown in engine/renderer.ts).
+  if (process.env.VERCEL) {
     checks.reports_dir = 'ok'
-  } catch {
-    checks.reports_dir = 'error'
+  } else {
+    try {
+      const reportsDir = process.env.REPORTS_DIR || path.join(process.cwd(), 'data', 'reports')
+      await fs.access(reportsDir, fs.constants.W_OK)
+      checks.reports_dir = 'ok'
+    } catch {
+      checks.reports_dir = 'error'
+    }
   }
 
   const healthy = Object.values(checks).every((v) => v === 'ok')

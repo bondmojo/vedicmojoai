@@ -1,0 +1,264 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Remove the `&& !cazimi` conjunct in `computeCombustion` so `combust` is": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606576
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633622870
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633773117
+      }
+    ],
+    "2.1 Add `'lordAffliction'` to the `ScoringFactorKey` union (additive, no existing key changed)": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606653
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633836596
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633924142
+      }
+    ],
+    "3.1 Rewrite all 7 domain weight tables in `DOMAIN_SCORING_WEIGHTS` per design §1 (the": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606705
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633933744
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784635965770
+      }
+    ],
+    "4.1 Redesign `factorNaturalKaraka` and `factorKarakaRole` to the level-base ×": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606756
+      },
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784635974557
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784647611950
+      }
+    ],
+    "5.1 Implement `factorLordAffliction(mdLord, adLord, pdLord, chartData)` per design §3:": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606799
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784647644254
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652262238
+      }
+    ],
+    "5.2 Wire `apply('lordAffliction', factorLordAffliction(...))` into `_scorePeriod` and": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606850
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652269870
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652517607
+      }
+    ],
+    "6. Checkpoint": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606917
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652526095
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652535934
+      }
+    ],
+    "7.1 Redesign `factorDomainHouseActivation` per design §4: drop Limb 2 (domain-house-lord's": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633606974
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652543537
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652854103
+      }
+    ],
+    "8.1 In `factorSaturnAfflictions`, import `getVargaDignityLabel` from": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607027
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652861870
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784653142120
+      }
+    ],
+    "9.1 Create `engine/durationAnalysis/__fixtures__/mojo_wealth_range.json` from a FRESH": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607076
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784653150220
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784710217347
+      }
+    ],
+    "9.2 Add assertions in `scoring.backtest.test.ts` that re-score the fixture via `scorePeriod`": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607136
+      },
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784710227489
+      }
+    ],
+    "10.1 Re-run the existing per-domain fixtures (`career_strong_weak`,": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607213
+      }
+    ],
+    "10.2 Ensure each fixture's assertions still pass, or consciously re-baseline any changed": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607254
+      }
+    ],
+    "11.1 Assert the produced `ScoreBreakdown` key set is unchanged and type-check the existing": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607287
+      }
+    ],
+    "12. Final checkpoint": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633607322
+      }
+    ],
+    "1. Compute-source combustion fix (threshold-only)": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633773198
+      }
+    ],
+    "2. Add the new scoring-factor key to the type union": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784633924188
+      }
+    ],
+    "3. Rebalance domain weight tables and bump the weights version": [
+      {
+        "executionId": "de3a1bae-e85c-4346-8a96-6d12684472a0",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784635965884
+      }
+    ],
+    "4. De-pin `naturalKaraka` / `karakaRole` with combustion-survival credit": [
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784647612176
+      }
+    ],
+    "5. Add the `lordAffliction` factor and wire it into scoring": [
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652517657
+      }
+    ],
+    "7. Narrow the `domainHouseActivation` aspect net": [
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784652854161
+      }
+    ],
+    "8. Make the Sade-Sati peak penalty conditional on Saturn's transit dignity": [
+      {
+        "executionId": "e8a8ad8f-2e21-4d5c-8b12-8a2479acc52d",
+        "chatSessionId": "sess_f37e5409-eb54-4db3-aa06-9cc3d6369b8d",
+        "timestamp": 1784653142202
+      }
+    ]
+  }
+}

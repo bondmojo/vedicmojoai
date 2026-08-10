@@ -347,7 +347,8 @@ cd mcp && npm run build       # → dist/server.js (point Claude Desktop here)
 cd mcp && node smoke-test.mjs # live wiring check (app must be running)
 ```
 
-Environment: copy `.env.example` to `.env`. Requires `DATABASE_URL`, `AUTH_SECRET`
+Environment: copy `.env.example` to `.env`. Requires `DATABASE_URL`, `DIRECT_URL`
+(same value as `DATABASE_URL` locally — see below), `AUTH_SECRET`
 (`npx auth secret`), and provider API keys (Anthropic / OpenAI). `RESEND_API_KEY` +
 `RESEND_FROM_EMAIL` are needed for password-reset emails. Models/providers are
 resolved at runtime from the `model_config` table, so provider swaps need no code
@@ -358,7 +359,23 @@ dev fallback when no `x-mcp-token` is sent at all. `OAUTH_ISSUER_URL` is require
 for the MCP OAuth authorization server (`app/oauth/authorize`, `app/api/oauth/*`)
 to function — a stable, externally-facing URL, distinct from the internal-only
 `VEDICMOJO_INTERNAL_BASE_URL`; without it, that path 404s but the manual
-`MCP_TOKEN`/`McpApiToken` flow is unaffected.
+`MCP_TOKEN`/`McpApiToken` flow is unaffected. Node version is pinned via
+`.nvmrc`/`package.json` `engines.node` (20.x) — `swisseph-v2` compiles a native
+addon on install, so an unpinned Node version risks an ABI mismatch on a cached
+`node_modules`.
+
+**Vercel & Supabase deployment** (`.kiro/specs/vercel-supabase-deployment/`): a
+third deployment target alongside local dev and GCP Cloud Run (see
+`docs/HLD.md` §8.5). `DATABASE_URL` points at Supabase's connection pooler
+(`?pgbouncer=true&connection_limit=1`); `DIRECT_URL` is the unpooled
+connection used only for `prisma migrate deploy`. Reports are stored in
+`PipelineRun.reportHtml`/`reportMarkdown` (DB is the source of truth; disk
+writes in `engine/renderer.ts` are now best-effort, since Vercel's
+filesystem is read-only). The AI Analysis and Duration Analysis pipelines
+are kept alive past their `202` response via `waitUntil()`, bounded by an
+explicit `maxDuration` — not a guarantee for pipelines that run longer than
+that ceiling. `COOKIE_SECURE=true` must be set explicitly on Vercel (not
+auto-derived). See the spec folder for the full requirements/design/tasks.
 
 ---
 

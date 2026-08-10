@@ -5,11 +5,23 @@
  * The client opens this connection after POST /api/runs returns 202.
  * Events are polled from the DB (wave_output status changes).
  * Connection closes when run reaches a terminal state.
+ *
+ * This is a separate invocation from the POST that starts the pipeline, with
+ * its own independent maxDuration ceiling — a run that legitimately takes
+ * longer gets its SSE connection cut server-side regardless of pipeline state.
+ * The client (app/runs/[id]/page.tsx) reconnects when that happens. To avoid
+ * re-announcing already-reported progress on reconnect, dedup is seeded from
+ * DB state at connection time (not an in-memory set that resets to empty on
+ * every new connection) and a snapshot of already-known agent statuses is
+ * sent in the initial 'connected' event.
  */
 
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { resolveRequestUser } from '@/lib/auth'
+
+// Vercel function-duration ceiling for this connection — see file header.
+export const maxDuration = 800
 
 export async function GET(
   request: NextRequest,
@@ -59,8 +71,18 @@ export async function GET(
         }
       }
 
-      // Track which agents we've already reported on
+      // Track which agents we've already reported on *this connection*, seeded from
+      // DB state at connect time so a reconnect (new invocation, fresh Set otherwise)
+      // doesn't re-announce progress the client already saw before disconnecting.
       const reportedAgents = new Set<string>()
+      const initialOutputs = await prisma.waveOutput.findMany({
+        where: { runId },
+        orderBy: { startedAt: 'asc' },
+        select: { agentId: true, waveNumber: true, status: true, tokenIn: true, tokenOut: true, costUsd: true, errorMessage: true },
+      })
+      for (const output of initialOutputs) {
+        reportedAgents.add(`${output.agentId}_${output.status}`)
+      }
 
       // Poll loop — check DB for updates every 2 seconds
       const pollInterval = setInterval(async () => {
@@ -167,12 +189,24 @@ export async function GET(
         }
       }, 2000)
 
-      // Send initial connection event
+      // Send initial connection event, including a snapshot of already-known agent
+      // statuses so a reconnecting client can sync state without waiting for the
+      // next poll tick (those agents won't be re-announced as individual events —
+      // they're already in reportedAgents above).
       sendEvent({
         type: 'connected',
         runId,
         status: run.status,
         timestamp: new Date().toISOString(),
+        snapshot: initialOutputs.map((o) => ({
+          agent_id: o.agentId,
+          wave_number: o.waveNumber,
+          status: o.status,
+          tokenIn: o.tokenIn,
+          tokenOut: o.tokenOut,
+          costUsd: Number(o.costUsd),
+          error: o.errorMessage,
+        })),
       })
     },
 

@@ -10,10 +10,18 @@
  * compatibility) and the new UnifiedChart, then starts the orchestrator.
  *
  * Returns 202 with the run ID immediately. Client connects via SSE for progress.
+ *
+ * The pipeline below is started fire-and-forget and kept alive past the response
+ * via waitUntil() — on Vercel, the invocation would otherwise be frozen/torn down
+ * as soon as the response is sent. This only extends the invocation up to
+ * maxDuration; a run that legitimately exceeds it is left non-terminal and
+ * recoverable via POST /api/runs/[id]/rerun or /override (see
+ * .kiro/specs/vercel-supabase-deployment/requirements.md Requirement 5).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { waitUntil } from '@vercel/functions'
 import { prisma } from '@/lib/db'
 import { computeVimshottari } from '@/engine/computeVimshottari'
 import { runPreAnalysis } from '@/engine/pre_analysis'
@@ -26,6 +34,11 @@ import { YOGAKARAKA } from '@/engine/constants'
 import { resolveRequestUser } from '@/lib/auth'
 import crypto from 'crypto'
 import type { ChartInputV1, QueryType, SSEEvent } from '@/lib/types'
+
+// Vercel function-duration ceiling — the largest this route's plan allows.
+// waitUntil() below only extends the invocation up to this limit; it does not
+// guarantee the pipeline finishes (see file header).
+export const maxDuration = 800
 
 // ─── Input Validation ───────────────────────────────────────────────
 
@@ -333,21 +346,23 @@ export async function POST(
     // Events served via SSE endpoint at /api/runs/[id]/events
   }
 
-  executePipeline({
-    runId: run.id,
-    chartId: legacyChart.id,
-    chart: chartInput,
-    chartSummary,
-    alerts,
-    dashaTree,
-    executionPlan,
-    wave1Delta,
-    wave1Source: isComputePath ? 'compute' : 'llm',
-    outputFormat,
-    emitEvent: noopEmit,
-  }).catch(async (error) => {
-    console.error(`Pipeline run ${run.id} failed:`, error)
-  })
+  waitUntil(
+    executePipeline({
+      runId: run.id,
+      chartId: legacyChart.id,
+      chart: chartInput,
+      chartSummary,
+      alerts,
+      dashaTree,
+      executionPlan,
+      wave1Delta,
+      wave1Source: isComputePath ? 'compute' : 'llm',
+      outputFormat,
+      emitEvent: noopEmit,
+    }).catch(async (error) => {
+      console.error(`Pipeline run ${run.id} failed:`, error)
+    })
+  )
 
   // ─── Return 202 immediately ─────────────────────────────────────
 

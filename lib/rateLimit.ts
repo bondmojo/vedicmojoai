@@ -8,6 +8,13 @@
  * restart and does not work across multiple instances. If the app is ever
  * deployed with more than one replica, this needs to move to a shared store
  * (Redis/Upstash, or a DB-backed counter table).
+ *
+ * On Vercel (see .kiro/specs/vercel-supabase-deployment/), this limitation is
+ * not hypothetical: serverless is inherently multi-instance, so this limiter
+ * is effectively inert there — auth brute-force protection on login/signup/
+ * password-reset is not enforced across invocations. Accepted as a known v1
+ * risk for that deployment rather than fixed, given the app's scale above;
+ * revisit if abuse becomes a real problem.
  */
 
 const WINDOW_MS = 15 * 60 * 1000 // 15 minutes

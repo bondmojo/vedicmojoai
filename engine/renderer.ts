@@ -122,23 +122,25 @@ export async function renderReport(input: RenderInput): Promise<string> {
   const querySlug = queryTypes.join('_')
   const filename = `${slug}_${timestamp}_${querySlug}.html`
 
-  // Determine reports directory
-  const reportsDir = process.env.REPORTS_DIR || path.join(process.cwd(), 'data', 'reports')
-  await fs.mkdir(reportsDir, { recursive: true })
-
-  const filePath = path.join(reportsDir, filename)
   const relativePath = `data/reports/${filename}`
 
   // Generate HTML
   const html = generateHTML(input)
 
-  // Write file
-  await fs.writeFile(filePath, html, 'utf-8')
+  // Best-effort disk write — the filesystem is read-only on serverless (Vercel),
+  // so this must never block the DB write below, which is the source of truth.
+  try {
+    const reportsDir = process.env.REPORTS_DIR || path.join(process.cwd(), 'data', 'reports')
+    await fs.mkdir(reportsDir, { recursive: true })
+    await fs.writeFile(path.join(reportsDir, filename), html, 'utf-8')
+  } catch (err) {
+    console.warn('Skipping report file write (likely a read-only filesystem):', err)
+  }
 
-  // Update run with report path
+  // Update run with report path + content
   await prisma.pipelineRun.update({
     where: { id: runId },
-    data: { reportPath: relativePath },
+    data: { reportPath: relativePath, reportHtml: html },
   })
 
   return relativePath
@@ -166,23 +168,25 @@ export async function renderMarkdownReport(input: RenderInput): Promise<string> 
   const querySlug = queryTypes.join('_')
   const filename = `${slug}_${timestamp}_${querySlug}.md`
 
-  // Determine reports directory
-  const reportsDir = process.env.REPORTS_DIR || path.join(process.cwd(), 'data', 'reports')
-  await fs.mkdir(reportsDir, { recursive: true })
-
-  const filePath = path.join(reportsDir, filename)
   const relativePath = `data/reports/${filename}`
 
   // Generate Markdown
   const md = generateMarkdown(input)
 
-  // Write file
-  await fs.writeFile(filePath, md, 'utf-8')
+  // Best-effort disk write — the filesystem is read-only on serverless (Vercel),
+  // so this must never block the DB write below, which is the source of truth.
+  try {
+    const reportsDir = process.env.REPORTS_DIR || path.join(process.cwd(), 'data', 'reports')
+    await fs.mkdir(reportsDir, { recursive: true })
+    await fs.writeFile(path.join(reportsDir, filename), md, 'utf-8')
+  } catch (err) {
+    console.warn('Skipping report file write (likely a read-only filesystem):', err)
+  }
 
-  // Update run with report path
+  // Update run with report path + content
   await prisma.pipelineRun.update({
     where: { id: runId },
-    data: { reportPath: relativePath },
+    data: { reportPath: relativePath, reportMarkdown: md },
   })
 
   return relativePath

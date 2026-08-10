@@ -11,6 +11,11 @@ import { prisma } from '@/lib/db'
 import { isStale, STALE_RUN_MESSAGE } from '@/engine/durationAnalysis/reaper'
 import { resolveRequestUser } from '@/lib/auth'
 
+// Vercel function-duration ceiling for this connection. Must be >= this route's
+// own internal MAX_DURATION_MS (10 min) below, or Vercel cuts the connection
+// before that self-imposed limit ever fires.
+export const maxDuration = 800
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

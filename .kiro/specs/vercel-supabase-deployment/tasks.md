@@ -1,0 +1,44 @@
+# Implementation Tasks: Vercel & Supabase Deployment
+
+- [ ] 1. Update Prisma Schema & Generate Client
+  - [ ] Add `directUrl = env("DIRECT_URL")` to `prisma/schema.prisma`
+  - [ ] Add `rhel-openssl-3.0.x` to `binaryTargets` in `prisma/schema.prisma`
+  - [ ] Add `reportHtml` and `reportMarkdown` fields to the `PipelineRun` model
+  - [ ] Create a local Prisma migration file (`npx prisma migrate dev --name add_database_reports`)
+- [ ] 2. Implement Database-Backed Reports
+  - [ ] Update HTML and Markdown generation in `engine/renderer.ts` to write to the database
+  - [ ] Wrap disk-writes in `try/catch` safety blocks in `engine/renderer.ts`
+  - [ ] Modify `app/api/runs/[id]/report-content/route.ts` to fetch from the database first, falling back to disk
+- [ ] 3. Update Health Check
+  - [ ] Skip reports directory write-check in `app/api/health/route.ts` if `process.env.VERCEL` is active
+- [ ] 4. Keep Background Pipelines Alive Past the Response (bounded — not a full fix)
+  - [ ] Add `@vercel/functions` dependency
+  - [ ] Wrap the fire-and-forget `executePipeline(...)` call in `waitUntil()` in `app/api/unified-charts/[id]/analyze/route.ts`
+  - [ ] Wrap the equivalent fire-and-forget pipeline call in `waitUntil()` in `app/api/duration-analysis/route.ts`
+  - [ ] Add `export const maxDuration = <seconds>` to both routes, set to the target Vercel plan's ceiling (not a "sized to the pipeline" tuning knob — the pipeline can plausibly exceed even the highest ceiling)
+  - [ ] Add `export const maxDuration = <seconds>` to `app/api/runs/[id]/events/route.ts` (SSE) — it's a separate invocation with its own ceiling
+  - [ ] Replace the in-memory `reportedAgents` dedup `Set` in `app/api/runs/[id]/events/route.ts` with a DB-state-based check, and make the client reconnect on stream end
+  - [ ] Document `POST /api/runs/[id]/rerun` and `/override` as the recovery path for runs that exceed `maxDuration` and get left non-terminal
+  - [ ] On a preview deployment, kick off a real AI Analysis run and confirm it reaches a terminal `status` (not stuck at `queued`/`running`) via `/api/runs/[id]`
+- [ ] 5. Bundle Runtime-Read Assets
+  - [ ] Add `experimental.outputFileTracingIncludes` in `next.config.js` for `node_modules/swisseph-v2/**` (whole package, not just `ephe/**`)
+  - [ ] Add `experimental.outputFileTracingIncludes` in `next.config.js` for `prompts/**`
+  - [ ] On a preview deployment, verify `POST /api/compute` (or `/api/compute/varshaphal`) returns transit longitudes matching a known-correct local reference (not just "no error" — missing data silently falls back to the lower-precision Moshier ephemeris)
+  - [ ] On a preview deployment, verify an LLM pipeline agent run and an MCP knowledge-resource read (e.g. `get_framework`) both succeed
+- [ ] 6. Wire MCP HTTP Transport for Deployment
+  - [ ] Set `VEDICMOJO_INTERNAL_BASE_URL` to the deployment's own origin in Vercel env vars
+  - [ ] Set `VERCEL_AUTOMATION_BYPASS_SECRET` if Deployment Protection stays enabled on the target environment
+  - [ ] Set `OAUTH_ISSUER_URL` if the MCP OAuth authorization server is enabled for this deployment
+  - [ ] Smoke-test `POST /api/mcp` against the deployed URL (e.g. `mcp/smoke-test.mjs` pointed at it) — confirm a self-call-backed tool like `compute_chart` succeeds without a 401
+- [ ] 7. Close Out Other Serverless-Incompatible Assumptions
+  - [ ] Add `connection_limit=1` to the pooler `DATABASE_URL` alongside `pgbouncer=true`
+  - [ ] Set `COOKIE_SECURE=true` in Vercel env vars
+  - [ ] Decide and document: accept the in-memory `lib/rateLimit.ts` as inert-on-Vercel for v1, or replace it with a DB-backed counter before shipping
+  - [ ] Add `.nvmrc` and/or `engines.node` in `package.json`, matching the Vercel project's configured Node version
+- [ ] 8. Update and Verify Tests
+  - [ ] Update `tests/renderer.test.ts` to assert database fields during client updates
+  - [ ] Run vitest test suite (`npm run test tests/renderer.test.ts`) to ensure tests compile and pass
+- [ ] 9. Documentation Review
+  - [ ] Update `docs/ERD.md` to document the new `PipelineRun` fields
+  - [ ] Update `docs/HLD.md` to reflect DB-backed report flow, database pooling settings, background-execution handling (including the accepted-failure-mode caveat), and MCP route deployment wiring
+  - [ ] Update `Claude.md` if any changes affect developer orientation

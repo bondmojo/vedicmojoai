@@ -1,12 +1,25 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.8
-**Last updated:** 2026-08-06
+**Version:** 1.9
+**Last updated:** 2026-08-07
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.9
+
+- Added **Vercel & Supabase Deployment** as a third deployment target
+  (`.kiro/specs/vercel-supabase-deployment/`), alongside local dev and GCP
+  Cloud Run — see new §8.5. Report storage moved from disk-only to
+  database-backed (`PipelineRun.reportHtml`/`reportMarkdown`, §3.3), the AI
+  Analysis and Duration Analysis pipelines are now kept alive past their
+  `202` response via `waitUntil()` (bounded by an explicit `maxDuration`,
+  not a guarantee — see §8.5), Prisma gained a pooled/direct connection
+  split, `next.config.mjs` now force-includes `swisseph-v2` and `prompts/`
+  into the serverless bundle, and `/api/health`'s reports-directory check is
+  bypassed under `process.env.VERCEL`.
 
 ## What changed in v1.8
 
@@ -842,6 +855,91 @@ Cloud Run (Next.js container)
 
 Single `Dockerfile`, single deploy command. No Celery, no Redis, no queues.
 Next.js background route handlers are sufficient for ~10 reports/month.
+
+---
+
+## 8.5 Vercel & Supabase Deployment (NEW in v1.9)
+
+A third deployment target, alongside local dev and GCP Cloud Run —
+`.kiro/specs/vercel-supabase-deployment/`. Vercel's Node.js Serverless
+Functions have a **read-only filesystem** (except ephemeral `/tmp`) and are
+**per-invocation** — a function's process is not guaranteed to keep running
+once its HTTP response is sent. Neither assumption holds for Cloud Run's
+persistent container, so four things needed to change:
+
+```
+Vercel (serverless)                            Supabase (PostgreSQL)
+┌──────────────────────────────┐
+│ /api/unified-charts/[id]/    │  waitUntil()   ┌─────────────────────┐
+│   analyze, /api/duration-    │───────────────▶│ Connection Pooler   │
+│   analysis (maxDuration=800) │  (bounded, not │ (:6543, DATABASE_URL)│
+│   → executePipeline()        │   a guarantee) └──────────┬──────────┘
+├──────────────────────────────┤                            │
+│ engine/renderer.ts           │  writes reportHtml/         ▼
+│   fs write wrapped try/catch │  reportMarkdown       ┌─────────────┐
+├──────────────────────────────┤                       │  Postgres   │
+│ /api/runs/[id]/report-content│  reads DB first,      │  Direct     │
+│   falls back to disk         │  disk for legacy      │ (:5432,     │
+├──────────────────────────────┤                       │  DIRECT_URL,│
+│ /api/health                  │  bypasses reports_dir │  migrations)│
+│   check when VERCEL=1        │  check                └─────────────┘
+└──────────────────────────────┘
+```
+
+1. **Database-backed reports.** `engine/renderer.ts`'s `renderReport()` /
+   `renderMarkdownReport()` write the full content to
+   `PipelineRun.reportHtml`/`reportMarkdown` (§ERD v1.6) as the source of
+   truth; the disk write is now a best-effort side effect wrapped in
+   `try/catch` (never blocks or fails the pipeline). `GET
+   /api/runs/[id]/report-content` reads the DB columns first, falling back
+   to disk only for reports generated before this migration.
+2. **Bounded background pipeline execution.** `POST
+   /api/unified-charts/[id]/analyze` and `POST /api/duration-analysis`
+   still return `202` immediately after firing their pipeline
+   fire-and-forget, but the call is now wrapped in `waitUntil()`
+   (`@vercel/functions`) so the invocation is kept alive past the response
+   instead of relying on the process happening to still be running. This is
+   a **bounded mitigation, not a guarantee**: both routes declare `export
+   const maxDuration = 800` (Vercel's Fluid Compute ceiling), but a
+   pipeline that legitimately runs longer is left non-terminal —
+   recoverable via the existing `POST /api/runs/[id]/rerun`/`override`, or
+   swept by `reapStaleAnalyses()` for Duration Analysis. A deliberate
+   choice **not** to build a queue/worker for this, given the app's
+   documented ~10 reports/month scale. The SSE progress endpoints
+   (`/api/runs/[id]/events`, `/api/duration-analysis/[id]/events`) are
+   separate invocations with their own independent `maxDuration`; the
+   former's client (`app/runs/[id]/page.tsx`) reconnects with backoff on a
+   dropped connection, and the server seeds its dedup state from the DB
+   (not an in-memory `Set` that would otherwise re-announce old progress on
+   reconnect) plus sends a status snapshot on `connected`.
+3. **Runtime-read asset bundling.** Vercel's build-time file tracer
+   (`@vercel/nft`) only follows JS `require()` chains, not arbitrary
+   runtime directory reads. `next.config.mjs`'s
+   `experimental.outputFileTracingIncludes` now force-includes
+   `node_modules/swisseph-v2/**` (the native ephemeris addon + its data
+   files, read via `swe_set_ephe_path()` in `engine/compute/transits.ts`)
+   and `prompts/**` (every LLM agent prompt, read by `engine/llm.ts`, plus
+   `app/api/knowledge/**`'s `fs.readdir()` calls) for all `/api/**` routes.
+4. **Connection pooling.** `prisma/schema.prisma`'s `datasource` block gains
+   `directUrl = env("DIRECT_URL")`. `DATABASE_URL` points at Supabase's
+   transaction connection pooler (`?pgbouncer=true&connection_limit=1`) for
+   normal app queries — serverless creates many short-lived connections
+   that would otherwise exhaust Postgres's connection limit — while
+   `DIRECT_URL` is the unpooled connection `prisma migrate deploy` needs.
+5. **Health check.** `/api/health`'s reports-directory writability check is
+   bypassed (`checks.reports_dir = 'ok'`) when `process.env.VERCEL` is set.
+6. **MCP HTTP transport** (`POST /api/mcp`, §3.9) needed no code change — it
+   was already Vercel-aware (`VEDICMOJO_INTERNAL_BASE_URL`,
+   `VERCEL_AUTOMATION_BYPASS_SECRET`) — but those env vars must actually be
+   set on the Vercel deployment, and its self-call fan-out (two
+   invocations per external MCP tool call, each pooling a DB connection)
+   counts against the pooler limit above.
+
+**Explicitly out of scope / accepted risk for this deployment:** a
+queue/worker replacing `waitUntil()` (see point 2); moving
+`lib/rateLimit.ts`'s in-memory auth rate limiter to a shared store — it is
+effectively inert under Vercel's multi-instance model, and this is
+documented as an accepted v1 risk given the app's scale rather than fixed.
 
 ---
 

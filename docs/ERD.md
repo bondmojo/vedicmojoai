@@ -1,12 +1,27 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
-**Version:** 1.5
-**Last updated:** 2026-08-06
+**Version:** 1.6
+**Last updated:** 2026-08-07
 **Status:** Draft
 
 > **Maintenance rule:** Whenever the data model changes (new table, column, index,
 > relation, or ingestion path), update this ERD **and** the AI Skills, HLD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.6
+
+- **Vercel & Supabase Deployment** (`.kiro/specs/vercel-supabase-deployment/`):
+  `PipelineRun` gains two nullable `@db.Text` columns, `reportHtml` and
+  `reportMarkdown` (migration `20260807120614_add_database_reports`) — the
+  full rendered report content, written by `engine/renderer.ts` alongside the
+  existing `reportPath`. This exists because Vercel's serverless filesystem is
+  read-only: `GET /api/runs/[id]/report-content` now reads these DB columns
+  first, falling back to disk only for legacy pre-migration reports.
+  `prisma/schema.prisma`'s `datasource` block also gains `directUrl =
+  env("DIRECT_URL")` — `DATABASE_URL` points at the Supabase connection
+  pooler for normal queries, `DIRECT_URL` at the unpooled connection Prisma
+  needs to run migrations. No schema change for this half — connection
+  routing only.
 
 ## What changed in v1.5
 
@@ -87,6 +102,8 @@
 │    birthDatetime TSTZ │                 │    plannerOutput JSONB?  │
 │    createdAt   TSTZ   │                 │    status        TEXT    │
 └──────────────────────┘                 │    reportPath    TEXT?   │
+                                          │    reportHtml    TEXT?   │
+                                          │    reportMarkdown TEXT?  │
                                           │    totalTokenIn   INT    │
                                           │    totalTokenOut  INT    │
                                           │    totalCostUsd   DEC    │

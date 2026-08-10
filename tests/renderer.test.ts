@@ -263,13 +263,26 @@ describe('renderReport (HTML)', () => {
     expect(html).not.toContain('<div class="override-banner"')
   })
 
-  it('should update PipelineRun.reportPath in DB', async () => {
+  it('should update PipelineRun.reportPath and reportHtml in DB', async () => {
     await renderReport(BASE_INPUT)
     expect(prisma.pipelineRun.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'run-001' },
         data: expect.objectContaining({
           reportPath: expect.stringMatching(/data\/reports\/.+\.html/),
+          reportHtml: expect.stringContaining('<!DOCTYPE html>'),
+        }),
+      })
+    )
+  })
+
+  it('should still write reportHtml to the DB even when the filesystem write fails', async () => {
+    mockMkdir.mockRejectedValueOnce(new Error('EROFS: read-only file system'))
+    await renderReport(BASE_INPUT)
+    expect(prisma.pipelineRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reportHtml: expect.stringContaining('<!DOCTYPE html>'),
         }),
       })
     )
@@ -428,13 +441,26 @@ describe('renderMarkdownReport (Markdown)', () => {
     expect(md).not.toContain('> WARNING: Override Applied')
   })
 
-  it('should update PipelineRun.reportPath in DB', async () => {
+  it('should update PipelineRun.reportPath and reportMarkdown in DB', async () => {
     await renderMarkdownReport(BASE_INPUT)
     expect(prisma.pipelineRun.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'run-001' },
         data: expect.objectContaining({
           reportPath: expect.stringMatching(/data\/reports\/.+\.md/),
+          reportMarkdown: expect.stringContaining('# VedicMojoAI Analysis Report'),
+        }),
+      })
+    )
+  })
+
+  it('should still write reportMarkdown to the DB even when the filesystem write fails', async () => {
+    mockMkdir.mockRejectedValueOnce(new Error('EROFS: read-only file system'))
+    await renderMarkdownReport(BASE_INPUT)
+    expect(prisma.pipelineRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reportMarkdown: expect.stringContaining('# VedicMojoAI Analysis Report'),
         }),
       })
     )

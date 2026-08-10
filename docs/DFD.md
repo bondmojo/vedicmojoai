@@ -1,12 +1,33 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.8
-**Last updated:** 2026-08-06
+**Version:** 1.9
+**Last updated:** 2026-08-10
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
 > stores, or flows — together with the AI Skills, ERD, and HLD. See
 > `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.9
+
+- Added the **Vercel + Supabase deployment flow**. Both asynchronous pipeline
+  launchers now register their work with `waitUntil()` before returning `202`;
+  this keeps a serverless invocation alive only up to the route's declared
+  `maxDuration`, rather than treating an unawaited Promise as durable work.
+  A run that exceeds that bound remains recoverable through the existing
+  run/duration-analysis recovery paths.
+- **D2: PipelineRun** now holds the rendered report content as
+  `reportHtml`/`reportMarkdown`, as well as the legacy `reportPath`.
+  P5 writes the database content first; the filesystem write is best-effort
+  for local/Cloud Run compatibility. P6 reads the database first and falls
+  back to `FS: reports/` only for pre-migration reports.
+- The AI-analysis SSE client reconnects after a serverless connection ends.
+  Its `connected` event contains a snapshot of persisted `WaveOutput` state,
+  while the server seeds its per-connection deduplication from D4; this avoids
+  losing progress or replaying old agent events after reconnect.
+- Supabase app traffic flows through its pooled `DATABASE_URL`; migrations use
+  unpooled `DIRECT_URL`. Vercel bundles prompt files and Swiss Ephemeris assets
+  because both are runtime-read inputs to P4/P10 and chart computation.
 
 ## What changed in v1.8
 
@@ -164,15 +185,15 @@ PRACTITIONER
          ▼                                                              │
 ┌────────────────────┐                                                  │
 │  P5                │                                                  │
-│  REPORT RENDERER   │──── HTML file path ─────────────────────────────► D2: PipelineRun
-│  (synthesis →      │──── HTML file ──────────────────────────────────► FS: reports/
-│   HTML)            │                                                  │
+│  REPORT RENDERER   │──── reportPath + reportHtml/Markdown ──────────► D2: PipelineRun
+│  (synthesis →      │──── best-effort HTML/MD file ──────────────────► FS: reports/
+│   HTML/Markdown)   │    (local/Cloud Run; not required on Vercel)     │
 └────────┬───────────┘                                                  │
-         │ report_path                                                  │
+         │ report content                                               │
          ▼                                                              │
 ┌────────────────────┐                                                  │
-│  P6                │◄─── report_path ──────────── D2: PipelineRun     │
-│  REPORT VIEWER     │◄─── HTML file ─────────────── FS: reports/       │
+│  P6                │◄─── reportHtml/Markdown ───── D2: PipelineRun     │
+│  REPORT VIEWER     │◄─── legacy HTML/MD file ────── FS: reports/       │
 │  (serve + display) │                                                  │
 │                    │──── report HTML + dasha JSON ──────────────────► PRACTITIONER
 └────────────────────┘                                                  │
@@ -208,7 +229,8 @@ PRACTITIONER
 
 Data Stores:
   D1: Chart          — immutable chart record (chart_id, lagna, chart_json, hash)
-  D2: PipelineRun    — run record (status, planner_output, report_path, cost)
+  D2: PipelineRun    — run record (status, planner_output, reportPath, reportHtml,
+                       reportMarkdown, cost); DB report content is authoritative
   D3: Wave1Cache     — chart_summary, wave1_delta, dasha_tree (keyed by chart_hash)
   D4: WaveOutput     — per-agent delta output, domain tag, token counts
   D5: RunMessage     — conversation thread (role, content, run_id)
@@ -224,7 +246,7 @@ Data Stores:
                        — MCP OAuth 2.1 authorization server (P11-OAuth); all secrets hashed at rest
   D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB,
                        tablesVersion, brideChartId/groomChartId → D7)
-  FS: reports/       — HTML report files on disk
+  FS: reports/       — legacy/local HTML/Markdown report files on disk (best-effort)
 ```
 
 ---
@@ -484,6 +506,7 @@ BROWSER                    API LAYER                    ENGINE / DB
    │   {queryTypes[],           │── read UnifiedChart ──────►│ D7: UnifiedChart
    │    userQuery, ...}         │                            │
    │                           │── create PipelineRun ─────►│ D2: PipelineRun
+   │                           │── waitUntil(pipeline) ────►│ bounded serverless work
    │◄── 202 {run_id} ──────────│                            │
    │                           │                            │
    │── GET /api/runs/:id/events►│   (SSE connection open)   │
@@ -492,7 +515,8 @@ BROWSER                    API LAYER                    ENGINE / DB
    │◄── SSE: agent_complete ───│◄── wave_delta saved ──────│ D4: WaveOutput
    │◄── SSE: token_count ──────│                            │
    │◄── SSE: run_complete ─────│◄── synthesis saved ───────│ D4: WaveOutput
-   │                           │◄── report written ────────│ FS: reports/
+   │                           │◄── report content written ─│ D2: PipelineRun
+   │                           │◄── optional file written ──│ FS: reports/
    │                           │◄── run updated ───────────│ D2: PipelineRun
    │                           │                            │
    │── GET /api/runs/:id ──────►│── read PipelineRun ───────►│ D2: PipelineRun
@@ -502,8 +526,8 @@ BROWSER                    API LAYER                    ENGINE / DB
    │◄── report list JSON ──────│                            │
    │                           │                            │
    │── GET /api/runs/:id/       │                            │
-   │   report-content ─────────►│── read report_path ────────►│ D2: PipelineRun
-   │◄── markdown/HTML content ─│── serve file content ──────│ FS: reports/
+   │   report-content ─────────►│── read report content ─────►│ D2: PipelineRun
+   │◄── markdown/HTML content ─│── legacy file fallback ────│ FS: reports/
 ```
 
 ---
@@ -704,13 +728,15 @@ PRACTITIONER
          │     paste   → from D3 Wave1Cache (or run W1)  │
          │ • optional modelOverride → upsert ────────────┼──► model_config
          │ • create PipelineRun(chartId, unifiedChartId) ┼──► D2: PipelineRun
+         │ • register executePipeline() with waitUntil() │
+         │   (maxDuration-bound serverless work)         │
          └──────────────┬────────────────────────────────┘
                         │ 202 { runId, waveStrategy, executionPlan }
                         ▼
-                  executePipeline()  ──►  P4: Pipeline Engine (Waves 2–4)
+                  waitUntil(executePipeline())  ──►  P4: Pipeline Engine (Waves 2–4)
                         │                  (Wave 1 only for paste path)
                         ▼
-                  D4: WaveOutput → P5: Report Renderer → FS: reports/
+                  D4: WaveOutput → P5: Report Renderer → D2 report content
 ```
 
 **Wave strategy summary:**
@@ -742,10 +768,11 @@ PRACTITIONER
 │ P10.1  API ROUTE           │──► create DurationAnalysis (status=queued) ──► D8
 │  • validate (10yr cap,    │
 │    dashaTree not null)    │──► create DurationMessage if userQuestion ───► D9
-│  • fire pipeline (no await)│
+│  • waitUntil(pipeline) before│
+│    returning 202 (bounded) │
 └───────────────┬───────────┘
                 │ 202 { analysisId }
-                ▼ (fire-and-forget)
+                ▼ (background work, bounded by maxDuration)
 ┌───────────────────────────┐
 │ P10.2  STEP 0a — SLICER   │◄─── dashaTree, planets, nakshatras ────── D7: UnifiedChart
 │  sliceDashaTree() pure TS │
@@ -1100,7 +1127,8 @@ DELETE /api/matchmaking/[id]: plain delete, no dependents ──► D15
 | `corrections[]` | JSON array | ~2KB | Agent 4A | 4B, 4C |
 | `confidence_matrix[]` | JSON array | ~3KB | Agent 4B | 4C |
 | `synthesis_json` | JSON | ~15KB | Agent 4C | Report renderer, RunMessage |
-| `HTML report` | HTML file | ~50–150KB | renderer.ts | Browser, FS |
+| `HTML report` | TEXT (primary) + optional file | ~50–150KB | renderer.ts | PipelineRun.reportHtml, browser; FS fallback |
+| `Markdown report` | TEXT (primary) + optional file | ~20–100KB | renderer.ts | PipelineRun.reportMarkdown, browser; FS fallback |
 | `conversation_history` | JSON array | ~2KB/turn | RunMessage table | Verification Agent |
 | `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, UnifiedChart domains, /compute UI |
 | `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
