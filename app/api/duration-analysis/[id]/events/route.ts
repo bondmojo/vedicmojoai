@@ -4,17 +4,17 @@
  * Polls DurationAnalysis every 2 seconds and emits events based on DB state
  * transitions. Mirrors the pattern used in /api/runs/[id]/events.
  * Closes on terminal states: done | failed | symptom_unmatched.
- * Max poll duration: 10 minutes.
+ * Max poll duration: 4 minutes 45 seconds, leaving time to close cleanly
+ * before Vercel Hobby's five-minute function ceiling.
  */
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { isStale, STALE_RUN_MESSAGE } from '@/engine/durationAnalysis/reaper'
 import { resolveRequestUser } from '@/lib/auth'
 
-// Vercel function-duration ceiling for this connection. Must be >= this route's
-// own internal MAX_DURATION_MS (10 min) below, or Vercel cuts the connection
-// before that self-imposed limit ever fires.
-export const maxDuration = 800
+// Vercel Hobby plan ceiling for this connection. Must remain above the route's
+// own internal poll limit below, so the stream can close cleanly first.
+export const maxDuration = 300
 
 export async function GET(
   request: NextRequest,
@@ -69,7 +69,7 @@ export async function GET(
       // Track reported events to avoid duplicates
       const reportedEvents = new Set<string>()
 
-      const MAX_DURATION_MS = 10 * 60 * 1000 // 10 minutes
+      const MAX_DURATION_MS = 4 * 60 * 1000 + 45 * 1000 // 4 minutes 45 seconds
       const startTime = Date.now()
 
       const pollInterval = setInterval(async () => {

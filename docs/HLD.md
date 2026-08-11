@@ -1,7 +1,7 @@
 # VedicMojoAI — High Level Design (HLD)
 
 **Version:** 1.9
-**Last updated:** 2026-08-07
+**Last updated:** 2026-08-11
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
@@ -872,7 +872,7 @@ Vercel (serverless)                            Supabase (PostgreSQL)
 ┌──────────────────────────────┐
 │ /api/unified-charts/[id]/    │  waitUntil()   ┌─────────────────────┐
 │   analyze, /api/duration-    │───────────────▶│ Connection Pooler   │
-│   analysis (maxDuration=800) │  (bounded, not │ (:6543, DATABASE_URL)│
+│   analysis (maxDuration=300) │  (bounded, not │ (:6543, DATABASE_URL)│
 │   → executePipeline()        │   a guarantee) └──────────┬──────────┘
 ├──────────────────────────────┤                            │
 │ engine/renderer.ts           │  writes reportHtml/         ▼
@@ -900,7 +900,7 @@ Vercel (serverless)                            Supabase (PostgreSQL)
    (`@vercel/functions`) so the invocation is kept alive past the response
    instead of relying on the process happening to still be running. This is
    a **bounded mitigation, not a guarantee**: both routes declare `export
-   const maxDuration = 800` (Vercel's Fluid Compute ceiling), but a
+   const maxDuration = 300` (Vercel Hobby's five-minute ceiling), but a
    pipeline that legitimately runs longer is left non-terminal —
    recoverable via the existing `POST /api/runs/[id]/rerun`/`override`, or
    swept by `reapStaleAnalyses()` for Duration Analysis. A deliberate

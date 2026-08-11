@@ -20,8 +20,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { resolveRequestUser } from '@/lib/auth'
 
-// Vercel function-duration ceiling for this connection — see file header.
-export const maxDuration = 800
+// Vercel Hobby plan ceiling for this connection — see file header.
+export const maxDuration = 300
 
 export async function GET(
   request: NextRequest,

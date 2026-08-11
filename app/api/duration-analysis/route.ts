@@ -24,8 +24,9 @@ import { executeDurationPipeline } from '@/engine/durationAnalysis'
 import { reapStaleAnalyses } from '@/engine/durationAnalysis/reaper'
 import { resolveRequestUser } from '@/lib/auth'
 
-// Vercel function-duration ceiling — see file header.
-export const maxDuration = 800
+// Vercel Hobby plan ceiling. Keep in sync with the pipeline launcher and SSE
+// routes: waitUntil() cannot extend an invocation beyond this hard limit.
+export const maxDuration = 300
 
 // ─── List Handler ────────────────────────────────────────────────────
 

@@ -35,10 +35,10 @@ import { resolveRequestUser } from '@/lib/auth'
 import crypto from 'crypto'
 import type { ChartInputV1, QueryType, SSEEvent } from '@/lib/types'
 
-// Vercel function-duration ceiling — the largest this route's plan allows.
+// Vercel Hobby plan ceiling — the largest this route's plan allows.
 // waitUntil() below only extends the invocation up to this limit; it does not
 // guarantee the pipeline finishes (see file header).
-export const maxDuration = 800
+export const maxDuration = 300
 
 // ─── Input Validation ───────────────────────────────────────────────
 
