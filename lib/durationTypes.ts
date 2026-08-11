@@ -264,6 +264,7 @@ export type ScoringFactorKey =
   | 'divisionalChartStrength'
   | 'rashiDrishti'
   | 'rashiDispositorChain'
+  | 'lordAffliction'
 
 /** One applied factor's contribution record in the ScoreBreakdown. */
 export interface ScoreFactorContribution {

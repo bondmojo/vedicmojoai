@@ -3,12 +3,11 @@
  */
 'use client'
 import { useState } from 'react'
-
-const PLANET_COLORS: Record<string, string> = {
-  Sun:'text-orange-400',Moon:'text-slate-300',Mars:'text-red-400',
-  Mercury:'text-green-400',Jupiter:'text-yellow-400',Venus:'text-pink-400',
-  Saturn:'text-blue-400',Rahu:'text-gray-400',Ketu:'text-purple-400',
-}
+import type { DegreeSadeSatiInfo } from '@/engine/compute/types'
+import SadeSatiPanel from './SadeSatiPanel'
+import { SectionUnavailable } from './SectionUnavailable'
+import { guardSection, isPlainObject } from './sectionGuards'
+import { planetColorClass } from '@/lib/brandColors'
 
 function dms(dec: number) {
   const d = Math.floor(dec), m = Math.floor((dec-d)*60), s = Math.round(((dec-d)*60-m)*60)
@@ -22,35 +21,24 @@ function fmtDateShort(iso: string) {
 }
 
 interface TransitPlanet { planet:string;longitude:number;sign:string;signNumber:number;degreeInSign:number;retrograde:boolean;houseFromMoon:number;houseFromLagna:number }
-interface SadeSatiPeriod { phase:string;phaseSign:string;startApprox:string;endApprox:string;isCurrent:boolean }
-interface SadeSatiInfo { active:boolean;phase:string|null;saturnSignNumber:number;natalMoonSignNumber:number;description:string;allPeriods:SadeSatiPeriod[] }
+interface SadeSatiPeriod { phase:'rising'|'peak'|'setting';phaseSign:string;startApprox:string;endApprox:string;isCurrent:boolean }
+interface SadeSatiInfo { active:boolean;phase:'rising'|'peak'|'setting'|null;saturnSignNumber:number;natalMoonSignNumber:number;description:string;allPeriods:SadeSatiPeriod[] }
 interface MoonTransit { signNumber:number;sign:string;entryDate:string;exitDate:string;isCurrent:boolean;houseFromMoon:number }
 interface AscTransit { signNumber:number;sign:string;entryDate:string;exitDate:string;isCurrent:boolean;houseFromLagna:number }
 interface TransitData {
-  asOf:string;transits:TransitPlanet[];sadeSati:SadeSatiInfo;
+  asOf:string;transits:TransitPlanet[];sadeSati:SadeSatiInfo;sadeSatiByDegree?:DegreeSadeSatiInfo;
   ashtamaShani:boolean;kantakaShani:boolean;
   currentMoonSign:string;natalMoonSign:string;moonTransitSameAsNatal:boolean;
   moonTransits?:MoonTransit[];ascendantTransits?:AscTransit[]
 }
 
-const PHASE_COLORS: Record<string, string> = {
-  rising:'border-amber-600 bg-amber-900/20 text-amber-300',
-  peak:'border-red-600 bg-red-900/20 text-red-300',
-  setting:'border-blue-600 bg-blue-900/20 text-blue-300',
-}
-
-export default function TransitsView({ data, birthDate }: { data: TransitData; birthDate?: string }) {
+export default function TransitsView({ data: rawData, birthDate }: { data: TransitData; birthDate?: string }) {
   const [section, setSection] = useState<'gochar'|'sadesati'|'moon'|'asc'>('gochar')
 
-  // Filter out Sade Sati periods that fully ended before the native was born.
-  // Periods that started pre-birth but overlap the birth date are kept — they
-  // are genuinely active during the native's early life.
-  const sadeSatiPeriods = (data.sadeSati.allPeriods ?? []).filter((p) => {
-    if (!birthDate) return true
-    // endApprox is "Mon YYYY" — extract year conservatively
-    const endYear = parseInt(p.endApprox.split(' ').pop() ?? '9999')
-    return endYear >= new Date(birthDate).getFullYear()
-  })
+  // Root-prop guard (R8.1), after the hook so the hook count never varies.
+  const guarded = guardSection<TransitData>(rawData, isPlainObject)
+  if (!guarded.ok) return <SectionUnavailable section="Transits" />
+  const data = guarded.data
 
   // Moon and Ascendant transits always list forward from "now" so they can
   // never pre-date the DOB. No filtering needed there.
@@ -58,14 +46,14 @@ export default function TransitsView({ data, birthDate }: { data: TransitData; b
   return (
     <div className="space-y-4">
       {/* Alerts */}
-      {data.sadeSati.active && (
-        <div className="rounded-lg border border-amber-700 bg-amber-900/20 px-4 py-3">
-          <span className="text-amber-300 font-semibold text-sm">⚠ Sade Sati Active — {data.sadeSati.phase?.toUpperCase()} Phase</span>
-          <p className="text-xs text-amber-500 mt-0.5">{data.sadeSati.description}</p>
+      {data.sadeSati?.active && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20 px-4 py-3">
+          <span className="text-amber-800 dark:text-amber-300 font-semibold text-sm">⚠ Sade Sati Active — {data.sadeSati.phase?.toUpperCase()} Phase</span>
+          <p className="text-xs text-amber-700 dark:text-amber-500 mt-0.5">{data.sadeSati.description}</p>
         </div>
       )}
-      {data.ashtamaShani && <div className="rounded-lg border border-red-700 bg-red-900/20 px-3 py-2 text-xs text-red-400 font-medium">Ashtama Shani — Saturn in 8th from natal Moon</div>}
-      {data.kantakaShani && <div className="rounded-lg border border-orange-700 bg-orange-900/20 px-3 py-2 text-xs text-orange-400 font-medium">Kantaka Shani — Saturn in 4th from natal Moon</div>}
+      {data.ashtamaShani && <div className="rounded-lg border border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20 px-3 py-2 text-xs text-red-700 dark:text-red-400 font-medium">Ashtama Shani — Saturn in 8th from natal Moon</div>}
+      {data.kantakaShani && <div className="rounded-lg border border-orange-300 bg-orange-50 dark:border-orange-700 dark:bg-orange-900/20 px-3 py-2 text-xs text-orange-700 dark:text-orange-400 font-medium">Kantaka Shani — Saturn in 4th from natal Moon</div>}
 
       {/* Sub-section tabs */}
       <div className="inline-flex rounded-lg border border-gray-700 overflow-hidden">
@@ -103,9 +91,9 @@ export default function TransitsView({ data, birthDate }: { data: TransitData; b
                 </tr>
               </thead>
               <tbody>
-                {data.transits.map(t => (
+                {(Array.isArray(data.transits) ? data.transits : []).map(t => (
                   <tr key={t.planet} className="border-b border-gray-800 hover:bg-gray-800/30">
-                    <td className={`px-3 py-2 font-medium ${PLANET_COLORS[t.planet]??'text-ink'}`}>{t.planet}</td>
+                    <td className={`px-3 py-2 font-medium ${planetColorClass(t.planet)}`}>{t.planet}</td>
                     <td className="px-3 py-2 text-gray-300">{t.sign}</td>
                     <td className="px-3 py-2 text-right font-mono text-xs text-gray-300">{dms(t.degreeInSign)}</td>
                     <td className="px-3 py-2 text-center text-xs text-amber-400 font-bold">{t.retrograde?'R':''}</td>
@@ -121,31 +109,12 @@ export default function TransitsView({ data, birthDate }: { data: TransitData; b
 
       {/* ── Sade Sati Timeline ── */}
       {section === 'sadesati' && (
-        <div className="rounded-lg border border-gray-700 overflow-hidden">
-          <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700">
-            <h3 className="text-sm font-semibold">Sade Sati Periods</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Saturn transit through 3 signs around natal Moon ({data.sadeSati.natalMoonSignNumber ? `H${data.sadeSati.natalMoonSignNumber}` : ''}). ~7.5 year cycle every ~30 years.</p>
-          </div>
-          <div className="divide-y divide-gray-800">
-            {sadeSatiPeriods.map((p, i) => (
-              <div key={i} className={`px-4 py-3 flex items-center justify-between ${p.isCurrent ? 'bg-indigo-900/20' : ''}`}>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded border ${PHASE_COLORS[p.phase] ?? 'border-gray-600 text-gray-400'}`}>
-                    {p.phase.toUpperCase()}
-                  </span>
-                  <span className="text-sm text-gray-300">Saturn in <span className="text-ink font-medium">{p.phaseSign}</span></span>
-                  {p.isCurrent && <span className="text-xs bg-indigo-600 text-white px-1.5 py-0.5 rounded">CURRENT</span>}
-                </div>
-                <div className="text-xs text-gray-500 text-right">
-                  {p.startApprox} – {p.endApprox}
-                </div>
-              </div>
-            ))}
-            {sadeSatiPeriods.length === 0 && (
-              <p className="px-4 py-4 text-sm text-gray-500">No Sade Sati periods in lifetime.</p>
-            )}
-          </div>
-        </div>
+        <SadeSatiPanel
+          signBased={data.sadeSati}
+          degreeBased={data.sadeSatiByDegree}
+          asOf={data.asOf}
+          birthDate={birthDate}
+        />
       )}
 
       {/* ── Moon Transits ── */}

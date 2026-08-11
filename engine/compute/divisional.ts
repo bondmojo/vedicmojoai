@@ -390,7 +390,12 @@ export function computeDivisionalCharts(
         signNumber: vargaSign,
         house,
         retrograde: planet.retrograde || undefined,
-        dignity: getVargaDignityLabel(planet.planet, vargaSign, d1SignByPlanet),
+        dignity: getVargaDignityLabel(
+          planet.planet,
+          vargaSign,
+          d1SignByPlanet,
+          varga.division === 1 ? planet.longitude % 30 : undefined
+        ),
         vargottama:
           varga.division !== 1 && vargaSign === planet.signNumber ? true : undefined,
       }
@@ -445,7 +450,12 @@ export function computeSingleDivisionalChart(
       signNumber: vargaSign,
       house,
       retrograde: planet.retrograde || undefined,
-      dignity: getVargaDignityLabel(planet.planet, vargaSign, d1SignByPlanet),
+      dignity: getVargaDignityLabel(
+        planet.planet,
+        vargaSign,
+        d1SignByPlanet,
+        varga.division === 1 ? planet.longitude % 30 : undefined
+      ),
       vargottama:
         varga.division !== 1 && vargaSign === planet.signNumber ? true : undefined,
     }

@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { requireMcpToken } from '@/lib/mcpAuth'
+import { resolveRequestUser } from '@/lib/auth'
 
 async function listMarkdown(dir: string): Promise<string[]> {
   try {
@@ -27,8 +27,10 @@ async function listMarkdown(dir: string): Promise<string[]> {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = requireMcpToken(request)
-  if (auth) return auth
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
 
   const [domains, frameworks] = await Promise.all([
     listMarkdown('domains'),

@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
-import { requireMcpToken } from '@/lib/mcpAuth'
+import { resolveRequestUser } from '@/lib/auth'
 import { sliceDashaTree } from '@/engine/durationAnalysis/slicer'
 import { buildTransitOverlay } from '@/engine/durationAnalysis/transitOverlay'
 import { extractCategoryData, toScoringChartData, pickScoringRawChart } from '@/engine/durationAnalysis/extractor'
@@ -43,8 +43,10 @@ const MAX_SPAN_DAYS = 3653 // 10 years — same guard as the duration pipeline
 // ─── Route Handler ───────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const auth = requireMcpToken(request)
-  if (auth) return auth
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
 
   let body: unknown
   try {
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
 
   // ── Load chart ────────────────────────────────────────────────────
   const chart = await prisma.unifiedChart.findUnique({ where: { id: unifiedChartId } })
-  if (!chart) {
+  if (!chart || chart.userId !== userId) {
     return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
   }
   if (chart.dashaTree === null) {
@@ -125,6 +127,7 @@ export async function POST(request: NextRequest) {
       nakshatras: chart.nakshatras,
       relationships: chart.relationships,
       karakas: chart.karakas,
+      yogas: chart.yogas,
     }
   )
 

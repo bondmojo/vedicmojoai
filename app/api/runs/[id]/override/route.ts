@@ -6,18 +6,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { resumeFromHalt } from '@/engine/orchestrator'
+import { resolveRequestUser } from '@/lib/auth'
 import type { SSEEvent } from '@/lib/types'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   const run = await prisma.pipelineRun.findUnique({
     where: { id: params.id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, unifiedChart: { select: { userId: true } } },
   })
 
-  if (!run) {
+  if (!run || run.unifiedChart?.userId !== userId) {
     return NextResponse.json({ error: 'Run not found' }, { status: 404 })
   }
 

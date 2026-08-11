@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { computeVarshaphal } from '../engine/compute/varshaphal'
 import { birthInputToJulianDay, siderealSunLongitude } from '../engine/compute/planets'
+import { SIGN_LORDS } from '../engine/compute/relationships'
 
 const BIRTH = {
   date: '1990-04-27',
@@ -74,5 +75,21 @@ describe('computeVarshaphal', () => {
     expect(v.muntha.house).toBeGreaterThanOrEqual(1)
     expect(v.muntha.house).toBeLessThanOrEqual(12)
     expect(typeof v.muntha.lord).toBe('string')
+  })
+
+  it('derives day/night for the year-lord offices from the ANNUAL chart (Varsha Pravesh), not the natal chart', () => {
+    for (const varshaYear of [2024, 2025, 2026]) {
+      const v = computeVarshaphal({ ...BIRTH, varshaYear })
+      // dayVarsha reflects whether the annual Sun is above the horizon (7–12).
+      const annualSunHouse = v.annualChart.planets.find((p) => p.planet === 'Sun')!.house
+      expect(v.dayVarsha).toBe(annualSunHouse >= 7)
+
+      // The Dinaratri office-bearer is the sign lord of the day/night luminary
+      // (Sun by day, Moon by night) as placed in the ANNUAL chart.
+      const luminary = v.dayVarsha ? 'Sun' : 'Moon'
+      const luminarySign = v.annualChart.planets.find((p) => p.planet === luminary)!.signNumber
+      const dinaratri = v.candidates.find((c) => c.office === 'dinaratri_lord')!
+      expect(dinaratri.planet).toBe(SIGN_LORDS[luminarySign])
+    }
   })
 })

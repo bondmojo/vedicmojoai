@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
-import { requireMcpToken } from '@/lib/mcpAuth'
+import { resolveRequestUser } from '@/lib/auth'
 import { readPromptFile } from '@/engine/llm'
 
 const NAME_RE = /^[a-z0-9_-]+$/i
@@ -35,8 +35,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { type: string; name: string } }
 ) {
-  const auth = requireMcpToken(request)
-  if (auth) return auth
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
 
   const dir = TYPE_TO_DIR[params.type]
   if (!dir) {

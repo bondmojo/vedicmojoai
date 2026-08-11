@@ -4,11 +4,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { reapStaleAnalyses } from '@/engine/durationAnalysis/reaper'
+import { resolveRequestUser } from '@/lib/auth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   // Mark the run failed if it stalled (server restart mid-pipeline).
   await reapStaleAnalyses(params.id)
 
@@ -16,11 +22,11 @@ export async function GET(
     where: { id: params.id },
     include: {
       messages: { orderBy: { createdAt: 'asc' } },
-      unifiedChart: { select: { name: true } },
+      unifiedChart: { select: { name: true, userId: true } },
     },
   })
 
-  if (!analysis) {
+  if (!analysis || analysis.unifiedChart.userId !== userId) {
     return NextResponse.json({ error: 'Analysis not found' }, { status: 404 })
   }
 

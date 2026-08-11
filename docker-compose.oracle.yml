@@ -1,0 +1,26 @@
+# docker-compose.oracle.yml — task 9.1 of .kiro/specs/marriage-matchmaking/tasks.md
+#
+# A SEPARATE, throwaway compose file for the dev-only PyJHora oracle harness.
+# Deliberately NOT part of docker-compose.yml (the deployed `db` + `app`
+# stack) and NOT started by a bare `docker compose up` — it has its own file
+# and its own `oracle` profile, so it only runs when explicitly invoked:
+#
+#   docker compose -f docker-compose.oracle.yml run --rm oracle --full
+#   docker compose -f docker-compose.oracle.yml run --rm oracle --sample 50
+#
+# This service builds scripts/oracle/Dockerfile, which pip-installs PyJHora
+# (AGPL-3.0) — see that Dockerfile's header for the AGPL isolation rationale.
+# It has no ports, no dependency on `db`, and no network need beyond the
+# build step's package fetch; output lands in the git-ignored
+# ./scripts/oracle/output/ on the host via the bind mount below.
+
+services:
+  oracle:
+    profiles: ["oracle"]
+    build:
+      context: ./scripts/oracle
+      dockerfile: Dockerfile
+    volumes:
+      - ./scripts/oracle/output:/oracle/output
+    # No `ports`, no `depends_on: db`, no `.env` — this is a pure offline
+    # compute harness with no relationship to the app's runtime stack.

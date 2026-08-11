@@ -6,13 +6,19 @@
  * Includes chart name, lagna, query types, cost, and source info.
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const runs = await prisma.pipelineRun.findMany({
-      where: { status: 'done' },
+      where: { status: 'done', unifiedChart: { userId } },
       orderBy: { completedAt: 'desc' },
       select: {
         id: true,

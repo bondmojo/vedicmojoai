@@ -218,6 +218,44 @@ export interface SadeSatiInfo {
   allPeriods: SadeSatiPeriod[]
 }
 
+/** One contiguous passage of Saturn through the ±45° window (R6.1, R6.2). */
+export interface DegreeSadeSatiPeriod {
+  /** 1-based, contiguous, ascending by start across the whole scan horizon (R6.6). */
+  sequence: number
+  /** ISO-8601 UTC, bisection-refined (R6.8). */
+  start: string
+  end: string
+  /** "Mon YYYY" display form, matching the sign-based reading's convention. */
+  startApprox: string
+  endApprox: string
+  /** end − start in days (fractional). The machine-readable duration (R6.2). */
+  durationDays: number
+  /** True when [start, end) contains TransitAnalysis.asOf (R6.2, R6.10, R6.11). */
+  isCurrent: boolean
+  /** Integer 0–100, rounded half away from zero. Present only when isCurrent (R6.13). */
+  completionPct?: number
+  /** Days from asOf to `start`, fractional. Present only when start > asOf (R6.14). */
+  startsInDays?: number
+  /** R6.15, e.g. "Saturn ±45° from natal Moon (347.76°) - 12th, 1st, 2nd houses". */
+  label: string
+}
+
+export interface DegreeSadeSatiInfo {
+  /** Natal Moon sidereal longitude (0–360) the window is centred on. */
+  natalMoonLongitude: number
+  /** Half-width of the window in degrees. Always 45 for this reading (R6.1). */
+  orbDeg: number
+  /** True when asOf falls inside the window (R6.3). */
+  active: boolean
+  /** Shorter-arc separation |Saturn − natal Moon| at asOf, 0–180 (R6.3). */
+  separationDeg: number
+  /** The horizon actually scanned, so a divergence can be attributed (R6.9). */
+  scanFromYear: number
+  scanToYear: number
+  /** Ascending by start; non-overlapping (R6.12). */
+  allPeriods: DegreeSadeSatiPeriod[]
+}
+
 export interface MoonTransitPeriod {
   signNumber: number
   sign: string
@@ -240,6 +278,12 @@ export interface TransitAnalysis {
   asOf: string
   transits: TransitPlanet[]
   sadeSati: SadeSatiInfo
+  /**
+   * Degree-based Sade Sati — sibling of `sadeSati`, never nested inside it.
+   * Optional: absent on charts computed before this addition, and absent when the
+   * caller supplies no natal Moon longitude.
+   */
+  sadeSatiByDegree?: DegreeSadeSatiInfo
   ashtamaShani: boolean
   kantakaShani: boolean
   currentMoonSign: string
@@ -485,6 +529,56 @@ export interface JaiminiGeometry {
   computedAt: string
 }
 
+// ─── Named Yogas ─────────────────────────────────────────────────────
+
+export type YogaCategory =
+  | 'mahapurusha'
+  | 'raja'
+  | 'dhana'
+  | 'viparita'
+  | 'lunar'
+  | 'neechabhanga'
+  | 'parivartana'
+  | 'kartari'
+  | 'combination'   // Budha-Aditya, Gaja Kesari, etc.
+
+export type YogaStrength = 'strong' | 'moderate' | 'weak'
+
+/** How a yoga was recognized — the auditable seam downstream analyzers (F3/F4/F5) read. */
+export interface YogaEvidence {
+  /** Machine rule id that fired, e.g. "raja.kendra_trikona.conjunction". */
+  rule: string
+  /** Linkage type when the yoga is an association. */
+  linkage?: 'conjunction' | 'graha_aspect' | 'rashi_aspect' | 'parivartana' | 'placement'
+  /** Houses each involved planet owns (planet → houses), for lord-based yogas. */
+  ownedHouses?: Record<string, number[]>
+  /** Dignity label of each involved planet where dignity gated the rule. */
+  dignity?: Record<string, string>
+  /** Combustion / cancellation context — never dropped (F3 seam). */
+  afflictions?: Array<{ planet: string; kind: 'combust' | 'debilitated' | 'nodal'; detail?: string }>
+  /** Free-form notes (school variant, e.g. Gaja Kesari from Lagna). */
+  notes?: string[]
+}
+
+export interface Yoga {
+  /** Stable machine key, e.g. "mahapurusha.sasa", "raja.dka". */
+  key: string
+  /** Human name, e.g. "Sasa Yoga", "Dharma-Karmadhipati Raja Yoga". */
+  name: string
+  category: YogaCategory
+  /** Participating grahas, sorted for deterministic output. */
+  planets: string[]
+  /** Houses (from lagna) the yoga implicates, sorted. */
+  houses: number[]
+  /** Net classical benefic/malefic disposition of the yoga. */
+  benefic: boolean
+  /** Coarse formation-quality grade (NOT a calibrated score). */
+  strength: YogaStrength
+  /** Planets whose dashas classically fire the yoga (slicer hint; no dates). */
+  activatingPlanets: string[]
+  evidence: YogaEvidence
+}
+
 // ─── Bhava Bala ──────────────────────────────────────────────────────
 
 export interface BhavaBalaHouse {
@@ -562,8 +656,11 @@ export interface VarshaphalResult {
   /** Full chart cast for the solar-return instant at the birthplace. */
   annualChart: ComputedChart
   muntha: Muntha
-  /** Whether the birth (natal) was a day birth (Sun above horizon). */
-  dayBirth: boolean
+  /**
+   * Whether the year COMMENCES (Varsha Pravesh) by day — the annual Sun above
+   * the horizon (houses 7–12). Drives the Dinaratri & Trirashi year-lord offices.
+   */
+  dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaBalaEntry[]
   candidates: VarsheshaCandidate[]
   /** The selected year lord (strongest candidate by Panchavargeeya Bala). */
@@ -607,6 +704,8 @@ export interface ComputedChart {
   computedNakshatra: NakshatraRelationships
   computedJaimini: JaiminiGeometry
   bhavaBala: BhavaBalaResult
+  /** Deterministic named-yoga catalogue (engine/compute/yogas.ts). */
+  yogas: Yoga[]
 }
 
 // ─── Chara Dasha (Jaimini rasi dasha) ────────────────────────────────
@@ -661,4 +760,132 @@ export interface CharaDashaResult {
   cycleYears: number
   /** Two cycles of dated sign mahadashas (24 periods, 144 years total). */
   periods: CharaDashaPeriod[]
+}
+
+// ─── Marriage Matchmaking (Ashtakoota Guna Milan + Mangal Dosha) ──────
+
+/**
+ * Bride/groom role. Every matchmaking type and scorer parameter is named
+ * `bride`/`groom` — never `a`/`b` — so directional kootas (Varna) cannot be
+ * got wrong by argument order. See engine/compute/matchmaking.ts.
+ */
+export type MatchRole = 'bride' | 'groom'
+
+/** The 8 Ashtakoota kootas, in fixed scoring order. */
+export type KootaKey =
+  | 'varna' | 'vashya' | 'tara' | 'yoni'
+  | 'grahaMaitri' | 'gana' | 'bhakoot' | 'nadi'
+
+/**
+ * A Bhanga (cancellation) rule that fired for a dosha-bearing koota or for
+ * Mangal Dosha. Recorded in evidence — NEVER applied silently by mutating a
+ * score/status out from under the caller (mirrors yogas.ts's Neechabhanga
+ * evidence pattern).
+ */
+export interface Cancellation {
+  /** Stable machine rule id, e.g. "nadi.same_nakshatra_different_rashi". */
+  rule: string
+  /** Human name, e.g. "Nadi Bhanga (same nakshatra, different rashi)". */
+  name: string
+  /** Plain-text description of the satisfying condition. */
+  condition: string
+}
+
+/** Auditable inputs/outputs behind one koota's score — the "why" a point total was reached. */
+export interface KootaEvidence {
+  /** Machine rule id for the scoring path taken, e.g. "gana.matrix". */
+  rule: string
+  /** The bride's relevant attribute values (nakshatra/rashi/gana/yoni/etc.), by name. */
+  bride: Record<string, string | number>
+  /** The groom's relevant attribute values, by name. */
+  groom: Record<string, string | number>
+  /** Free-form notes — e.g. which directional check fired, simplifications taken. */
+  notes?: string[]
+}
+
+export interface KootaScore {
+  key: KootaKey
+  /** Display label, e.g. "Graha Maitri". */
+  name: string
+  /** Fractional — 0.5 steps are legitimate (Vashya, Graha Maitri, Tara). NEVER rounded. */
+  points: number
+  maxPoints: number
+  /** 'unavailable' when required input was missing/malformed — never a throw. */
+  status: 'scored' | 'unavailable'
+  evidence: KootaEvidence
+  /** Set only when a Bhanga rule nullified this koota's dosha (Nadi, Bhakoot). */
+  cancellation?: Cancellation
+}
+
+/**
+ * Presentation-only guidance band for a `gunaScore`. These bands
+ * (<18 / 18-24 / 24-32 / >=32) are ALMANAC / COMMERCIAL-SOFTWARE
+ * CONVENTION — NOT classical Parashari and NOT PVR Narasimha Rao (NFR-8).
+ * They must never be presented as a verdict of record.
+ *
+ * `'incomplete'` is NOT a band — it is returned whenever any koota reported
+ * `status: 'unavailable'`, because a band derived from a partial sum is
+ * actively misleading: an unscored Nadi alone caps the reachable total at
+ * (maxScore - 8), so a strong match would read `good` instead of
+ * `excellent`, and a fully unscorable pair (e.g. two natives carrying the
+ * same role) would otherwise render as a confident `below_average` on a
+ * score of 0.
+ */
+export type MatchVerdict = 'below_average' | 'average' | 'good' | 'excellent' | 'incomplete'
+
+/** Per-native boundary-risk flag — Moon longitude close to a nakshatra edge (OD-12). */
+export interface BoundaryRisk {
+  role: MatchRole
+  /** Present only when the caller supplied a Moon longitude for this native. */
+  moonLongitude?: number
+  /** Degrees to the nearest nakshatra boundary. Present only alongside moonLongitude. */
+  distanceToBoundaryDeg?: number
+  /** True when distanceToBoundaryDeg is within the tunable threshold (see matchmaking.ts). */
+  atRisk: boolean
+}
+
+export interface AshtakootaResult {
+  /**
+   * 0–maxScore, in 0.5 steps — NEVER rounded, floored, or truncated on
+   * store.
+   */
+  gunaScore: number
+  /**
+   * The classical framework's fixed denominator, 36 — computed as
+   * `TOTAL_KOOTA_MAXIMA` (matchmakingTables.ts) rather than hardcoded a
+   * second time, so it can never drift from the koota maxima it is the sum
+   * of. Matches JHora/PyJHora's own display convention: a fixed "X / 36"
+   * regardless of whether a given pair could reach it — NOT a per-pair or
+   * per-implementation "corrected" reachable ceiling (see
+   * `KOOTA_MAXIMA.tara`'s doc comment for why Tara's declared 3 stays 3 even
+   * though no pair can score more than 1.5 of it).
+   */
+  maxScore: number
+  /** Always 8 entries, in fixed order (varna, vashya, tara, yoni, grahaMaitri, gana, bhakoot, nadi). */
+  kootas: KootaScore[]
+  verdict: MatchVerdict
+  /** One entry per native. */
+  boundaryRisk: BoundaryRisk[]
+  /** Requirement 5.5 boilerplate text — rendered, not decorative. */
+  limitations: string[]
+}
+
+/** Per-native Mangal Dosha (Kuja Dosha) result. */
+export interface MangalDoshaNative {
+  status: 'manglik' | 'not_manglik' | 'unavailable'
+  /** Provenance, never a bare boolean — which reference point(s) triggered it. */
+  triggeredFrom: Array<'lagna' | 'moon' | 'venus'>
+  marsHouseFrom: Record<'lagna' | 'moon' | 'venus', number | null>
+  cancellations: Cancellation[]
+}
+
+export interface MatchResult {
+  ashtakoota: AshtakootaResult
+  mangalDosha: {
+    bride: MangalDoshaNative
+    groom: MangalDoshaNative
+    compatibility: 'matched' | 'mismatched' | 'cancelled' | 'unavailable'
+  }
+  /** Bump when a koota table changes — see matchmakingTables.MATCHMAKING_TABLES_VERSION. */
+  tablesVersion: string
 }

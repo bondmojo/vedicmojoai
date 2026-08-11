@@ -5,11 +5,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronsUpDown } from 'lucide-react'
 import ChartSummaryTab from './components/ChartSummaryTab'
 import ChartGrid from './components/ChartGrid'
-import PlanetTable from './components/PlanetTable'
-import NakshatraTable from './components/NakshatraTable'
-import KarakaTable from './components/KarakaTable'
+import GrahasTable from './components/GrahasTable'
+import YogasView from './components/YogasView'
+import { SectionBoundary } from './components/SectionUnavailable'
 import AshtakavargaView from './components/AshtakavargaView'
 import DashaTimeline from './components/DashaTimeline'
 import CharaDashaView from './components/CharaDashaView'
@@ -26,23 +27,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { Card, CardContent } from '@/components/ui/card'
 import PageHeader from './components/PageHeader'
 
-type Tab = 'summary' | 'charts' | 'planets' | 'nakshatras' | 'karakas' | 'ashtakavarga' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
+type Tab = 'summary' | 'grahas' | 'charts' | 'ashtakavarga' | 'yogas' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'summary',     label: 'Summary' },
-  { key: 'charts',       label: 'Divisional Charts' },
-  { key: 'planets',      label: 'Planets' },
-  { key: 'nakshatras',   label: 'Nakshatras' },
-  { key: 'karakas',      label: 'Karakas' },
+  { key: 'grahas',      label: 'Grahas' },
+  { key: 'charts',      label: 'Divisional Charts' },
   { key: 'ashtakavarga', label: 'Ashtakavarga' },
-  { key: 'dasha',        label: 'Dasha (Vimshottari)' },
-  { key: 'charadasha',   label: 'Chara Dasha' },
-  { key: 'transits',     label: 'Transits' },
-  { key: 'pinda',        label: 'Pinda Strength' },
-  { key: 'varshaphal',   label: 'Varshaphal' },
+  { key: 'yogas',       label: 'Yogas' },
+  { key: 'dasha',       label: 'Dasha (Vimshottari)' },
+  { key: 'charadasha',  label: 'Chara Dasha' },
+  { key: 'transits',    label: 'Transits' },
+  { key: 'pinda',       label: 'Pinda Strength' },
+  { key: 'varshaphal',  label: 'Varshaphal' },
 ]
 
 const TIMEZONES = [
@@ -312,29 +314,46 @@ export default function ComputePage() {
             subtitle="Compute a Vedic chart from birth data, then save, analyse, or export it."
           />
           <div className="flex items-center gap-2">
-            <Select
-              value=""
-              onValueChange={(chartId) => { if (chartId) handleLoadChart(chartId) }}
-            >
-              <SelectTrigger className="w-[240px] h-9 text-sm">
-                <SelectValue placeholder={
-                  loadingCharts
-                    ? 'Loading charts…'
-                    : loadingChart
-                      ? 'Loading…'
-                      : savedCharts.length > 0
-                        ? 'Load Saved Chart'
-                        : 'No saved charts'
-                } />
-              </SelectTrigger>
-              <SelectContent>
-                {savedCharts.map((chart) => (
-                  <SelectItem key={chart.id} value={chart.id}>
-                    {chart.name} ({chart.lagna})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover modal={false}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-[260px] h-9 justify-between text-sm font-normal"
+                  disabled={loadingCharts || !!loadingChart}
+                >
+                  <span className="truncate">
+                    {loadingCharts
+                      ? 'Loading charts…'
+                      : loadingChart
+                        ? 'Loading…'
+                        : savedCharts.length > 0
+                          ? 'Load Saved Chart'
+                          : 'No saved charts'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[260px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search charts…" />
+                  <CommandList>
+                    <CommandEmpty>No chart found.</CommandEmpty>
+                    <CommandGroup>
+                      {savedCharts.map((chart) => (
+                        <CommandItem
+                          key={chart.id}
+                          value={`${chart.name} ${chart.lagna}`}
+                          onSelect={() => handleLoadChart(chart.id)}
+                        >
+                          {chart.name} ({chart.lagna})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -505,53 +524,83 @@ export default function ComputePage() {
               ))}
             </div>
 
+            {/*
+              Every pane is wrapped in a SectionBoundary (R8.5): a pane whose data is
+              malformed in a way its own guards do not anticipate degrades to the same
+              fixed "unavailable" message instead of unmounting the page, so the tab
+              strip and every other pane keep working and every tab stays selectable.
+            */}
             {activeTab === 'summary' && (
-              <ChartSummaryTab
-                planets={result.chart.planets}
-                nakshatras={result.chart.nakshatras}
-                divisionalCharts={result.chart.divisionalCharts}
-                charaKarakas={result.chart.charaKarakas}
-                upagrahas={result.chart.upagrahas}
-                specialLagnas={result.chart.specialLagnas}
-                arudhaPadas={result.chart.arudhaPadas}
-                shadbala={result.chart.shadbala}
-                lagna={result.chart.lagna}
-              />
+              <SectionBoundary section="Summary">
+                <ChartSummaryTab
+                  planets={result.chart.planets}
+                  nakshatras={result.chart.nakshatras}
+                  divisionalCharts={result.chart.divisionalCharts}
+                  charaKarakas={result.chart.charaKarakas}
+                  upagrahas={result.chart.upagrahas}
+                  specialLagnas={result.chart.specialLagnas}
+                  arudhaPadas={result.chart.arudhaPadas}
+                  shadbala={result.chart.shadbala}
+                  lagna={result.chart.lagna}
+                  relationships={result.chart.relationships}
+                />
+              </SectionBoundary>
+            )}
+            {activeTab === 'grahas' && (
+              <SectionBoundary section="Grahas">
+                <GrahasTable
+                  planets={result.chart.planets}
+                  nakshatras={result.chart.nakshatras}
+                  charaKarakas={result.chart.charaKarakas}
+                  divisionalCharts={result.chart.divisionalCharts}
+                  lagna={result.chart.lagna}
+                />
+              </SectionBoundary>
             )}
             {activeTab === 'charts' && (
-              <ChartGrid
-                charts={result.chart.divisionalCharts}
-                arudhaPadas={result.chart.arudhaPadas}
-                specialLagnas={result.chart.specialLagnas}
-                upagrahas={result.chart.upagrahas}
-              />
-            )}
-            {activeTab === 'planets' && (
-              <PlanetTable planets={result.chart.planets} lagna={result.chart.lagna} />
-            )}
-            {activeTab === 'nakshatras' && (
-              <NakshatraTable nakshatras={result.chart.nakshatras} />
-            )}
-            {activeTab === 'karakas' && (
-              <KarakaTable karakas={result.chart.charaKarakas} />
+              <SectionBoundary section="Divisional Charts">
+                <ChartGrid
+                  charts={result.chart.divisionalCharts}
+                  arudhaPadas={result.chart.arudhaPadas}
+                  specialLagnas={result.chart.specialLagnas}
+                  upagrahas={result.chart.upagrahas}
+                />
+              </SectionBoundary>
             )}
             {activeTab === 'ashtakavarga' && (
-              <AshtakavargaView data={result.chart.ashtakavarga} />
+              <SectionBoundary section="Ashtakavarga">
+                <AshtakavargaView data={result.chart.ashtakavarga} />
+              </SectionBoundary>
+            )}
+            {activeTab === 'yogas' && (
+              <SectionBoundary section="Yogas">
+                <YogasView yogas={result.chart.yogas} />
+              </SectionBoundary>
             )}
             {activeTab === 'dasha' && (
-              <DashaTimeline dashaTree={result.dashaTree} />
+              <SectionBoundary section="Dasha (Vimshottari)">
+                <DashaTimeline dashaTree={result.dashaTree} />
+              </SectionBoundary>
             )}
             {activeTab === 'charadasha' && (
-              <CharaDashaView charaDasha={result.charaDasha} />
+              <SectionBoundary section="Chara Dasha">
+                <CharaDashaView charaDasha={result.charaDasha} />
+              </SectionBoundary>
             )}
             {activeTab === 'transits' && (
-              <TransitsView data={result.chart.transits} birthDate={form.date} />
+              <SectionBoundary section="Transits">
+                <TransitsView data={result.chart.transits} birthDate={form.date} />
+              </SectionBoundary>
             )}
             {activeTab === 'pinda' && (
-              <PindaStrengthView data={result.chart.pindaStrength} />
+              <SectionBoundary section="Pinda Strength">
+                <PindaStrengthView data={result.chart.pindaStrength} />
+              </SectionBoundary>
             )}
             {activeTab === 'varshaphal' && (
-              <VarshaphalView form={form} />
+              <SectionBoundary section="Varshaphal">
+                <VarshaphalView form={form} />
+              </SectionBoundary>
             )}
           </div>
         )}

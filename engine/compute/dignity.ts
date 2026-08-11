@@ -44,6 +44,23 @@ export const OWN_SIGNS: Record<string, number[]> = {
   Jupiter: [9, 12], Venus: [2, 7], Saturn: [10, 11],
 }
 
+/**
+ * Classical moolatrikona degree span within the moolatrikona sign, as
+ * [fromDeg, toDeg) degrees-in-sign. Outside the span the placement falls
+ * through to the own-sign test (BPHS / PVR Narasimha Rao). `MOOLATRIKONA_SIGNS`
+ * remains the sign gate; this table only refines it when a usable degree is
+ * supplied.
+ */
+export const MOOLATRIKONA_RANGES: Record<string, { fromDeg: number; toDeg: number }> = {
+  Sun:     { fromDeg: 0,  toDeg: 20 },  // Leo
+  Moon:    { fromDeg: 4,  toDeg: 30 },  // Taurus
+  Mars:    { fromDeg: 0,  toDeg: 12 },  // Aries
+  Mercury: { fromDeg: 16, toDeg: 20 },  // Virgo
+  Jupiter: { fromDeg: 0,  toDeg: 10 },  // Sagittarius
+  Venus:   { fromDeg: 0,  toDeg: 15 },  // Libra
+  Saturn:  { fromDeg: 0,  toDeg: 20 },  // Aquarius
+}
+
 /** Single classical lord of each sign (1=Aries … 12=Pisces). */
 export const SIGN_LORDS: Record<number, string> = {
   1: 'Mars', 2: 'Venus', 3: 'Mercury', 4: 'Moon', 5: 'Sun', 6: 'Mercury',
@@ -80,9 +97,24 @@ export type DignityLabel =
 
 type PermRelation = 'friend' | 'enemy' | 'neutral'
 
+/**
+ * OWN-property lookup into `PERMANENT_FRIENDSHIP`, the gate both public functions
+ * use to decide whether a name is a classical planet at all.
+ *
+ * A bare `PERMANENT_FRIENDSHIP[planet]` also resolves *inherited* Object.prototype
+ * members — `'__proto__'`, `'toString'`, `'valueOf'`, `'constructor'`, … — so those
+ * names would pass a truthiness guard and then crash on `OWN_SIGNS[planet].includes`
+ * (Object.prototype has no `includes`). Only own keys count as planets.
+ */
+function friendshipRow(planet: string): { friends: string[]; enemies: string[] } | undefined {
+  return Object.prototype.hasOwnProperty.call(PERMANENT_FRIENDSHIP, planet)
+    ? PERMANENT_FRIENDSHIP[planet]
+    : undefined
+}
+
 /** Permanent (naisargika) relation of `planet` toward `other`. */
 function permanentRelation(planet: string, other: string): PermRelation {
-  const rel = PERMANENT_FRIENDSHIP[planet]
+  const rel = friendshipRow(planet)
   if (!rel) return 'neutral'
   if (rel.friends.includes(other)) return 'friend'
   if (rel.enemies.includes(other)) return 'enemy'
@@ -124,20 +156,34 @@ function combineToLabel(perm: PermRelation, temp: 'friend' | 'enemy'): DignityLa
  *                         being evaluated (for D1 this is the natal sign).
  * @param d1SignByPlanet   Map of planet → D1 (rasi) sign number, used for the
  *                         tatkalika friendship with the varga sign's lord.
+ * @param degreeInSign     Degree within `vargaSignNumber`, 0–30. Supply ONLY when
+ *                         the placement genuinely carries a degree in that sign
+ *                         (i.e. D1). Omitted, non-finite or out of `[0, 30)` is
+ *                         treated as "no degree supplied", so the moolatrikona
+ *                         test falls back to the whole-sign rule.
  * @returns One of DignityLabel, or `undefined` for planets without classical
  *          friendship dignity (Rahu/Ketu).
  */
 export function getVargaDignityLabel(
   planet: string,
   vargaSignNumber: number,
-  d1SignByPlanet: Record<string, number>
+  d1SignByPlanet: Record<string, number>,
+  degreeInSign?: number
 ): DignityLabel | undefined {
   // Nodes (and anything without a friendship row) carry no classical dignity.
-  if (!PERMANENT_FRIENDSHIP[planet]) return undefined
+  if (!friendshipRow(planet)) return undefined
 
   if (EXALTATION_SIGNS[planet] === vargaSignNumber) return 'exalted'
   if (DEBILITATION_SIGNS[planet] === vargaSignNumber) return 'debilitated'
-  if (MOOLATRIKONA_SIGNS[planet] === vargaSignNumber) return 'moolatrikona'
+  if (MOOLATRIKONA_SIGNS[planet] === vargaSignNumber) {
+    const degreeUsable =
+      Number.isFinite(degreeInSign) && (degreeInSign as number) >= 0 && (degreeInSign as number) < 30
+    if (!degreeUsable) return 'moolatrikona'
+    const range = MOOLATRIKONA_RANGES[planet]
+    const inRange = !!range && (degreeInSign as number) >= range.fromDeg && (degreeInSign as number) < range.toDeg
+    if (inRange) return 'moolatrikona'
+    // Usable degree, but outside the range → fall through to the own test.
+  }
   if (OWN_SIGNS[planet]?.includes(vargaSignNumber)) return 'own'
 
   const lord = SIGN_LORDS[vargaSignNumber]
@@ -154,4 +200,152 @@ export function getVargaDignityLabel(
 
   const temp = temporaryRelation(planetD1, lordD1)
   return combineToLabel(perm, temp)
+}
+
+// ─── Dignity reason ──────────────────────────────────────────────────
+
+/** Zodiac sign names, 1-indexed via `SIGN_NAMES[signNumber - 1]`. */
+const SIGN_NAMES: readonly string[] = [
+  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+]
+
+/** Which classical rule produced a Dignity_Label. Mirrors getVargaDignityLabel's precedence. */
+export type DignityRule =
+  | 'exaltation'
+  | 'debilitation'
+  | 'moolatrikona'           // sign matched AND the degree fell inside MOOLATRIKONA_RANGES
+  | 'moolatrikona_sign_only' // sign matched, no usable degree was supplied
+  | 'own'
+  | 'maitri'                 // permanent + temporary combined
+  | 'maitri_permanent_only'  // a D1 sign was missing for the planet or the sign lord
+
+export interface DignityReason {
+  rule: DignityRule
+  /** The label this reason explains — always equals getVargaDignityLabel for the same inputs. */
+  label: DignityLabel
+  /** Single plain-text sentence, ≤160 characters, no markup. */
+  text: string
+  /** Lord of the occupied sign — set only on the two maitri rules. */
+  signLord?: string
+  permanentRelation?: PermRelation
+  /** Absent on 'maitri_permanent_only'. */
+  temporaryRelation?: 'friend' | 'enemy'
+}
+
+/** "the Sun"/"the Moon" for the two luminaries, otherwise the bare planet name. */
+function planetSubject(planet: string, capitalizeFirst: boolean): string {
+  const subject = planet === 'Sun' || planet === 'Moon' ? `the ${planet}` : planet
+  if (!capitalizeFirst) return subject
+  return subject.charAt(0).toUpperCase() + subject.slice(1)
+}
+
+/** Possessive form of `planetSubject`, e.g. "the Sun's" / "Venus's". */
+function planetPossessive(planet: string): string {
+  return `${planetSubject(planet, false)}'s`
+}
+
+/** Compound-maitri label rendered as words, e.g. `great_friend` → "great friend". */
+function labelWords(label: DignityLabel): string {
+  return label.replace(/_/g, ' ')
+}
+
+/**
+ * Human-readable reason for the dignity LABEL of `planet` in `vargaSignNumber`.
+ *
+ * Selects exactly ONE rule using the same precedence as `getVargaDignityLabel`:
+ * exaltation → debilitation → moolatrikona → own → compound maitri.
+ *
+ * Must be called with the SAME `degreeInSign` argument as the label it explains
+ * — see `getVargaDignityLabel`'s docs for "usable degree" semantics — otherwise
+ * the reason and the label can disagree.
+ *
+ * @returns `undefined` when the planet carries no classical dignity (Rahu/Ketu —
+ *          absent from `PERMANENT_FRIENDSHIP`), or when `vargaSignNumber` is not
+ *          an integer 1–12.
+ */
+export function getVargaDignityReason(
+  planet: string,
+  vargaSignNumber: number,
+  d1SignByPlanet: Record<string, number>,
+  degreeInSign?: number
+): DignityReason | undefined {
+  // Nodes (and anything without a friendship row) carry no classical dignity.
+  if (!friendshipRow(planet)) return undefined
+  if (!Number.isInteger(vargaSignNumber) || vargaSignNumber < 1 || vargaSignNumber > 12) return undefined
+
+  const sign = SIGN_NAMES[vargaSignNumber - 1]
+
+  if (EXALTATION_SIGNS[planet] === vargaSignNumber) {
+    return {
+      rule: 'exaltation',
+      label: 'exalted',
+      text: `${sign} is ${planetPossessive(planet)} exaltation sign.`,
+    }
+  }
+
+  if (DEBILITATION_SIGNS[planet] === vargaSignNumber) {
+    return {
+      rule: 'debilitation',
+      label: 'debilitated',
+      text: `${sign} is ${planetPossessive(planet)} debilitation sign.`,
+    }
+  }
+
+  if (MOOLATRIKONA_SIGNS[planet] === vargaSignNumber) {
+    const degreeUsable =
+      Number.isFinite(degreeInSign) && (degreeInSign as number) >= 0 && (degreeInSign as number) < 30
+    if (!degreeUsable) {
+      return {
+        rule: 'moolatrikona_sign_only',
+        label: 'moolatrikona',
+        text: `${sign} is ${planetPossessive(planet)} moolatrikona sign; no degree was available, so the sign alone was used.`,
+      }
+    }
+    const range = MOOLATRIKONA_RANGES[planet]
+    const inRange = !!range && (degreeInSign as number) >= range.fromDeg && (degreeInSign as number) < range.toDeg
+    if (inRange) {
+      return {
+        rule: 'moolatrikona',
+        label: 'moolatrikona',
+        text: `${planetSubject(planet, true)} at ${(degreeInSign as number).toFixed(1)}° of ${sign} falls in its moolatrikona range ${range!.fromDeg}°–${range!.toDeg}°.`,
+      }
+    }
+    // Usable degree, but outside the range → fall through to the own test.
+  }
+
+  if (OWN_SIGNS[planet]?.includes(vargaSignNumber)) {
+    return {
+      rule: 'own',
+      label: 'own',
+      text: `${sign} is ${planetPossessive(planet)} own sign.`,
+    }
+  }
+
+  const lord = SIGN_LORDS[vargaSignNumber]
+  const perm = permanentRelation(planet, lord)
+
+  const planetD1 = d1SignByPlanet[planet]
+  const lordD1 = d1SignByPlanet[lord]
+  if (planetD1 == null || lordD1 == null) {
+    const label: DignityLabel = perm === 'friend' ? 'friend' : perm === 'enemy' ? 'enemy' : 'neutral'
+    return {
+      rule: 'maitri_permanent_only',
+      label,
+      signLord: lord,
+      permanentRelation: perm,
+      text: `${sign} is ruled by ${lord}, ${planetPossessive(planet)} permanent ${perm}; no rasi positions were available for the temporary relation.`,
+    }
+  }
+
+  const temp = temporaryRelation(planetD1, lordD1)
+  const label = combineToLabel(perm, temp)
+  return {
+    rule: 'maitri',
+    label,
+    signLord: lord,
+    permanentRelation: perm,
+    temporaryRelation: temp,
+    text: `${sign} is ruled by ${lord}, ${planetPossessive(planet)} permanent ${perm} and temporary ${temp} — compound maitri gives ${labelWords(label)}.`,
+  }
 }

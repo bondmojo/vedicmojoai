@@ -17,6 +17,14 @@ import NorthIndianChart from './NorthIndianChart'
 import SouthIndianChart from './SouthIndianChart'
 import { planetColorClass } from '@/lib/brandColors'
 import type { ChartData } from './chartTypes'
+import KeyDignitiesPanel from './KeyDignitiesPanel'
+import { SectionUnavailable } from './SectionUnavailable'
+import { guardSection, isNonEmptyArray } from './sectionGuards'
+import type {
+  RelationshipGeometry,
+  PlanetPosition,
+  DivisionalChart as EngineDivisionalChart,
+} from '@/engine/compute/types'
 import {
   Select,
   SelectContent,
@@ -27,16 +35,9 @@ import {
 
 // ─── Types (matching the compute API response) ────────────────────────
 
-interface PlanetRow {
-  planet: string
-  longitude: number
-  sign: string
-  signNumber: number
-  degreeInSign: number
-  house: number
-  retrograde: boolean
-  speed: number
-}
+// Structurally identical to the engine's D1 planet row — aliased so `planets`
+// stays assignable to `KeyDignitiesPanel`'s `PlanetPosition[]` prop without a cast.
+type PlanetRow = PlanetPosition
 
 interface NakshatraRow {
   planet: string
@@ -71,24 +72,9 @@ interface ShadbalResult {
   strengthRanking: { planet: string; ratio: number }[]
 }
 
-interface DivisionalChart {
-  division: number
-  name: string
-  shortName: string
-  lagna: string
-  lagnaSignNumber: number
-  planets: Array<{
-    planet: string
-    signNumber: number
-    house: number
-    retrograde?: boolean
-    dignity?: string
-    vargottama?: boolean
-  }>
-  arudhaPadas?: Array<{ abbr: string; signNumber: number; house_in_chart: number }>
-  specialLagnas?: Array<{ abbr: string; signNumber: number; house: number }>
-  upagrahas?: Array<{ abbr: string; signNumber: number; house: number }>
-}
+// Structurally identical to the engine's `DivisionalChart` — aliased so
+// `divisionalCharts` stays assignable to `KeyDignitiesPanel`'s prop without a cast.
+type DivisionalChart = EngineDivisionalChart
 
 interface ArudhaPadaRaw { abbr: string; signNumber: number; house_in_chart: number }
 interface SpecialLagnaRaw { abbr: string; signNumber: number; house: number }
@@ -104,6 +90,8 @@ export interface ChartSummaryTabProps {
   arudhaPadas?: ArudhaPadaRaw[]
   shadbala: ShadbalResult | null
   lagna: string
+  /** Natal relationship geometry — only `.combustion` is read, threaded to `KeyDignitiesPanel` (R1.6). */
+  relationships?: RelationshipGeometry | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -141,11 +129,20 @@ export default function ChartSummaryTab({
   arudhaPadas,
   shadbala,
   lagna,
+  relationships,
 }: ChartSummaryTabProps) {
   const [selectedDivision, setSelectedDivision] = useState('1')
   const [chartStyle, setChartStyle] = useState<ChartStyle>('north')
 
-  const selectedChart = divisionalCharts.find((c) => String(c.division) === selectedDivision)
+  // Root-prop guard (R8.1), after the hooks so the hook count never varies. The
+  // two props every column of this pane is built from are `planets` and
+  // `divisionalCharts`; the rest are optional and already degrade to an omitted
+  // card. `KeyDignitiesPanel` carries the same guard for its own card.
+  const planetRows = guardSection<PlanetRow[]>(planets, isNonEmptyArray)
+  const vargas = guardSection<DivisionalChart[]>(divisionalCharts, isNonEmptyArray)
+  if (!planetRows.ok || !vargas.ok) return <SectionUnavailable section="Summary" />
+
+  const selectedChart = vargas.data.find((c) => String(c.division) === selectedDivision)
 
   const chartData: ChartData | null = selectedChart
     ? {
@@ -162,7 +159,7 @@ export default function ChartSummaryTab({
     : null
 
   // Shadbala ratio map for quick access
-  const ratioMap = new Map(shadbala?.strengthRanking.map((r) => [r.planet, r.ratio]) ?? [])
+  const ratioMap = new Map(shadbala?.strengthRanking?.map((r) => [r.planet, r.ratio]) ?? [])
 
   return (
     <div className="space-y-6">
@@ -175,7 +172,7 @@ export default function ChartSummaryTab({
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Graha Positions</h3>
             <div className="space-y-1.5">
-              {planets.map((p) => (
+              {planetRows.data.map((p) => (
                 <div key={p.planet} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`font-medium w-[52px] ${planetColorClass(p.planet)}`}>
@@ -194,11 +191,11 @@ export default function ChartSummaryTab({
           </div>
 
           {/* Upagrahas */}
-          {upagrahas.length > 0 && (
+          {(upagrahas?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Upagrahas</h3>
               <div className="space-y-1">
-                {upagrahas.map((u) => (
+                {upagrahas!.map((u) => (
                   <div key={u.abbr} className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span className="text-ink font-medium">{u.name ?? u.abbr}</span>
                     <span>{u.sign ?? SIGN_ABBR[u.signNumber - 1]} · H{u.house}</span>
@@ -218,7 +215,7 @@ export default function ChartSummaryTab({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {divisionalCharts.map((c) => (
+                {vargas.data.map((c) => (
                   <SelectItem key={c.division} value={String(c.division)}>
                     {c.shortName} — {c.name}
                   </SelectItem>
@@ -258,7 +255,7 @@ export default function ChartSummaryTab({
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Nakshatras</h3>
             <div className="space-y-1.5">
-              {nakshatras.map((n) => (
+              {(nakshatras ?? []).map((n) => (
                 <div key={n.planet} className="flex items-center justify-between text-xs">
                   <span className={`font-medium w-[52px] ${planetColorClass(n.planet)}`}>{n.planet}</span>
                   <span className="text-ink text-[11px] truncate flex-1 text-right">
@@ -276,7 +273,7 @@ export default function ChartSummaryTab({
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Chara Karakas</h3>
             <div className="space-y-2">
-              {charaKarakas.map((k) => {
+              {(charaKarakas ?? []).map((k) => {
                 const isAbbreviated = k.karaka in KARAKA_SHORT
                 const label = isAbbreviated ? KARAKA_SHORT[k.karaka] : k.karaka
                 const abbr = isAbbreviated ? k.karaka : Object.entries(KARAKA_SHORT).find(([, v]) => v === k.karaka)?.[0] ?? ''
@@ -347,45 +344,12 @@ export default function ChartSummaryTab({
       )}
 
       {/* ─── Key Dignities (quick scan) ─── */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Key Dignities</h3>
-        <div className="flex flex-wrap gap-2">
-          {planets
-            .filter((p) => p.planet !== 'Rahu' && p.planet !== 'Ketu')
-            .map((p) => {
-              const chart = divisionalCharts.find((c) => c.division === 1)
-              const d1Planet = chart?.planets.find((cp) => cp.planet === p.planet)
-              const dignity = d1Planet?.dignity
-              if (!dignity || dignity === 'neutral' || dignity === 'friend' || dignity === 'great_friend') return null
-              const label = dignity === 'exalted' ? '⬆ Exalted'
-                : dignity === 'debilitated' ? '⬇ Debilitated'
-                : dignity === 'own' ? '◆ Own'
-                : dignity === 'moolatrikona' ? '◆ MK'
-                : dignity === 'enemy' ? '↓ Enemy'
-                : dignity === 'great_enemy' ? '⬇ Gt.Enemy'
-                : null
-              if (!label) return null
-              const dignityColor = dignity === 'exalted' || dignity === 'own' || dignity === 'moolatrikona'
-                ? 'bg-favorable-muted text-favorable border-favorable/30'
-                : 'bg-unfavorable-muted text-unfavorable border-unfavorable/30'
-              return (
-                <span key={p.planet} className={`text-[11px] px-2 py-1 rounded-md border ${dignityColor}`}>
-                  <span className={planetColorClass(p.planet)}>{p.planet}</span> {label}
-                </span>
-              )
-            })
-            .filter(Boolean)}
-          {planets.filter((p) => {
-            const chart = divisionalCharts.find((c) => c.division === 1)
-            const d1P = chart?.planets.find((cp) => cp.planet === p.planet)
-            return d1P?.vargottama
-          }).map((p) => (
-            <span key={`vg-${p.planet}`} className="text-[11px] px-2 py-1 rounded-md border bg-gold-900/20 text-gold-400 border-gold-700/30">
-              <span className={planetColorClass(p.planet)}>{p.planet}</span> Vargottama
-            </span>
-          ))}
-        </div>
-      </div>
+      <KeyDignitiesPanel
+        planets={planets}
+        divisionalCharts={divisionalCharts}
+        selectedDivision={Number(selectedDivision)}
+        combustion={relationships?.combustion}
+      />
     </div>
   )
 }

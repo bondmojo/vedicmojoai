@@ -8,16 +8,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
 const RenameSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
 })
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const chart = await prisma.unifiedChart.findUnique({
       where: { id: params.id },
       include: {
@@ -39,7 +45,7 @@ export async function GET(
       },
     })
 
-    if (!chart) {
+    if (!chart || chart.userId !== userId) {
       return NextResponse.json(
         { error: 'Chart not found' },
         { status: 404 }
@@ -74,6 +80,7 @@ export async function GET(
       transits: chart.transits,
       pindaStrength: chart.pindaStrength,
       dashaTree: chart.dashaTree,
+      yogas: chart.yogas,
 
       // AI pipeline data
       chartInputV1: chart.chartInputV1,
@@ -103,6 +110,11 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     let body: unknown
     try {
       body = await request.json()
@@ -120,9 +132,9 @@ export async function PATCH(
 
     const chart = await prisma.unifiedChart.findUnique({
       where: { id: params.id },
-      select: { id: true },
+      select: { id: true, userId: true },
     })
-    if (!chart) {
+    if (!chart || chart.userId !== userId) {
       return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
     }
 
@@ -148,16 +160,21 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const chart = await prisma.unifiedChart.findUnique({
       where: { id: params.id },
-      select: { id: true },
+      select: { id: true, userId: true },
     })
 
-    if (!chart) {
+    if (!chart || chart.userId !== userId) {
       return NextResponse.json(
         { error: 'Chart not found' },
         { status: 404 }
@@ -165,7 +182,8 @@ export async function DELETE(
     }
 
     // Cascade isn't automatic with Prisma — remove dependents in FK order:
-    // duration messages → duration analyses → pipeline runs → chart.
+    // duration messages → duration analyses → pipeline runs →
+    // compatibility matches (bride- and groom-side FK) → chart.
     await prisma.$transaction([
       prisma.durationMessage.deleteMany({
         where: { analysis: { unifiedChartId: params.id } },
@@ -175,6 +193,9 @@ export async function DELETE(
       }),
       prisma.pipelineRun.deleteMany({
         where: { unifiedChartId: params.id },
+      }),
+      prisma.compatibilityMatch.deleteMany({
+        where: { OR: [{ brideChartId: params.id }, { groomChartId: params.id }] },
       }),
       prisma.unifiedChart.delete({
         where: { id: params.id },

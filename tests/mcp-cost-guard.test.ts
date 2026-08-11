@@ -3,7 +3,8 @@
  *
  * The whole point of the MCP server is to let Claude Desktop reason at $0 API
  * cost, so it must NEVER trigger the paid LLM pipelines. This test statically
- * scans mcp/src and asserts:
+ * scans mcp/src AND app/api/mcp/route.ts (the Streamable HTTP transport — the
+ * second entry point into the same tools) and asserts:
  *   1. Every `api.post('<path>')` targets an allow-listed deterministic route.
  *   2. The paid analyze route path ("/analyze") is never referenced. (Tool and
  *      prompt NAMES like `analyze_career` are fine — only the route is banned.)
@@ -18,9 +19,22 @@ import path from 'path'
 
 const MCP_SRC = path.resolve(__dirname, '..', 'mcp', 'src')
 
+// The Streamable HTTP transport (app/api/mcp/route.ts) is the SECOND entry
+// point into the same tools. It builds its own api client via
+// createApiClient(), so it is just as capable of calling a paid route as
+// mcp/src is — and scanning only mcp/src would leave that hole unguarded.
+const HTTP_ROUTE = path.resolve(__dirname, '..', 'app', 'api', 'mcp', 'route.ts')
+
 // The only routes the MCP is permitted to POST to. All are deterministic /
-// read-style and cost nothing in LLM tokens.
-const ALLOWED_POST_ROUTES = new Set(['/api/compute', '/api/compute/varshaphal', '/api/timeline'])
+// read-style and cost nothing in LLM tokens. NOTE: '/api/matchmaking' (the
+// PERSISTING route) is deliberately excluded — only its read-only sibling
+// '/api/matchmaking/preview' is allow-listed.
+const ALLOWED_POST_ROUTES = new Set([
+  '/api/compute',
+  '/api/compute/varshaphal',
+  '/api/timeline',
+  '/api/matchmaking/preview',
+])
 
 async function readSrcFiles(): Promise<Array<{ file: string; content: string }>> {
   const entries = await fs.readdir(MCP_SRC)
@@ -29,10 +43,30 @@ async function readSrcFiles(): Promise<Array<{ file: string; content: string }>>
     if (!e.endsWith('.ts')) continue
     out.push({ file: e, content: await fs.readFile(path.join(MCP_SRC, e), 'utf-8') })
   }
+  out.push({
+    file: 'app/api/mcp/route.ts',
+    content: await fs.readFile(HTTP_ROUTE, 'utf-8'),
+  })
   return out
 }
 
 describe('MCP cost guard', () => {
+  it('scans BOTH transports — a missing file would silently pass every check below', async () => {
+    // Every other check in this file asserts an ABSENCE (no paid POST, no
+    // /analyze path). An absence trivially holds over a file set that failed
+    // to include the file in question, so the guard is only as trustworthy as
+    // its inputs. Assert the inputs explicitly.
+    const files = await readSrcFiles()
+    const names = files.map((f) => f.file)
+
+    expect(names, 'stdio transport source missing from the scan').toContain('tools.ts')
+    expect(names, 'HTTP transport source missing from the scan').toContain('app/api/mcp/route.ts')
+    // Non-empty content, so a truncated/unreadable read can't pass as "clean".
+    for (const f of files) {
+      expect(f.content.length, `${f.file} was read as empty`).toBeGreaterThan(0)
+    }
+  })
+
   it('only POSTs to allow-listed deterministic routes', async () => {
     const files = await readSrcFiles()
     const postPathRe = /api\.post\(\s*['"`]([^'"`]+)['"`]/g

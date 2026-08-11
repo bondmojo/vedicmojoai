@@ -6,8 +6,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Sparkles } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Sparkles, LogOut } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import { cn } from '@/lib/utils'
 
@@ -16,8 +16,12 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: '/duration-computation', label: 'Duration Analyser' },
   { href: '/duration-analysis', label: 'Duration AI' },
   { href: '/unified-charts', label: 'Charts' },
+  { href: '/matchmaking', label: 'Matchmaking' },
   { href: '/reports', label: 'Reports' },
+  { href: '/account', label: 'Account' },
 ]
+
+const AUTH_PAGES = ['/login', '/signup', '/forgot-password', '/reset-password']
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/'
@@ -26,6 +30,17 @@ function isActive(pathname: string, href: string): boolean {
 
 export default function AppNav() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  if (AUTH_PAGES.includes(pathname)) {
+    return null
+  }
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <header className="sticky top-0 z-40 h-14 w-full border-b border-border bg-card/80 backdrop-blur">
@@ -57,9 +72,16 @@ export default function AppNav() {
           })}
         </nav>
 
-        {/* Theme toggle */}
-        <div className="shrink-0">
+        {/* Theme toggle + logout */}
+        <div className="flex items-center gap-2 shrink-0">
           <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            title="Log out"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors"
+          >
+            <LogOut className="h-[18px] w-[18px]" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </header>

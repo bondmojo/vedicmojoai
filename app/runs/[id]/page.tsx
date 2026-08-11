@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -62,18 +62,51 @@ export default function RunProgressPage() {
       })
   }, [runId])
 
-  // SSE connection for live updates
+  // SSE connection for live updates. Reconnects (with backoff) on a dropped
+  // connection instead of giving up — the SSE route has its own Vercel maxDuration
+  // ceiling independent of the pipeline's, so a long-running run can outlive a
+  // single connection. Reconnects don't re-announce already-seen progress: the
+  // server seeds its dedup from DB state and sends a snapshot on 'connected'.
   useEffect(() => {
     if (run?.status === 'done' || run?.status === 'failed') return
 
-    const eventSource = new EventSource(`/api/runs/${runId}/events`)
+    let cancelled = false
+    let reconnectAttempt = 0
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+    let eventSource: EventSource | undefined
 
-    eventSource.onmessage = (event) => {
+    const connect = () => {
+      if (cancelled) return
+      const es = new EventSource(`/api/runs/${runId}/events`)
+      eventSource = es
+
+      es.onmessage = (event) => {
       const data = JSON.parse(event.data)
 
       switch (data.type) {
         case 'connected':
           setConnected(true)
+          reconnectAttempt = 0
+          if (Array.isArray(data.snapshot)) {
+            setAgents((prev) => {
+              const next = [...prev]
+              for (const s of data.snapshot) {
+                const idx = next.findIndex((a) => a.agentId === s.agent_id)
+                const merged: AgentStatus = {
+                  agentId: s.agent_id,
+                  waveNumber: s.wave_number,
+                  status: s.status === 'running' ? 'running' : s.status === 'done' ? 'done' : s.status === 'failed' ? 'failed' : 'pending',
+                  tokenIn: s.tokenIn,
+                  tokenOut: s.tokenOut,
+                  costUsd: s.costUsd,
+                  error: s.error,
+                }
+                if (idx >= 0) next[idx] = merged
+                else next.push(merged)
+              }
+              return next
+            })
+          }
           break
         case 'agent_start':
           setAgents((prev) => {
@@ -106,26 +139,43 @@ export default function RunProgressPage() {
           break
         case 'run_complete':
           setRun((prev) => prev ? { ...prev, status: 'done', totalTokenIn: data.totalTokenIn, totalTokenOut: data.totalTokenOut, totalCostUsd: data.totalCostUsd } : prev)
-          eventSource.close()
+          cancelled = true
+          es.close()
           break
         case 'run_failed':
           setRun((prev) => prev ? { ...prev, status: 'failed' } : prev)
-          eventSource.close()
+          cancelled = true
+          es.close()
           break
         case 'critical_error':
           setRun((prev) => prev ? { ...prev, status: 'halted_for_review' } : prev)
           setHaltErrors(data.errors)
-          eventSource.close()
+          cancelled = true
+          es.close()
           break
+      }
+      }
+
+      es.onerror = () => {
+        setConnected(false)
+        es.close()
+        if (cancelled) return
+        // Dropped connection (e.g. the SSE route's own maxDuration ceiling) — the run
+        // may still be in progress server-side. Reconnect with capped exponential
+        // backoff instead of leaving the UI permanently "disconnected".
+        reconnectAttempt += 1
+        const delayMs = Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1))
+        reconnectTimer = setTimeout(connect, delayMs)
       }
     }
 
-    eventSource.onerror = () => {
-      setConnected(false)
-      eventSource.close()
-    }
+    connect()
 
-    return () => eventSource.close()
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      eventSource?.close()
+    }
   }, [runId, run?.status])
 
   if (!run) {

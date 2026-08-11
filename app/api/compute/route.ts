@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { computeFullChart, computeCharaDasha } from '@/engine/compute'
 import { computeVimshottari } from '@/engine/computeVimshottari'
+import { resolveRequestUser } from '@/lib/auth'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
@@ -48,6 +49,11 @@ const ComputeInputSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Validate input

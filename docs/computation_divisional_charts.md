@@ -12,7 +12,7 @@ Our system computes: **D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60**
 
 All use **Lahiri (Chitrapaksha) ayanamsa** and **sidereal longitudes** from Swiss Ephemeris.
 
-**Dignity and Vargottama (every varga):** each planet placement in every divisional chart also carries a `dignity` label (exalted / debilitated / moolatrikona / own / great_friend / friend / neutral / enemy / great_enemy — panchadha-maitri, with tatkalika friendship drawn from the D1 rasi positions, matching the Saptavargaja Bala convention) and a `vargottama` flag (true when the planet occupies the same sign in that varga as in D1). Rahu/Ketu carry no `dignity` (no classical friendship dignity) but do get `vargottama`. Neither field is set on D1 itself. See `engine/compute/dignity.ts`.
+**Dignity and Vargottama (every varga):** each planet placement in every divisional chart also carries a `dignity` label (exalted / debilitated / moolatrikona / own / great_friend / friend / neutral / enemy / great_enemy — panchadha-maitri, with tatkalika friendship drawn from the D1 rasi positions, matching the Saptavargaja Bala convention) and a `vargottama` flag (true when the planet occupies the same sign in that varga as in D1). Rahu/Ketu carry no `dignity` (no classical friendship dignity) but do get `vargottama`. `vargottama` is not set on D1 itself (a sign cannot match itself meaningfully); `dignity` **is** set on D1, and on D1 alone it is **degree-aware** for the moolatrikona test — D2–D60 keep the whole-sign rule because this engine computes a varga *sign* and never a varga longitude. See `engine/compute/dignity.ts` and `docs/computation_dignity.md`.
 
 ---
 

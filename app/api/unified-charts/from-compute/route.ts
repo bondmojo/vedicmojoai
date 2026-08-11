@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { createUnifiedChartFromBirthData } from '@/lib/unified-chart-create'
+import { resolveRequestUser } from '@/lib/auth'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
@@ -48,6 +49,11 @@ const ComputeInputSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     // Validate input
@@ -60,7 +66,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Shared Path A implementation — also used by the SavedChart migration.
-    const result = await createUnifiedChartFromBirthData(parsed.data)
+    const result = await createUnifiedChartFromBirthData({ ...parsed.data, userId })
+
+    if (result.status === 'not_found') {
+      return NextResponse.json({ error: 'Chart not found' }, { status: 404 })
+    }
 
     if (result.status === 'duplicate') {
       return NextResponse.json(

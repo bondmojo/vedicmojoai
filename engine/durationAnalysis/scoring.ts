@@ -104,10 +104,10 @@ function houseToSign(house: number, lagnaSign: number): number {
 function findPlanet(
   planets: ScoringChartData['planets'],
   name: string
-): { signNumber: number; house: number } | null {
+): { signNumber: number; house: number; degreeInSign: number } | null {
   if (!planets) return null
   const p = planets.find((pl) => pl.planet === name)
-  return p ? { signNumber: p.signNumber, house: p.house } : null
+  return p ? { signNumber: p.signNumber, house: p.house, degreeInSign: p.degreeInSign } : null
 }
 
 /** Lookup Shadbala data for a planet by name. Returns null when absent. */
@@ -165,7 +165,7 @@ function factorLordDignity(
   // D1. Node lords (Rahu/Ketu) carry no friendship dignity → treated as neutral,
   // preserving the prior behavior for nodes.
   const d1Signs = buildD1SignMap(chartData.planets)
-  let label: string = getVargaDignityLabel(lord, p.signNumber, d1Signs) ?? 'neutral'
+  let label: string = getVargaDignityLabel(lord, p.signNumber, d1Signs, p.degreeInSign) ?? 'neutral'
 
   // Neechabhanga lift: a debilitated lord is lifted to neutral ONLY when the
   // cancellation yoga names THIS lord. The slicer emits
@@ -255,18 +255,76 @@ function factorHouseOwnership(
   return { ok: true, normalized, value: avg }
 }
 
-/** Karaka Role: running lords vs domain relevantKarakaRoles. */
+/**
+ * Combustion survival fraction for a running lord (design §2, Requirement 3.4).
+ * Not combust, or combustion data missing/malformed for this lord → survival = 1.0
+ * (treat as not-combust; Error Handling: "missing combustion → survival defaults to 1.0").
+ * Combust → degreeFromSun / threshold, clamped to [0,1] (deeper combustion → lower survival).
+ */
+function combustionSurvival(lord: string, chartData: ScoringChartData): number {
+  const combustion = chartData.relationships?.combustion
+  if (!Array.isArray(combustion)) return 1.0
+  const entry = combustion.find((c) => c.planet === lord)
+  if (!entry || !entry.combust) return 1.0
+  const { degreeFromSun, threshold } = entry
+  if (
+    typeof degreeFromSun !== 'number' || !Number.isFinite(degreeFromSun) ||
+    typeof threshold !== 'number' || !Number.isFinite(threshold) || threshold <= 0
+  ) {
+    return 1.0
+  }
+  return clamp(degreeFromSun / threshold, 0, 1)
+}
+
+/**
+ * Karaka Role: running lords (MD/AD/PD) vs domain relevantKarakaRoles, per-level
+ * presence base summed across matches, each scaled by the matched lord's combustion
+ * survival (design §2, Requirement 1.3/3.4). Mirrors factorNaturalKaraka's three-level
+ * base so the two parallel karaka factors weight MD/AD/PD identically. MD-only match,
+ * not combust → 0.60; MD+AD → 0.85; PD-only → 0.15. A combust matched lord's
+ * contribution is reduced by its survival fraction.
+ *
+ * PD is read here so a Jaimini role active only at the pratyantardasha level (e.g. the
+ * Darakaraka running as PD in a marriage window) still fires the factor — previously PD
+ * was ignored, so such a match was detected in periodInsights.karakaSummary yet dropped
+ * from scoring as a spurious no-signal primary omission.
+ */
 function factorKarakaRole(
+  mdLord: string,
+  adLord: string,
+  pdLord: string,
   mdKaraka: string | null,
   adKaraka: string | null,
-  domainWeights: DomainScoringWeights
+  pdKaraka: string | null,
+  domainWeights: DomainScoringWeights,
+  chartData: ScoringChartData
 ): FactorResult {
   const relevant = new Set(domainWeights.relevantKarakaRoles)
   if (relevant.size === 0) return { ok: false, reason: 'no karakaRoles defined for domain', noSignal: true }
 
-  if (mdKaraka && relevant.has(mdKaraka)) return { ok: true, normalized: 1.0, value: `MD matches: ${mdKaraka}` }
-  if (adKaraka && relevant.has(adKaraka)) return { ok: true, normalized: 0.8, value: `AD matches: ${adKaraka}` }
-  return { ok: false, reason: 'no running lord matches a domain karakaRole', noSignal: true }
+  const levelBase = { MD: 0.60, AD: 0.25, PD: 0.15 } as const
+  const levels: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string; karaka: string | null }> = [
+    { level: 'MD', lord: mdLord, karaka: mdKaraka },
+    { level: 'AD', lord: adLord, karaka: adKaraka },
+    { level: 'PD', lord: pdLord, karaka: pdKaraka },
+  ]
+
+  let sum = 0
+  const matched: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string; survival: number }> = []
+  for (const { level, lord, karaka } of levels) {
+    if (!karaka || !relevant.has(karaka)) continue
+    const survival = combustionSurvival(lord, chartData)
+    sum += levelBase[level] * survival
+    matched.push({ level, lord, survival })
+  }
+
+  if (matched.length === 0) return { ok: false, reason: 'no running lord matches a domain karakaRole', noSignal: true }
+
+  const normalized = clamp(sum, 0, 1)
+  const value = matched
+    .map((m) => `${m.level} matches: ${m.lord}` + (m.survival < 1 ? ` (combust, survival ${m.survival.toFixed(3)})` : ''))
+    .join('; ')
+  return { ok: true, normalized, value }
 }
 
 /** Activated yogas: omits when 0 (no signal); scales 1→3 → 0.65→0.95.
@@ -338,14 +396,38 @@ function factorTransitBav(overlay: TransitOverlay | null): FactorResult {
   return { ok: true, normalized: clamp(avg / 8, 0, 1), value: avg }
 }
 
-/** Saturn afflictions (Sade Sati, ashtamaShani, kantakaShani). */
+/** Non-friendly transit-dignity buckets for the conditional Sade-Sati peak penalty
+ *  (design §5, Requirement 7.2): {debilitated, enemy, great_enemy} → steep 0.60;
+ *  everything else (including `undefined` on a malformed signNumber) → mild 0.40. */
+const NON_FRIENDLY_SATURN_DIGNITY = new Set(['debilitated', 'enemy', 'great_enemy'])
+
+/**
+ * Saturn afflictions (Sade Sati, ashtamaShani, kantakaShani).
+ *
+ * The Sade-Sati PEAK-phase penalty is conditional on transiting Saturn's
+ * positional dignity in its own transit sign (design §5): a peak with Saturn
+ * in a non-friendly rashi (debilitated/enemy/great_enemy — Aries, Cancer, Leo,
+ * Scorpio) bites steeper (0.60) than a peak with Saturn in a friendly/neutral
+ * rashi, which keeps the current 0.6.0 mild penalty (0.40). `rising`/`setting`
+ * and the `ashtamaShani`/`kantakaShani` penalties are unchanged.
+ *
+ * No natal tatkalika applies to a transit, so `getVargaDignityLabel` is called
+ * with an empty `d1SignByPlanet` map, falling back to Saturn's positional
+ * dignity (exalt/debil/own/moolatrikona) or its naisargika PERMANENT_FRIENDSHIP
+ * with the transit sign's lord. The lookup is a pure table lookup and never
+ * throws; an `undefined` label (malformed/out-of-range signNumber) degrades to
+ * the mild penalty rather than throwing (Error Handling).
+ */
 function factorSaturnAfflictions(overlay: TransitOverlay | null): FactorResult {
   if (!overlay) return { ok: false, reason: 'transitOverlay not available' }
 
+  const saturnTransitDignity = getVargaDignityLabel('Saturn', overlay.saturn.signNumber, {})
+  const peakPenalty = NON_FRIENDLY_SATURN_DIGNITY.has(saturnTransitDignity ?? '') ? 0.60 : 0.40
+
   let score = 1.0
   if (overlay.sadeSatiActive) {
-    if (overlay.sadeSatiPhase === 'peak') score -= 0.4
-    else score -= 0.2  // rising or setting
+    if (overlay.sadeSatiPhase === 'peak') score -= peakPenalty
+    else score -= 0.2  // rising or setting — unchanged
   }
   if (overlay.ashtamaShani) score -= 0.3
   if (overlay.kantakaShani) score -= 0.2
@@ -354,84 +436,172 @@ function factorSaturnAfflictions(overlay: TransitOverlay | null): FactorResult {
     sadeSati: overlay.sadeSatiActive ? overlay.sadeSatiPhase : null,
     ashtamaShani: overlay.ashtamaShani,
     kantakaShani: overlay.kantakaShani,
+    saturnTransitDignity: saturnTransitDignity ?? null,
   }}
 }
 
 // ─── Factor builders — 4 new factors (task 4.1b) ─────────────────────
 
-/** Natural Karaka relevance: running lords vs domain relevantNaturalKarakas. */
+/**
+ * Natural Karaka relevance: running lords vs domain relevantNaturalKarakas,
+ * per-level presence base summed across every matching running lord, each scaled
+ * by that lord's combustion survival fraction, clamped to [0,1] (design §2,
+ * Requirement 1.2/3.4). MD-only match, not combust → 0.60 (was flat 1.0,
+ * de-pinned). Reinforcement from a second matching AD/PD lord raises the value;
+ * combustion of a matched lord lowers it — the factor now varies across AD/PD
+ * combinations within the same Mahadasha.
+ */
 function factorNaturalKaraka(
   mdLord: string,
   adLord: string,
   pdLord: string,
-  domainWeights: DomainScoringWeights
+  domainWeights: DomainScoringWeights,
+  chartData: ScoringChartData
 ): FactorResult {
   const relevant = new Set(domainWeights.relevantNaturalKarakas)
   if (relevant.size === 0) return { ok: false, reason: 'no natural karakas defined for domain', noSignal: true }
 
-  if (relevant.has(mdLord)) return { ok: true, normalized: 1.0, value: `MD matches: ${mdLord}` }
-  if (relevant.has(adLord)) return { ok: true, normalized: 0.75, value: `AD matches: ${adLord}` }
-  if (relevant.has(pdLord)) return { ok: true, normalized: 0.65, value: `PD matches: ${pdLord}` }
-  return { ok: false, reason: 'no running lord is a domain natural karaka', noSignal: true }
+  const levelBase = { MD: 0.60, AD: 0.25, PD: 0.15 } as const
+  const levels: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string }> = [
+    { level: 'MD', lord: mdLord },
+    { level: 'AD', lord: adLord },
+    { level: 'PD', lord: pdLord },
+  ]
+
+  let sum = 0
+  const matched: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string; survival: number }> = []
+  for (const { level, lord } of levels) {
+    if (!relevant.has(lord)) continue
+    const survival = combustionSurvival(lord, chartData)
+    sum += levelBase[level] * survival
+    matched.push({ level, lord, survival })
+  }
+
+  if (matched.length === 0) return { ok: false, reason: 'no running lord is a domain natural karaka', noSignal: true }
+
+  const normalized = clamp(sum, 0, 1)
+  const value = matched
+    .map((m) => `${m.level} matches: ${m.lord}` + (m.survival < 1 ? ` (combust, survival ${m.survival.toFixed(3)})` : ''))
+    .join('; ')
+  return { ok: true, normalized, value }
 }
 
 /**
- * Domain House Activation — double transit (Saturn + Jupiter) onto the domain's
- * primaryHouses OR the domain-house lord (Requirement 1.10). Considers direct
- * occupation and graha-drishti (7th for all; 3rd/10th for Saturn; 5th/9th for Jupiter).
+ * Lord Affliction — standalone, additive, itemized Scoring_Factor (design §3,
+ * Requirement 3) that dampens a period when a running MD/AD/PD lord is combust,
+ * graded by closeness to the Sun. Distinct from the naturalKaraka/karakaRole
+ * combustion-survival credit reduction (§2 above): that mechanism reduces a
+ * combust KARAKA lord's positive significator credit; this factor is a separate
+ * negative signal applying to ANY combust running lord (karaka or not), and
+ * neither mutates the other's inputs (Requirement 3.1).
  *
- * The domain-house lord limb: for each primary house, resolve its sign (via lagna)
- * and that sign's lord, then check whether transiting Saturn/Jupiter occupy or
- * aspect the LORD's natal house. This is skipped gracefully when planets/lagna
- * are unavailable — the primaryHouses limb still applies.
+ * NEVER references the `cazimi` field (Requirement 3.5) — only `combust`,
+ * `degreeFromSun`, `threshold` are read. A malformed combustion entry (missing/
+ * NaN/non-finite `degreeFromSun` or `threshold`, `threshold <= 0`) yields "no
+ * usable penalty for that lord" (penalty 0), i.e. treated as if not combustable
+ * at that level — identical to a genuinely non-combust lord.
+ */
+function factorLordAffliction(
+  mdLord: string,
+  adLord: string,
+  pdLord: string,
+  chartData: ScoringChartData
+): FactorResult {
+  const combustion = chartData.relationships?.combustion
+  if (!Array.isArray(combustion)) return { ok: false, reason: 'combustion data unavailable' }
+
+  // Depth of combustion for one lord: 0 at the threshold edge → 1 at conjunction.
+  // Not combust, lord not found, or malformed degreeFromSun/threshold → 0 (no
+  // usable penalty for that lord — Error Handling: "malformed combustion entry
+  // ... treated as 'no usable penalty for that lord'").
+  function penaltyFor(lord: string): number {
+    const entry = combustion!.find((c) => c.planet === lord)
+    if (!entry || !entry.combust) return 0
+    const { degreeFromSun, threshold } = entry
+    if (
+      typeof degreeFromSun !== 'number' || !Number.isFinite(degreeFromSun) ||
+      typeof threshold !== 'number' || !Number.isFinite(threshold) || threshold <= 0
+    ) {
+      return 0
+    }
+    return clamp(1 - degreeFromSun / threshold, 0, 1)
+  }
+
+  const levelWeight = { MD: 0.50, AD: 0.30, PD: 0.20 } as const
+  const levels: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string }> = [
+    { level: 'MD', lord: mdLord },
+    { level: 'AD', lord: adLord },
+    { level: 'PD', lord: pdLord },
+  ]
+
+  // EP is the raw weighted sum of penalties — NOT normalized/rescaled by the sum
+  // of only the levels that had a usable penalty (Requirement 3.2/3.3 grading).
+  let EP = 0
+  const combustLords: Array<{ level: 'MD' | 'AD' | 'PD'; lord: string; penalty: number }> = []
+  for (const { level, lord } of levels) {
+    const penalty = penaltyFor(lord)
+    if (penalty > 0) {
+      EP += levelWeight[level] * penalty
+      combustLords.push({ level, lord, penalty })
+    }
+  }
+
+  // No running lord combust (or every combust entry was malformed/unusable) →
+  // legitimate no-signal omission (Requirement 3.7) — do NOT default to 0.5.
+  if (combustLords.length === 0) {
+    return { ok: false, reason: 'no running lord combust', noSignal: true }
+  }
+
+  // < 0.5 ⇒ genuine downward pull; deeper/more combustion → lower normalized.
+  const normalized = clamp(0.5 - EP, 0, 1)
+  return { ok: true, normalized, value: { combustLords, EP } }
+}
+
+/**
+ * Domain House Activation — transit (Saturn and/or Jupiter) onto the domain's
+ * primaryHouses only, via direct occupation or the universal 7th graha-drishti
+ * (design §4, Requirement 2). Narrowed from the prior wide net to fix a
+ * discrimination problem: measured across a real 19-period multi-year window,
+ * the previous net (occupation + 7th for all + Saturn's 3rd/10th + Jupiter's
+ * 5th/9th + the domain-house lord's natal house as a second target set) pinned
+ * this factor at its 1.0 ceiling on effectively every period (Requirement 2.1).
+ *
+ * Two limbs were removed to fix this:
+ * - The domain-house-lord's-natal-house target set (already covered indirectly
+ *   by houseOwnership/bhavaBala) — dropped entirely, not just the primary houses.
+ * - Saturn's 3rd/10th and Jupiter's 5th/9th special aspects — dropped for THIS
+ *   factor only; only occupation + the universal 7th aspect remain for both
+ *   planets, tightening the net so it actually discriminates across periods.
+ *
+ * Output is graded by which of Saturn/Jupiter (malefic/benefic) reach a
+ * primary house under the tightened net: both → 1.00 ("double transit", now a
+ * genuinely rare trigger), Jupiter-only → 0.75, Saturn-only → 0.60, neither →
+ * omitted as a no-signal (kept out of the confidence denominator).
  */
 function factorDomainHouseActivation(
   overlay: TransitOverlay | null,
-  domainWeights: DomainScoringWeights,
-  chartData: ScoringChartData
+  domainWeights: DomainScoringWeights
 ): FactorResult {
   if (!overlay) return { ok: false, reason: 'transitOverlay not available' }
   const primary = new Set(domainWeights.primaryHouses)
 
-  function getAspectedHouses(houseFromLagna: number, planet: 'saturn' | 'jupiter'): Set<number> {
+  function getAspectedHouses(houseFromLagna: number): Set<number> {
     const houses = new Set<number>()
     const wrap = (h: number) => ((h - 1 + 12) % 12) + 1
-    houses.add(houseFromLagna)
-    houses.add(wrap(houseFromLagna + 6))  // 7th aspect (all planets)
-    if (planet === 'saturn') {
-      houses.add(wrap(houseFromLagna + 2))  // 3rd aspect
-      houses.add(wrap(houseFromLagna + 9))  // 10th aspect
-    }
-    if (planet === 'jupiter') {
-      houses.add(wrap(houseFromLagna + 4))  // 5th aspect
-      houses.add(wrap(houseFromLagna + 8))  // 9th aspect
-    }
+    houses.add(houseFromLagna)            // occupation
+    houses.add(wrap(houseFromLagna + 6))  // 7th aspect (universal)
     return houses
   }
 
-  const saturnAspects = getAspectedHouses(overlay.saturn.houseFromLagna, 'saturn')
-  const jupiterAspects = getAspectedHouses(overlay.jupiter.houseFromLagna, 'jupiter')
+  const saturnAspects = getAspectedHouses(overlay.saturn.houseFromLagna)
+  const jupiterAspects = getAspectedHouses(overlay.jupiter.houseFromLagna)
 
-  // Limb 1: transit onto the domain's primary house(s)
-  let saturnActivates = [...primary].some((h) => saturnAspects.has(h))
-  let jupiterActivates = [...primary].some((h) => jupiterAspects.has(h))
+  const saturnHits = [...primary].some((h) => saturnAspects.has(h))
+  const jupiterHits = [...primary].some((h) => jupiterAspects.has(h))
 
-  // Limb 2 (Req 1.10): transit onto the domain-house LORD's natal house
-  const lagnaSign = deriveLagnaSign(chartData.planets)
-  if (lagnaSign != null && chartData.planets) {
-    const domainLordHouses = new Set<number>()
-    for (const h of primary) {
-      const sign = houseToSign(h, lagnaSign)
-      const lord = SIGN_LORDS[sign]
-      const lp = chartData.planets.find((p) => p.planet === lord)
-      if (lp) domainLordHouses.add(lp.house)
-    }
-    if ([...domainLordHouses].some((h) => saturnAspects.has(h))) saturnActivates = true
-    if ([...domainLordHouses].some((h) => jupiterAspects.has(h))) jupiterActivates = true
-  }
-
-  if (saturnActivates && jupiterActivates) return { ok: true, normalized: 1.0, value: 'double transit' }
-  if (saturnActivates || jupiterActivates) return { ok: true, normalized: 0.7, value: saturnActivates ? 'Saturn only' : 'Jupiter only' }
+  if (saturnHits && jupiterHits) return { ok: true, normalized: 1.00, value: 'double transit' }
+  if (jupiterHits) return { ok: true, normalized: 0.75, value: 'Jupiter only' }
+  if (saturnHits) return { ok: true, normalized: 0.60, value: 'Saturn only' }
   return { ok: false, reason: 'no transit activation of domain houses', noSignal: true }
 }
 
@@ -1030,15 +1200,15 @@ function _scorePeriod(
   apply('shadbala',      factorShadbala([mdLord, adLord, pdLord], chartData))
   apply('ishtaKashta',   factorIshtaKashta([mdLord, adLord, pdLord], chartData))
   apply('houseOwnership', factorHouseOwnership([mdLord, adLord, pdLord], chartData, domainWeights))
-  apply('karakaRole',    factorKarakaRole(mdAnnot.karakaRole, adAnnot.karakaRole, domainWeights))
+  apply('karakaRole',    factorKarakaRole(mdLord, adLord, pdLord, mdAnnot.karakaRole, adAnnot.karakaRole, pdAnnot.karakaRole, domainWeights, chartData))
   apply('activatedYogas', factorActivatedYogas(activatedYogas))
   apply('bhavaBala',     factorBhavaBala([mdLord, adLord, pdLord], chartData))
   apply('transitBav',    factorTransitBav(transitEntry))
   apply('saturnAfflictions', factorSaturnAfflictions(transitEntry))
 
   // 4 new factors
-  apply('naturalKaraka', factorNaturalKaraka(mdLord, adLord, pdLord, domainWeights))
-  apply('domainHouseActivation', factorDomainHouseActivation(transitEntry, domainWeights, chartData))
+  apply('naturalKaraka', factorNaturalKaraka(mdLord, adLord, pdLord, domainWeights, chartData))
+  apply('domainHouseActivation', factorDomainHouseActivation(transitEntry, domainWeights))
   apply('mdAdRelationship', factorMdAdRelationship(mdLord, adLord, chartData))
   apply('natalHouseStrength', factorNatalHouseStrength(chartData, domainWeights))
 
@@ -1054,6 +1224,11 @@ function _scorePeriod(
   apply('divisionalChartStrength', factorDivisionalChartStrength(mdLord, adLord, pdLord, chartData, domainWeights))
   apply('rashiDrishti', factorRashiDrishti(mdLord, adLord, pdLord, chartData, domainWeights))
   apply('rashiDispositorChain', factorRashiDispositorChain(mdLord, adLord, pdLord, chartData, domainWeights))
+
+  // lordAffliction (design §3, Requirement 3.8) — standalone, additive combustion
+  // penalty. SECONDARY tier: not in any domain's primaryFactors, so its legitimate
+  // no-signal omission (no running lord combust) never dents confidence.
+  apply('lordAffliction', factorLordAffliction(mdLord, adLord, pdLord, chartData))
 
   // Final score
   let score: number

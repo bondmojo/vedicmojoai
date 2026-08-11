@@ -1,12 +1,80 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.3
-**Last updated:** 2026-07-11
+**Version:** 1.9
+**Last updated:** 2026-08-10
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
 > stores, or flows — together with the AI Skills, ERD, and HLD. See
 > `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.9
+
+- Added the **Vercel + Supabase deployment flow**. Both asynchronous pipeline
+  launchers now register their work with `waitUntil()` before returning `202`;
+  this keeps a serverless invocation alive only up to the route's declared
+  `maxDuration`, rather than treating an unawaited Promise as durable work.
+  A run that exceeds that bound remains recoverable through the existing
+  run/duration-analysis recovery paths.
+- **D2: PipelineRun** now holds the rendered report content as
+  `reportHtml`/`reportMarkdown`, as well as the legacy `reportPath`.
+  P5 writes the database content first; the filesystem write is best-effort
+  for local/Cloud Run compatibility. P6 reads the database first and falls
+  back to `FS: reports/` only for pre-migration reports.
+- The AI-analysis SSE client reconnects after a serverless connection ends.
+  Its `connected` event contains a snapshot of persisted `WaveOutput` state,
+  while the server seeds its per-connection deduplication from D4; this avoids
+  losing progress or replaying old agent events after reconnect.
+- Supabase app traffic flows through its pooled `DATABASE_URL`; migrations use
+  unpooled `DIRECT_URL`. Vercel bundles prompt files and Swiss Ephemeris assets
+  because both are runtime-read inputs to P4/P10 and chart computation.
+
+## What changed in v1.8
+
+- Added **P13 — Marriage Matchmaking** and data store **D15:
+  CompatibilityMatch**. A pure, never-throwing engine (no ephemeris/LLM/
+  network/DB/file I/O) scoring a bride/groom `UnifiedChart` pair — see the
+  new subsection under Level 2 — P13.
+- **P11 (MCP Server)** gains a new tool, `compute_match`, which flows into
+  **P13-preview** only (`POST /api/matchmaking/preview`) — never into P13's
+  persisting flow. Same never-writes guarantee as P11's existing tools,
+  covered by the same `tests/mcp-cost-guard.test.ts`.
+- **D7: UnifiedChart** gains a `gender` field (informational only — flows
+  into P13's picker as a label/warning, never as a role-inference input).
+
+## What changed in v1.7
+
+- Added **P11-OAuth**: an MCP OAuth 2.1 authorization server — a second,
+  additional way to obtain a token for P11-HTTP's `POST /api/mcp`, alongside
+  the existing P12.2 manual `McpApiToken` flow (unchanged). New data store
+  **D14** (`OAuthClient`/`OAuthAuthorizationCode`/`OAuthAccessToken`/
+  `OAuthRefreshToken`). See the new subsection under Level 2 — P11.
+- P11-HTTP's no-token 401 now carries a `WWW-Authenticate` header pointing
+  at P11-OAuth's discovery endpoint — the two subsections are now linked.
+
+## What changed in v1.6
+
+- Added **P11-HTTP**: `POST /api/mcp`, a Streamable HTTP transport for the
+  same P11 tools/resources/prompts, living inside the main Next.js process
+  instead of the separate `mcp/` stdio process — see the new subsection under
+  Level 2 — P11. Same never-calls-P4/P10 guarantee, same test coverage.
+
+## What changed in v1.5
+
+- Added **P12 — User Management & Auth** and data stores **D10: User**,
+  **D11: Session**, **D12: PasswordResetToken**, **D13: McpApiToken**
+  (`Account`/`VerificationToken` are Auth.js adapter plumbing, unused in v1 —
+  no data flows of their own yet).
+- Every flow into **D7: UnifiedChart** (and anything hung off it — D2, D4,
+  D5, D8, D9, and `FS: reports/`) now carries a `userId`, resolved once via
+  `resolveRequestUser` and enforced as an ownership check before the flow
+  proceeds — a mismatch returns 404, not the data. This isn't drawn as a
+  separate arrow on every existing process box; treat it as a cross-cutting
+  gate this version adds in front of P1, P8, P9, P10, and P11's read flows.
+- **P11 (MCP Server)** auth flow changes: `x-mcp-token` now resolves through
+  D13: McpApiToken to a `userId` (P12.2) instead of a static shared-secret
+  compare. Behavior for `tests/mcp-cost-guard.test.ts` is unchanged — no new
+  `mcp/src` call sites were added.
 
 ## What changed in v1.1
 
@@ -117,15 +185,15 @@ PRACTITIONER
          ▼                                                              │
 ┌────────────────────┐                                                  │
 │  P5                │                                                  │
-│  REPORT RENDERER   │──── HTML file path ─────────────────────────────► D2: PipelineRun
-│  (synthesis →      │──── HTML file ──────────────────────────────────► FS: reports/
-│   HTML)            │                                                  │
+│  REPORT RENDERER   │──── reportPath + reportHtml/Markdown ──────────► D2: PipelineRun
+│  (synthesis →      │──── best-effort HTML/MD file ──────────────────► FS: reports/
+│   HTML/Markdown)   │    (local/Cloud Run; not required on Vercel)     │
 └────────┬───────────┘                                                  │
-         │ report_path                                                  │
+         │ report content                                               │
          ▼                                                              │
 ┌────────────────────┐                                                  │
-│  P6                │◄─── report_path ──────────── D2: PipelineRun     │
-│  REPORT VIEWER     │◄─── HTML file ─────────────── FS: reports/       │
+│  P6                │◄─── reportHtml/Markdown ───── D2: PipelineRun     │
+│  REPORT VIEWER     │◄─── legacy HTML/MD file ────── FS: reports/       │
 │  (serve + display) │                                                  │
 │                    │──── report HTML + dasha JSON ──────────────────► PRACTITIONER
 └────────────────────┘                                                  │
@@ -151,9 +219,18 @@ PRACTITIONER
 │                    │◄─── loadedChart ─────────────────────────────── D6: SavedChart
 └────────────────────┘
 
+┌────────────────────┐
+│  P13                │
+│  MARRIAGE           │◄─── bride/groom UnifiedChart pair ──────────── D7: UnifiedChart
+│  MATCHMAKING        │
+│  (pure, never-      │──── CompatibilityMatch (POST only) ───────────► D15: CompatibilityMatch
+│   throwing)         │──── MatchResult JSON ──────────────────────────► PRACTITIONER
+└────────────────────┘
+
 Data Stores:
   D1: Chart          — immutable chart record (chart_id, lagna, chart_json, hash)
-  D2: PipelineRun    — run record (status, planner_output, report_path, cost)
+  D2: PipelineRun    — run record (status, planner_output, reportPath, reportHtml,
+                       reportMarkdown, cost); DB report content is authoritative
   D3: Wave1Cache     — chart_summary, wave1_delta, dasha_tree (keyed by chart_hash)
   D4: WaveOutput     — per-agent delta output, domain tag, token counts
   D5: RunMessage     — conversation thread (role, content, run_id)
@@ -161,7 +238,15 @@ Data Stores:
   D7: UnifiedChart   — canonical chart store, column-per-domain JSONB (source=compute|paste)
   D8: DurationAnalysis — duration analysis runs (periodSlice, transitOverlay, da1-3 outputs, errorMessage)
   D9: DurationMessage  — duration analysis conversation thread (role, content, analysisId)
-  FS: reports/       — HTML report files on disk
+  D10: User            — practitioner accounts (email, passwordHash, name)
+  D11: Session         — database-backed sessions (sessionToken, userId, expires)
+  D12: PasswordResetToken — reset tokens (tokenHash, expiresAt, usedAt)
+  D13: McpApiToken     — per-user MCP credentials (tokenHash, label, lastUsedAt, revokedAt)
+  D14: OAuthClient / OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken
+                       — MCP OAuth 2.1 authorization server (P11-OAuth); all secrets hashed at rest
+  D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB,
+                       tablesVersion, brideChartId/groomChartId → D7)
+  FS: reports/       — legacy/local HTML/Markdown report files on disk (best-effort)
 ```
 
 ---
@@ -421,6 +506,7 @@ BROWSER                    API LAYER                    ENGINE / DB
    │   {queryTypes[],           │── read UnifiedChart ──────►│ D7: UnifiedChart
    │    userQuery, ...}         │                            │
    │                           │── create PipelineRun ─────►│ D2: PipelineRun
+   │                           │── waitUntil(pipeline) ────►│ bounded serverless work
    │◄── 202 {run_id} ──────────│                            │
    │                           │                            │
    │── GET /api/runs/:id/events►│   (SSE connection open)   │
@@ -429,7 +515,8 @@ BROWSER                    API LAYER                    ENGINE / DB
    │◄── SSE: agent_complete ───│◄── wave_delta saved ──────│ D4: WaveOutput
    │◄── SSE: token_count ──────│                            │
    │◄── SSE: run_complete ─────│◄── synthesis saved ───────│ D4: WaveOutput
-   │                           │◄── report written ────────│ FS: reports/
+   │                           │◄── report content written ─│ D2: PipelineRun
+   │                           │◄── optional file written ──│ FS: reports/
    │                           │◄── run updated ───────────│ D2: PipelineRun
    │                           │                            │
    │── GET /api/runs/:id ──────►│── read PipelineRun ───────►│ D2: PipelineRun
@@ -439,8 +526,8 @@ BROWSER                    API LAYER                    ENGINE / DB
    │◄── report list JSON ──────│                            │
    │                           │                            │
    │── GET /api/runs/:id/       │                            │
-   │   report-content ─────────►│── read report_path ────────►│ D2: PipelineRun
-   │◄── markdown/HTML content ─│── serve file content ──────│ FS: reports/
+   │   report-content ─────────►│── read report content ─────►│ D2: PipelineRun
+   │◄── markdown/HTML content ─│── legacy file fallback ────│ FS: reports/
 ```
 
 ---
@@ -487,6 +574,9 @@ PRACTITIONER
 │  • Arudha Padas               │
 │  • Pinda Strength             │
 │  • Transits + Sade Sati       │
+│    (sign-based + degree-based │
+│    via moon.longitude → 7th   │
+│    arg to computeTransits)    │
 │                               │
 │  computeVimshottari()         │
 │  • Full dasha tree            │
@@ -528,7 +618,21 @@ BirthInput
     │       ├─► computeSpecialLagnas() → SpecialLagna[]
     │       ├─► computeArudhaPadas() → ArudhaPada[]
     │       ├─► computePindaStrength() → PindaStrengthEntry[]
-    │       └─► computeTransits()    → TransitAnalysis
+    │       └─► computeTransits(moonSign, lagnaSign, birthYear,
+    │               asOfDate, lat, lon, moon.longitude)
+    │               → TransitAnalysis
+    │                 ├── sadeSati (sign-based, isCurrent from asOfDate)
+    │                 ├── sadeSatiByDegree? (±45° of natal Moon,
+    │                 │     138-day merge, populated only when
+    │                 │     natalMoonLongitude supplied — i.e. from
+    │                 │     computeFullChart; absent from transitOverlay)
+    │                 ├── moonTransits[], ascendantTransits[]
+    │                 └── ashtamaShani, kantakaShani
+    │
+    ├─► computeDivisionalCharts() calls dignity.ts:
+    │       getVargaDignityLabel(planet, sign, d1Map, degreeInSign?)
+    │       └── D1 only: passes planet.longitude % 30 as degreeInSign
+    │           (D2–D60 keep whole-sign rule; no varga longitude exists)
     │
     ├─► computeVimshottari(moonLong, birthDate) → DashaTree
     └─► computeCharaDasha(planets, lagnaSign, birthDate) → CharaDashaResult
@@ -624,13 +728,15 @@ PRACTITIONER
          │     paste   → from D3 Wave1Cache (or run W1)  │
          │ • optional modelOverride → upsert ────────────┼──► model_config
          │ • create PipelineRun(chartId, unifiedChartId) ┼──► D2: PipelineRun
+         │ • register executePipeline() with waitUntil() │
+         │   (maxDuration-bound serverless work)         │
          └──────────────┬────────────────────────────────┘
                         │ 202 { runId, waveStrategy, executionPlan }
                         ▼
-                  executePipeline()  ──►  P4: Pipeline Engine (Waves 2–4)
+                  waitUntil(executePipeline())  ──►  P4: Pipeline Engine (Waves 2–4)
                         │                  (Wave 1 only for paste path)
                         ▼
-                  D4: WaveOutput → P5: Report Renderer → FS: reports/
+                  D4: WaveOutput → P5: Report Renderer → D2 report content
 ```
 
 **Wave strategy summary:**
@@ -662,10 +768,11 @@ PRACTITIONER
 │ P10.1  API ROUTE           │──► create DurationAnalysis (status=queued) ──► D8
 │  • validate (10yr cap,    │
 │    dashaTree not null)    │──► create DurationMessage if userQuestion ───► D9
-│  • fire pipeline (no await)│
+│  • waitUntil(pipeline) before│
+│    returning 202 (bounded) │
 └───────────────┬───────────┘
                 │ 202 { analysisId }
-                ▼ (fire-and-forget)
+                ▼ (background work, bounded by maxDuration)
 ┌───────────────────────────┐
 │ P10.2  STEP 0a — SLICER   │◄─── dashaTree, planets, nakshatras ────── D7: UnifiedChart
 │  sliceDashaTree() pure TS │
@@ -770,6 +877,9 @@ CLAUDE DESKTOP
       │                                                    + deterministic scorePeriod + identifyPeaks
       │                                                    + buildPeriodInsights (driver digest) + domainContext
       │                                                    (NO DA-1/2/3, NO LLM)
+      ├──────────────► POST /api/matchmaking/preview ────► P13.1 + P13.2 (Ashtakoota + Mangal Dosha,
+      │                                                    NO D15 write — compute_match tool only calls
+      │                                                    /preview, never POST /api/matchmaking)
       ├──────────────► GET  /api/knowledge/**  ──────────► prompts/domains + prompts/agents (readPromptFile)
       └──────────────► GET  /api/reports, /api/runs/[id], /api/duration-analysis[/id]   read-only
 
@@ -791,6 +901,215 @@ CLAUDE DESKTOP
 | knowledge | P11 → `/api/knowledge` | domain/framework rubric text (include-expanded) |
 | reports | P11 → runs / duration reads | already-generated results (no new cost) |
 
+### P11-HTTP: the same tools, reachable remotely (`POST /api/mcp`, NEW)
+
+A second transport for the exact same `mcp/src/{tools,resources,prompts}.ts`
+code — not a second process. `app/api/mcp/route.ts` lives **inside** the main
+Next.js app (unlike P11's separate `mcp/` stdio process) and is reachable by
+any remote MCP client, not just a locally-running Claude Desktop:
+
+```
+REMOTE MCP CLIENT
+     │  MCP (Streamable HTTP): Authorization: Bearer <token>
+     ▼
+┌─────────────────────────┐
+│  POST /api/mcp           │  Next.js Route Handler — stateless,
+│  (app/, same process)    │  fresh McpServer per request
+└─────┬────────────────────┘
+      │ HTTP (self: VEDICMOJO_INTERNAL_BASE_URL, falling back to
+      │       new URL(request.url).origin only when unset — see
+      │       mcp/README.md "Deploying it behind a proxy"; forwarded x-mcp-token)
+      └──────────────► same GET/POST targets as P11 above ──────────────►
+
+  ✗ Same guarantee as P11 — never calls P4's analyze route or P10's create
+     route, because it's the same mcp/src/tools.ts, covered by the same
+     tests/mcp-cost-guard.test.ts (a static scan of mcp/src, transport-
+     agnostic).
+```
+
+The only structural difference from P11: the API client (token + base URL)
+is built **per HTTP request** from the caller's own `Authorization` header,
+instead of once at process startup from `MCP_TOKEN`/`VEDICMOJO_BASE_URL` env
+vars — because one shared endpoint serves many users concurrently, where the
+stdio process only ever serves the one user Claude Desktop was configured
+for.
+
+### P11-OAuth: MCP OAuth 2.1 authorization server (NEW in v1.7)
+
+A second, additional way to get a token for P11-HTTP — P12.2's manual
+`McpApiToken` flow is unaffected. Lets an OAuth-aware remote client (e.g.
+claude.ai's "Add custom connector") obtain a token via browser login +
+consent instead of copy-pasting one from `/account`. Hand-rolled Next.js
+Route Handlers (no Express) backed by a new store, **D14**.
+
+```
+REMOTE MCP CLIENT                          BROWSER (same user)
+     │ 1. POST /api/mcp, no token               │
+     ▼                                          │
+  401 + WWW-Authenticate: Bearer                │
+    resource_metadata="…/.well-known/           │
+    oauth-protected-resource/api/mcp"            │
+     │                                          │
+     │ 2. GET that URL (RFC 9728)               │
+     │ 3. GET .well-known/oauth-authorization-  │
+     │    server (RFC 8414) → endpoint list     │
+     │ 4. POST /api/oauth/register (RFC 7591)   │
+     │    → client_id (public/PKCE-only)        │
+     │                                          │
+     │ 5. open authorization_endpoint ─────────►│  GET /oauth/authorize?client_id=…
+     │                                          │  (Server Component: session check,
+     │                                          │   phase-1 client_id/redirect_uri
+     │                                          │   exact-match, phase-2 PKCE/S256)
+     │                                          │  → consent form → user clicks Allow
+     │                                          │  POST /api/oauth/authorize-decision
+     │                                          │  (re-validates client_id/redirect_uri)
+     │                                          │  → D14.OAuthAuthorizationCode (hashed)
+     │◄─── redirect_uri?code=…&state=… ─────────┤
+     │                                          
+     │ 6. POST /api/oauth/token                  
+     │    grant_type=authorization_code          
+     │    (atomic single-use claim, PKCE verify) 
+     ▼                                          
+  { access_token: mcp_oat_…, refresh_token: mcp_ort_…, … }
+     │                                          
+     │ 7. POST /api/mcp, Authorization: Bearer mcp_oat_…
+     ▼                                          
+  same GET/POST targets as P11 above (lib/mcpAuth.ts's resolveMcpUser
+  branches to D14.OAuthAccessToken by the mcp_oat_ prefix, else D13.McpApiToken)
+```
+
+`POST /api/oauth/token`'s `refresh_token` grant rotates on every use (same
+atomic-claim pattern, applied to `D14.OAuthRefreshToken`); `POST
+/api/oauth/revoke` (RFC 7009) always returns 200. Known v1 simplification: no
+refresh-token-family tracking (a replayed, already-rotated refresh token is
+rejected on that one request, not cascade-revoked).
+
+---
+
+## Level 2 — P12: User Management & Auth (NEW in v1.5)
+
+```
+PRACTITIONER (browser)                          CLAUDE DESKTOP (MCP)
+     │ email + password                                │ x-mcp-token header
+     ▼                                                  ▼
+┌─────────────────────┐                        ┌─────────────────────┐
+│ P12.1 CREDENTIAL     │                        │ P12.2 MCP TOKEN      │
+│ AUTH (signup/login/  │──── Session row ─────► │ RESOLUTION           │
+│ logout/forgot/reset) │      D11: Session      │ (resolveMcpUser)     │
+│ bcrypt hash+verify    │──── User row ────────► │──── userId ─────────► (falls back into
+│ (bypasses Auth.js's   │      D10: User         │      or null          resolveRequestUser
+│  signIn()/signOut())  │──── reset token ─────► │                       when no session
+│                       │      D12: PasswordReset│                       cookie is present)
+└──────────┬────────────┘      Token             └───────────┬──────────┘
+           │ session cookie                                  │ D13: McpApiToken
+           ▼ (authjs.session-token)                           │ (tokenHash → userId,
+┌──────────────────────────────────────────────┐              │  lastUsedAt update)
+│ P12.3 resolveRequestUser (lib/auth.ts)         │◄────────────┘
+│ session cookie → auth() ─┐                     │
+│                          ├─► userId (or null) ─┼───► every ownership check in
+│ no session → P12.2 ──────┘                     │     P1/P8/P9/P10/P11 (404 on
+└────────────────────────────────────────────────┘     mismatch, never 403)
+
+  MCP token issuance is a session-gated WEB action, not something P11 (the
+  MCP process) calls itself:
+  PRACTITIONER → POST /api/account/mcp-token (session-only, P12.1's session
+  required) → raw token shown once → D13: McpApiToken (hash only, stored).
+  This is why P11's HTTP client code (mcp/src/http.ts, mcp/src/tools.ts)
+  needed ZERO changes — it already sent an opaque x-mcp-token string; only
+  what that string resolves to changed.
+```
+
+**P12 data flows**
+
+| Flow | From → To | Payload |
+|---|---|---|
+| signup/login | Practitioner → P12.1 → D10/D11 | email, bcrypt hash, session row |
+| logout | Practitioner → P12.1 → D11 | delete session row |
+| forgot/reset | Practitioner → P12.1 → D10/D12 | reset token hash, new password hash; deletes ALL D11 rows for that user |
+| mcp token issuance | Practitioner (session) → D13 | raw token (shown once), hash persisted |
+| mcp identity resolution | P11 → P12.2 → D13 | `x-mcp-token` → userId, `lastUsedAt` touch |
+| ownership gate | P1/P8/P9/P10/P11 → P12.3 | userId resolved once per request, reused for every ownership check |
+
+---
+
+## Level 2 — P13: Marriage Matchmaking (NEW in v1.8)
+
+A pure, never-throwing engine — no ephemeris, LLM, network, DB, or file I/O.
+Reads two `UnifiedChart` rows and produces a fractional `gunaScore` + Mangal
+Dosha verdict; only the `POST /api/matchmaking` variant writes to D15.
+
+```
+PRACTITIONER
+     │ POST /api/matchmaking { brideChartId, groomChartId, label? }
+     │ (or POST /api/matchmaking/preview — identical, no D15 write)
+     ▼
+┌───────────────────────────┐
+│ P13.1  OWNERSHIP + INPUT  │◄─── moonLongitude, planets, lagna, ──────── D7: UnifiedChart
+│  RESOLUTION                │      relationships.aspects (bride + groom)
+│  • both charts must        │
+│    resolve to caller       │
+│    (404 on either          │
+│    mismatch, no leak)      │
+│  • longitudeToNakshatra-   │
+│    PadaRashi() per chart   │
+│  • MangalNativeInput only  │
+│    when source="compute"   │
+│    (else omitted → the     │
+│    Mangal koota reports    │
+│    'unavailable', never    │
+│    'matched')               │
+└──────────────┬─────────────┘
+               │ MatchNativeInput × 2 (+ optional MangalNativeInput × 2)
+               ▼
+┌───────────────────────────┐
+│ P13.2  computeMatch()      │
+│  (engine/compute/          │
+│   matchmaking.ts)          │
+│                            │
+│  computeAshtakootaMatch:   │
+│   8 kootas in fixed order  │
+│   (Varna→Nadi), each       │
+│   error-contained          │
+│   individually             │
+│  computeMangalDosha:       │
+│   per native, 3 reference  │
+│   points (lagna/Moon/Venus)│
+│                            │
+│  → gunaScore (fractional,  │
+│    never rounded), verdict,│
+│    mangalDoshaCompat-      │
+│    ibility, boundaryRisk,  │
+│    limitations             │
+│  stamped: tablesVersion    │
+│  (MATCHMAKING_TABLES_      │
+│   VERSION)                 │
+└──────────────┬─────────────┘
+               │ MatchResult JSON
+               ├── POST /api/matchmaking only ──► D15: CompatibilityMatch
+               │     (gunaScore, verdict denormalized; result = full snapshot)
+               ▼
+         PRACTITIONER (`/matchmaking/[id]` renders D15.result verbatim — never
+         recomputed, OD-5)
+
+DELETE /api/unified-charts/[id] (chart-delete cascade fix, regression
+  prevention): compatibilityMatch.deleteMany({ brideChartId: id OR
+  groomChartId: id }) runs BEFORE the chart delete, in the same
+  $transaction as the pre-existing pipeline-run cascade — Prisma does not
+  cascade FKs automatically, so a CompatibilityMatch FK without this fix
+  would turn "delete a matched chart" into a 500.
+
+DELETE /api/matchmaking/[id]: plain delete, no dependents ──► D15
+```
+
+**P13 data flows**
+
+| Flow | From → To | Payload |
+|---|---|---|
+| chart resolution | P13.1 → D7 | ownership-checked read of both charts |
+| score (persist) | P13.2 → D15 | `CompatibilityMatch` row (POST only) |
+| score (preview) | P13.2 → PRACTITIONER / P11 | `MatchResult` JSON, not persisted |
+| cascade | P1 (chart delete) → D15 | dependent match rows deleted first |
+
 ---
 
 ## Data Dictionary
@@ -808,15 +1127,19 @@ CLAUDE DESKTOP
 | `corrections[]` | JSON array | ~2KB | Agent 4A | 4B, 4C |
 | `confidence_matrix[]` | JSON array | ~3KB | Agent 4B | 4C |
 | `synthesis_json` | JSON | ~15KB | Agent 4C | Report renderer, RunMessage |
-| `HTML report` | HTML file | ~50–150KB | renderer.ts | Browser, FS |
+| `HTML report` | TEXT (primary) + optional file | ~50–150KB | renderer.ts | PipelineRun.reportHtml, browser; FS fallback |
+| `Markdown report` | TEXT (primary) + optional file | ~20–100KB | renderer.ts | PipelineRun.reportMarkdown, browser; FS fallback |
 | `conversation_history` | JSON array | ~2KB/turn | RunMessage table | Verification Agent |
 | `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, UnifiedChart domains, /compute UI |
 | `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
 | `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
 | `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
+| `TransitAnalysis.sadeSatiByDegree` | JSON (nested) | ~2KB | computeDegreeSadeSati() via computeTransits(…, moon.longitude) | UnifiedChart.transits (Json), SadeSatiPanel UI. Not passed to transitOverlay.ts |
 | `DashaSlice[]` (with annotations) | JSON (JSONB) | ~30–80KB (200 entries) | slicer.ts | DurationAnalysis.periodSlice; DA-1 prompt |
 | `TransitOverlay[]` | JSON (JSONB) | ~5–15KB (one entry per AD boundary) | transitOverlay.ts | DurationAnalysis.transitOverlay; DA-1 prompt |
 | `DA1Output` | JSON (JSONB) | ~20–50KB | DA-1 agent + post-merge | DurationAnalysis.da1Output; DA-2/DA-3 prompts |
 | `DA2Output` | JSON (JSONB) | ~2–5KB | DA-2 agent | DurationAnalysis.da2Output; symptom gate |
 | `DA3Output` | JSON (JSONB) | ~10–30KB | DA-3 agent | DurationAnalysis.da3Output; report UI |
 | `contextSummary` | TEXT | ~500 tokens (~2KB) | index.ts (deterministic) | DurationAnalysis.contextSummary; DA-3 chat follow-up prompts |
+| `OAuthAuthorizationCode` / `OAuthAccessToken` / `OAuthRefreshToken` (raw values) | opaque string | ~64 bytes each | app/api/oauth/{authorize-decision,token}/route.ts | Remote MCP client; hashed at rest in D14, raw value never persisted |
+| `MatchResult` | JSON (JSONB) | ~3–6KB | matchmaking.ts's `computeMatch()` | D15.result (POST only); `/matchmaking/[id]` UI; `compute_match` MCP response (preview, not persisted) |

@@ -12,17 +12,36 @@
  *
  * SavedChart rows are left untouched (legacy/read-only).
  *
- * Run: npm run db:migrate-saved   (requires DATABASE_URL)
+ * Requirement 5.2/6.2: UnifiedChart.userId is required, so promoted charts
+ * need an owner — pass the email of the account they should belong to.
+ *
+ * Run: npm run db:migrate-saved -- practitioner@example.com
+ *   or: MIGRATE_SAVED_OWNER_EMAIL=practitioner@example.com npm run db:migrate-saved
  */
 
 import { prisma } from '../lib/db'
 import { createUnifiedChartFromBirthData } from '../lib/unified-chart-create'
 
 async function main() {
+  const email = (process.argv[2] || process.env.MIGRATE_SAVED_OWNER_EMAIL || '').trim().toLowerCase()
+  if (!email) {
+    console.error('Usage: npm run db:migrate-saved -- <owner-email>')
+    console.error('   or: MIGRATE_SAVED_OWNER_EMAIL=<owner-email> npm run db:migrate-saved')
+    process.exitCode = 1
+    return
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } })
+  if (!user) {
+    console.error(`No User found for ${email}. Sign up (or run db:backfill-owner) first.`)
+    process.exitCode = 1
+    return
+  }
+
   const savedCharts = await prisma.savedChart.findMany({
     orderBy: { createdAt: 'asc' },
   })
-  console.log(`Found ${savedCharts.length} saved chart(s) to promote...`)
+  console.log(`Found ${savedCharts.length} saved chart(s) to promote to ${email}...`)
 
   let created = 0
   let duplicates = 0
@@ -38,6 +57,7 @@ async function main() {
         latitude: Number(sc.latitude),
         longitude: Number(sc.longitude),
         sunriseMode: sc.sunriseMode === 'jhora' ? 'jhora' : 'precise',
+        userId: user.id,
       })
 
       if (result.status === 'created') {

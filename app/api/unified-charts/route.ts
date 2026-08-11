@@ -10,15 +10,21 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { resolveRequestUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await resolveRequestUser(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const lagna = searchParams.get('lagna')
     const source = searchParams.get('source')
 
-    const where: any = {}
+    const where: any = { userId }
 
     if (search) {
       where.name = { contains: search, mode: 'insensitive' }
@@ -41,6 +47,7 @@ export async function GET(request: NextRequest) {
         lagnaLongitude: true,
         moonLongitude: true,
         ayanamsa: true,
+        gender: true,
         birthDatetime: true,
         sunriseMode: true,
         createdAt: true,
@@ -62,6 +69,7 @@ export async function GET(request: NextRequest) {
       lagnaLongitude: Number(c.lagnaLongitude),
       moonLongitude: Number(c.moonLongitude),
       ayanamsa: Number(c.ayanamsa),
+      gender: c.gender,
       birthDatetime: c.birthDatetime,
       sunriseMode: c.sunriseMode,
       runCount: c._count.pipelineRuns,

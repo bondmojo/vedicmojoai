@@ -8,7 +8,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { api, ApiError } from './http.js'
+import { ApiError, type ApiClient } from './http.js'
 import {
   birthDataSchema,
   chartRefShape,
@@ -55,7 +55,7 @@ function extractOrGuide(chart: NormalizedChart, value: unknown, domain: string):
   return ok({ source: chart.source, name: chart.name, [domain]: value })
 }
 
-export function registerTools(server: McpServer): void {
+export function registerTools(server: McpServer, api: ApiClient): void {
   // ── Discovery ─────────────────────────────────────────────────────
   server.registerTool(
     'list_clients',
@@ -141,7 +141,7 @@ export function registerTools(server: McpServer): void {
       { title, description, inputSchema: { ...chartRefShape, ...extraShape } },
       async (a) =>
         guard(async () => {
-          const chart = await resolveChart(a as { chartId?: string; birthData?: any })
+          const chart = await resolveChart(api, a as { chartId?: string; birthData?: any })
           const { domain, value } = project(chart)
           return extractOrGuide(chart, value, domain)
         })
@@ -151,6 +151,7 @@ export function registerTools(server: McpServer): void {
   extractor('get_ashtakavarga', 'Get Ashtakavarga', 'Bhinnashtakavarga (per graha) and Sarvashtakavarga bindus. `bav`/`sav` are SIGN-indexed (0=Aries); `byHouse` (house 1 = lagna) is the pre-rotated house-indexed view — use it directly, no house/sign math needed. `byHouse`/`lagnaSignNumber` are absent on charts computed before this field existed.', (c) => ({ domain: 'ashtakavarga', value: c.ashtakavarga }))
   extractor('get_relationships', 'Get planetary relationships/geometry', 'Conjunctions, graha & rashi aspects, planetary war, mutual reception, combustion, avastha, gandanta, stelliums.', (c) => ({ domain: 'relationships', value: c.relationships }))
   extractor('get_jaimini', 'Get Jaimini geometry + chara karakas', 'Chara karakas (AK…DK), argala/virodha argala, yogi/avayogi points, special-lagna aspects.', (c) => ({ domain: 'jaimini', value: { jaimini: c.jaimini, charaKarakas: c.karakas } }))
+  extractor('get_yogas', 'Get the deterministic named-yoga catalogue', 'Chart-wide named yogas (Pancha Mahapurusha, Raja incl. Dharma-Karmadhipati, Dhana, Viparita Harsha/Sarala/Vimala, Neechabhanga, Sunapha/Anapha/Durudhara/Kemadruma, Gaja Kesari, Budha-Aditya, Parivartana, Kartari) computed deterministically (no LLM) from planetary geometry — each entry carries participating planets/houses, a benefic flag, a coarse strength grade, and evidence (dignity, linkage, afflictions). Null on paste-source charts with no computed geometry.', (c) => ({ domain: 'yogas', value: c.yogas }))
   extractor('get_bhava_bala', 'Get Bhava Bala (house strength)', 'Per-house strength: bhavadhipati bala, dig bala, drishti bala, totals.', (c) => ({ domain: 'bhavaBala', value: c.bhavaBala }))
   extractor('get_transits', 'Get transits + Sade Sati', "Current transits (from Moon and Lagna), Sade Sati phase/periods, Ashtama/Kantaka Shani. Reflects the chart's computation time.", (c) => ({ domain: 'transits', value: c.transits }))
   extractor('get_dasha_tree', 'Get the full Vimshottari dasha tree', 'Complete MD → AD → PD Vimshottari tree with start/end dates.', (c) => ({ domain: 'dashaTree', value: c.dashaTree }))
@@ -168,7 +169,7 @@ export function registerTools(server: McpServer): void {
     },
     async (a) =>
       guard(async () => {
-        let chart = await resolveChart(a as { chartId?: string; birthData?: any })
+        let chart = await resolveChart(api, a as { chartId?: string; birthData?: any })
         if (chart.isPasteWithoutComputed) {
           return ok({ note: 'Paste-source chart with no computed divisional charts. Compute it first or pass birthData.', divisionalCharts: null })
         }
@@ -189,7 +190,7 @@ export function registerTools(server: McpServer): void {
             | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
             | null
           if (birth?.date && birth?.time) {
-            chart = await resolveChart({
+            chart = await resolveChart(api, {
               birthData: {
                 date: birth.date,
                 time: birth.time,
@@ -221,7 +222,7 @@ export function registerTools(server: McpServer): void {
     },
     async (a) =>
       guard(async () => {
-        const chart = await resolveChart(a as { chartId?: string; birthData?: any })
+        const chart = await resolveChart(api, a as { chartId?: string; birthData?: any })
         const at = (a.asOf as string | undefined) ?? new Date().toISOString().slice(0, 10)
         return ok(activeDashaChain(chart.dashaTree, `${at}T12:00:00.000Z`))
       })
@@ -239,7 +240,7 @@ export function registerTools(server: McpServer): void {
     },
     async (a) =>
       guard(async () => {
-        const { name, charaDasha } = await resolveCharaDasha(a as { chartId?: string; birthData?: any })
+        const { name, charaDasha } = await resolveCharaDasha(api, a as { chartId?: string; birthData?: any })
         if (!charaDasha) {
           return ok({ note: 'Paste-source chart with no birth data — Chara Dasha needs planet positions. Pass birthData to compute on the fly.', charaDasha: null })
         }
@@ -311,6 +312,44 @@ export function registerTools(server: McpServer): void {
         })
         return ok(data)
       })
+  )
+
+  // ── Matchmaking (read-only preview — NEVER persists a CompatibilityMatch,
+  //    and only ever POSTs to /api/matchmaking/preview, never the persisting
+  //    /api/matchmaking — see tests/mcp-cost-guard.test.ts) ────────────
+  server.registerTool(
+    'compute_match',
+    {
+      title: 'Compute an Ashtakoota (Guna Milan) + Mangal Dosha marriage match',
+      description:
+        'Score marriage compatibility between two SAVED charts: the 8-koota Ashtakoota (Guna Milan, ' +
+        'max 36 points) score plus Mangal Dosha (Kuja Dosha) compatibility. Both charts must already be ' +
+        'saved (use list_clients to find their ids) and owned by the caller — this tool does not accept ' +
+        'raw birthData. Read-only: it never saves a CompatibilityMatch record; use the app UI to persist ' +
+        'a match. The bride/groom role is encoded by which parameter each id is passed as, matching the ' +
+        "app's own POST /api/matchmaking request shape. IMPORTANT: several kootas (Varna, Vashya, Gana) " +
+        'are directional — swapping which chart is bride vs groom can change the score. This tool has no ' +
+        "way to read a chart's gender, so do not infer the role from the client's name; confirm which " +
+        'chart is the bride and which is the groom with the user before calling.',
+      inputSchema: {
+        brideChartId: z.string().uuid().describe('Saved chart id for the bride (from list_clients)'),
+        groomChartId: z.string().uuid().describe('Saved chart id for the groom (from list_clients)'),
+      },
+    },
+    async (a) =>
+      // Ownership/not-found handling: /api/matchmaking/preview already returns
+      // a single undifferentiated 404 ("Chart not found") whether a chart id
+      // doesn't exist or belongs to a different user — the same pattern
+      // get_client_chart's underlying route uses. `guard()` turns that into a
+      // clean tool-error message here too, never a stack trace.
+      guard(async () =>
+        ok(
+          await api.post('/api/matchmaking/preview', {
+            brideChartId: a.brideChartId,
+            groomChartId: a.groomChartId,
+          })
+        )
+      )
   )
 
   // ── Knowledge base (rubrics) ──────────────────────────────────────

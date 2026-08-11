@@ -147,6 +147,15 @@ classical "luminaries have no motional strength" rule).
 7. ✅ Varshesha selection now uses lordship-count among the five office-bearers,
    with Panchavargeeya Bala as the tiebreak.
 8. ⏳ Favourable-Lagna-aspect override — needs Tajika aspects (Tier D).
+8a. ✅ **Dinaratri & Trirashi lords now use the year's commencement (Varsha
+    Pravesh) day/night** — the annual Sun above (houses 7–12) vs below (1–6) the
+    horizon — matching the Tajika convention ("if the year commences by day, take
+    the lord of the Sun's sign; if by night, the lord of the Moon's sign") and
+    JHora. Previously these two offices were derived from the *natal* chart's
+    day/night, which could pick the wrong luminary sign lord (and hence a
+    different Varshesha) whenever the Varsha Pravesh fell on the opposite side of
+    the horizon from the birth. The result field is now `dayVarsha` (was
+    `dayBirth`).
 9. Keep Tajika **Panchavargeeya Bala** as a clearly-labelled "indicative" extra
    until a JHora year-lord screen is available to reconcile the Vishwa scale.
 

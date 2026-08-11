@@ -1,0 +1,2881 @@
+{
+  "category": "wealth",
+  "description": "Mojo chart (chartId 3c1ee085-8845-4440-8983-e3a7c41773cc), Taurus lagna, Venus Mahadasha 2007-01-02 to 2027-01-02. 19 real wealth-category periods spanning 2022-01-01 to 2026-07-31, captured from a FRESH compute (not a cached ScoreBreakdown). Validates Requirement 4's backtest: the top-of-range inversion removal and range-reporting against the practitioner's lived wealth experience. Venus (MD lord for the whole window) is natally combust (degreeFromSun 5.66, threshold 10), which is the affliction signal Requirement 3's lordAffliction factor and the naturalKaraka de-pin (Requirement 1.2) are meant to surface.",
+  "chartData": {
+    "category": "wealth",
+    "planets": [
+      {
+        "sign": "Taurus",
+        "house": 1,
+        "speed": 0.9602582226324754,
+        "planet": "Sun",
+        "latitude": -0.0001525789568690939,
+        "longitude": 41.35229226263819,
+        "retrograde": false,
+        "signNumber": 2,
+        "degreeInSign": 11.35229226263819
+      },
+      {
+        "sign": "Pisces",
+        "house": 11,
+        "speed": 12.02930639169383,
+        "planet": "Moon",
+        "latitude": -4.339112794110871,
+        "longitude": 347.7598318098759,
+        "retrograde": false,
+        "signNumber": 12,
+        "degreeInSign": 17.75983180987589
+      },
+      {
+        "sign": "Libra",
+        "house": 6,
+        "speed": -0.3090438805226445,
+        "planet": "Mars",
+        "latitude": -0.8203110595558962,
+        "longitude": 202.114658836293,
+        "retrograde": true,
+        "signNumber": 7,
+        "degreeInSign": 22.11465883629305
+      },
+      {
+        "sign": "Aries",
+        "house": 12,
+        "speed": 1.267117552377075,
+        "planet": "Mercury",
+        "latitude": -3.152489296453951,
+        "longitude": 16.95172894141466,
+        "retrograde": false,
+        "signNumber": 1,
+        "degreeInSign": 16.95172894141466
+      },
+      {
+        "sign": "Sagittarius",
+        "house": 8,
+        "speed": -0.07812229701567212,
+        "planet": "Jupiter",
+        "latitude": 0.1384319199596262,
+        "longitude": 258.2709742572504,
+        "retrograde": true,
+        "signNumber": 9,
+        "degreeInSign": 18.27097425725043
+      },
+      {
+        "sign": "Taurus",
+        "house": 1,
+        "speed": 1.228566516846076,
+        "planet": "Venus",
+        "latitude": -0.6054430611063699,
+        "longitude": 35.69167614009145,
+        "retrograde": false,
+        "signNumber": 2,
+        "degreeInSign": 5.691676140091445
+      },
+      {
+        "sign": "Libra",
+        "house": 6,
+        "speed": -0.0658558993364777,
+        "planet": "Saturn",
+        "latitude": 2.576726713898883,
+        "longitude": 197.806337744053,
+        "retrograde": true,
+        "signNumber": 7,
+        "degreeInSign": 17.80633774405302
+      },
+      {
+        "sign": "Taurus",
+        "house": 1,
+        "speed": -0.0038596120370903,
+        "planet": "Rahu",
+        "latitude": -1.094871562106585e-16,
+        "longitude": 42.96146567716249,
+        "retrograde": true,
+        "signNumber": 2,
+        "degreeInSign": 12.96146567716249
+      },
+      {
+        "sign": "Scorpio",
+        "house": 7,
+        "speed": -0.0038596120370903,
+        "planet": "Ketu",
+        "latitude": 1.094871562106585e-16,
+        "longitude": 222.9614656771625,
+        "retrograde": true,
+        "signNumber": 8,
+        "degreeInSign": 12.96146567716249
+      }
+    ],
+    "shadbala": {
+      "planets": [
+        {
+          "planet": "Sun",
+          "strengthRatio": 1.535113600024012,
+          "beneficRatio": 0
+        },
+        {
+          "planet": "Moon",
+          "strengthRatio": 0.8981060424743542,
+          "beneficRatio": 0
+        },
+        {
+          "planet": "Mars",
+          "strengthRatio": 1.072212359047926,
+          "beneficRatio": 0.7302799328785567
+        },
+        {
+          "planet": "Mercury",
+          "strengthRatio": 1.146998740985056,
+          "beneficRatio": 0.6053991026308083
+        },
+        {
+          "planet": "Jupiter",
+          "strengthRatio": 1.007763986040025,
+          "beneficRatio": 0.3865623932460549
+        },
+        {
+          "planet": "Venus",
+          "strengthRatio": 1.318184592405909,
+          "beneficRatio": 0.6618321899464694
+        },
+        {
+          "planet": "Saturn",
+          "strengthRatio": 1.780183381399934,
+          "beneficRatio": 0.9586900896365996
+        },
+        {
+          "planet": "Rahu",
+          "strengthRatio": 0,
+          "beneficRatio": 0
+        },
+        {
+          "planet": "Ketu",
+          "strengthRatio": 0,
+          "beneficRatio": 0
+        }
+      ],
+      "strengthRanking": [],
+      "computedAt": "2026-07-20T09:29:28.163Z"
+    },
+    "bhavaBala": {
+      "houses": [
+        {
+          "house": 1,
+          "rupas": 7.750015258232499,
+          "total": 465.0009154939499
+        },
+        {
+          "house": 2,
+          "rupas": 8.403991186895393,
+          "total": 504.2394712137236
+        },
+        {
+          "house": 3,
+          "rupas": 5.451136254846126,
+          "total": 327.0681752907676
+        },
+        {
+          "house": 4,
+          "rupas": 8.675568000120059,
+          "total": 520.5340800072036
+        },
+        {
+          "house": 5,
+          "rupas": 8.091491186895393,
+          "total": 485.4894712137236
+        },
+        {
+          "house": 6,
+          "rupas": 7.562515258232499,
+          "total": 453.7509154939499
+        },
+        {
+          "house": 7,
+          "rupas": 5.923561795239627,
+          "total": 355.4137077143777
+        },
+        {
+          "house": 8,
+          "rupas": 6.425465909260164,
+          "total": 385.5279545556098
+        },
+        {
+          "house": 9,
+          "rupas": 8.52591690699967,
+          "total": 511.5550144199802
+        },
+        {
+          "house": 10,
+          "rupas": 9.58841690699967,
+          "total": 575.3050144199802
+        },
+        {
+          "house": 11,
+          "rupas": 7.237965909260164,
+          "total": 434.2779545556098
+        },
+        {
+          "house": 12,
+          "rupas": 5.361061795239627,
+          "total": 321.6637077143777
+        }
+      ],
+      "computedAt": "2026-07-20T09:29:28.163Z"
+    },
+    "karakas": [
+      {
+        "karaka": "Atmakaraka",
+        "planet": "Mars",
+        "karakaAbbr": "AK",
+        "degreeInSign": 22.11465883629305
+      },
+      {
+        "karaka": "Amatyakaraka",
+        "planet": "Jupiter",
+        "karakaAbbr": "AmK",
+        "degreeInSign": 18.27097425725043
+      },
+      {
+        "karaka": "Bhratrukaraka",
+        "planet": "Saturn",
+        "karakaAbbr": "BK",
+        "degreeInSign": 17.80633774405302
+      },
+      {
+        "karaka": "Matrukaraka",
+        "planet": "Moon",
+        "karakaAbbr": "MK",
+        "degreeInSign": 17.75983180987589
+      },
+      {
+        "karaka": "Putrakaraka",
+        "planet": "Mercury",
+        "karakaAbbr": "PK",
+        "degreeInSign": 16.95172894141466
+      },
+      {
+        "karaka": "Gnatikaraka",
+        "planet": "Sun",
+        "karakaAbbr": "GK",
+        "degreeInSign": 11.35229226263819
+      },
+      {
+        "karaka": "Darakaraka",
+        "planet": "Venus",
+        "karakaAbbr": "DK",
+        "degreeInSign": 5.691676140091445
+      }
+    ],
+    "ashtakavarga": {
+      "sav": [
+        22,
+        28,
+        26,
+        29,
+        37,
+        23,
+        30,
+        22,
+        27,
+        31,
+        29,
+        33
+      ],
+      "bav": {
+        "Sun": [
+          5,
+          5,
+          4,
+          3,
+          7,
+          1,
+          5,
+          4,
+          3,
+          5,
+          3,
+          3
+        ],
+        "Mars": [
+          3,
+          5,
+          2,
+          4,
+          4,
+          3,
+          6,
+          2,
+          1,
+          3,
+          3,
+          3
+        ],
+        "Moon": [
+          1,
+          1,
+          3,
+          6,
+          5,
+          3,
+          4,
+          5,
+          5,
+          3,
+          6,
+          7
+        ],
+        "Venus": [
+          3,
+          4,
+          6,
+          5,
+          6,
+          5,
+          2,
+          1,
+          6,
+          5,
+          4,
+          5
+        ],
+        "Saturn": [
+          2,
+          4,
+          1,
+          2,
+          5,
+          2,
+          3,
+          3,
+          4,
+          2,
+          5,
+          6
+        ],
+        "Jupiter": [
+          3,
+          4,
+          4,
+          5,
+          4,
+          6,
+          4,
+          4,
+          4,
+          7,
+          6,
+          5
+        ],
+        "Mercury": [
+          5,
+          5,
+          6,
+          4,
+          6,
+          3,
+          6,
+          3,
+          4,
+          6,
+          2,
+          4
+        ]
+      },
+      "savTotal": 337
+    },
+    "divisionalCharts": [
+      {
+        "division": 2,
+        "lagnaSignNumber": 3,
+        "planets": [
+          {
+            "sign": "Cancer",
+            "house": 2,
+            "planet": "Sun",
+            "dignity": "great_friend",
+            "signNumber": 4
+          },
+          {
+            "sign": "Aquarius",
+            "house": 9,
+            "planet": "Moon",
+            "dignity": "enemy",
+            "signNumber": 11
+          },
+          {
+            "sign": "Taurus",
+            "house": 12,
+            "planet": "Mars",
+            "dignity": "enemy",
+            "retrograde": true,
+            "signNumber": 2
+          },
+          {
+            "sign": "Taurus",
+            "house": 12,
+            "planet": "Mercury",
+            "dignity": "great_friend",
+            "signNumber": 2
+          },
+          {
+            "sign": "Virgo",
+            "house": 4,
+            "planet": "Jupiter",
+            "dignity": "great_enemy",
+            "retrograde": true,
+            "signNumber": 6
+          },
+          {
+            "sign": "Cancer",
+            "house": 2,
+            "planet": "Venus",
+            "dignity": "neutral",
+            "signNumber": 4
+          },
+          {
+            "sign": "Taurus",
+            "house": 12,
+            "planet": "Saturn",
+            "dignity": "neutral",
+            "retrograde": true,
+            "signNumber": 2
+          },
+          {
+            "sign": "Cancer",
+            "house": 2,
+            "planet": "Rahu",
+            "retrograde": true,
+            "signNumber": 4
+          },
+          {
+            "sign": "Cancer",
+            "house": 2,
+            "planet": "Ketu",
+            "retrograde": true,
+            "signNumber": 4
+          }
+        ]
+      }
+    ],
+    "jaimini": {
+      "argala": [
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 2,
+          "targetSign": 1,
+          "targetHouse": 12,
+          "argalaPlanets": [
+            "Sun",
+            "Venus",
+            "Rahu"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 12,
+          "targetSign": 2,
+          "targetHouse": 1,
+          "argalaPlanets": [
+            "Moon"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 1,
+          "targetSign": 3,
+          "targetHouse": 2,
+          "argalaPlanets": [
+            "Mercury"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "secondary",
+          "argalaFrom": 7,
+          "targetSign": 3,
+          "targetHouse": 2,
+          "argalaPlanets": [
+            "Mars",
+            "Saturn"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 12,
+          "targetSign": 11,
+          "targetHouse": 10,
+          "argalaPlanets": [
+            "Moon"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 2,
+          "targetSign": 11,
+          "targetHouse": 10,
+          "argalaPlanets": [
+            "Sun",
+            "Venus",
+            "Rahu"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 9,
+          "targetSign": 11,
+          "targetHouse": 10,
+          "argalaPlanets": [
+            "Jupiter"
+          ]
+        },
+        {
+          "kind": "argala",
+          "type": "primary",
+          "argalaFrom": 1,
+          "targetSign": 12,
+          "targetHouse": 11,
+          "argalaPlanets": [
+            "Mercury"
+          ]
+        }
+      ],
+      "virodhaArgala": [
+        {
+          "targetSign": 1,
+          "counterFrom": 12,
+          "neutralizes": 2,
+          "counterPlanets": [
+            "Moon"
+          ]
+        },
+        {
+          "targetSign": 1,
+          "counterFrom": 9,
+          "neutralizes": 5,
+          "counterPlanets": [
+            "Jupiter"
+          ]
+        },
+        {
+          "targetSign": 3,
+          "counterFrom": 2,
+          "neutralizes": 2,
+          "counterPlanets": [
+            "Sun",
+            "Venus",
+            "Rahu"
+          ]
+        },
+        {
+          "targetSign": 3,
+          "counterFrom": 12,
+          "neutralizes": 4,
+          "counterPlanets": [
+            "Moon"
+          ]
+        },
+        {
+          "targetSign": 11,
+          "counterFrom": 8,
+          "neutralizes": 4,
+          "counterPlanets": [
+            "Ketu"
+          ]
+        },
+        {
+          "targetSign": 11,
+          "counterFrom": 1,
+          "neutralizes": 11,
+          "counterPlanets": [
+            "Mercury"
+          ]
+        },
+        {
+          "targetSign": 11,
+          "counterFrom": 7,
+          "neutralizes": 5,
+          "counterPlanets": [
+            "Mars",
+            "Saturn"
+          ]
+        },
+        {
+          "targetSign": 12,
+          "counterFrom": 9,
+          "neutralizes": 4,
+          "counterPlanets": [
+            "Jupiter"
+          ]
+        },
+        {
+          "targetSign": 12,
+          "counterFrom": 2,
+          "neutralizes": 11,
+          "counterPlanets": [
+            "Sun",
+            "Venus",
+            "Rahu"
+          ]
+        },
+        {
+          "targetSign": 12,
+          "counterFrom": 8,
+          "neutralizes": 5,
+          "counterPlanets": [
+            "Ketu"
+          ]
+        }
+      ]
+    },
+    "relationships": {
+      "combustion": [
+        {
+          "planet": "Moon",
+          "combust": false,
+          "cazimi": false,
+          "threshold": 12,
+          "nearCombust": false,
+          "degreeFromSun": 53.59,
+          "moonStrictCombust": false,
+          "retrogradeThresholdApplied": false
+        },
+        {
+          "planet": "Mars",
+          "combust": false,
+          "cazimi": false,
+          "threshold": 17,
+          "nearCombust": false,
+          "degreeFromSun": 160.76,
+          "retrogradeThresholdApplied": true
+        },
+        {
+          "planet": "Mercury",
+          "combust": false,
+          "cazimi": false,
+          "threshold": 14,
+          "nearCombust": false,
+          "degreeFromSun": 24.4,
+          "retrogradeThresholdApplied": false
+        },
+        {
+          "planet": "Jupiter",
+          "combust": false,
+          "cazimi": false,
+          "threshold": 11,
+          "nearCombust": false,
+          "degreeFromSun": 143.08,
+          "retrogradeThresholdApplied": true
+        },
+        {
+          "planet": "Venus",
+          "combust": true,
+          "cazimi": false,
+          "threshold": 10,
+          "nearCombust": false,
+          "degreeFromSun": 5.66,
+          "retrogradeThresholdApplied": false
+        },
+        {
+          "planet": "Saturn",
+          "combust": false,
+          "cazimi": false,
+          "threshold": 15,
+          "nearCombust": false,
+          "degreeFromSun": 156.45,
+          "retrogradeThresholdApplied": true
+        }
+      ]
+    }
+  },
+  "periods": [
+    {
+      "description": "Venus MD / Saturn AD / Mars PD (2021-12-03 to 2022-02-08); pre-fix (0.6.0) measured score 66",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Saturn",
+          "start": "2019-11-03T02:11:48.060Z",
+          "end": "2023-01-02T16:37:36.060Z"
+        },
+        "pd": {
+          "lord": "Mars",
+          "start": "2021-12-03T12:29:47.160Z",
+          "end": "2022-02-08T23:44:17.460Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Saturn",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Swati",
+            "nakshatraLord": "Rahu",
+            "subLord": "Sun",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              9,
+              10
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "BK"
+          },
+          "pdLord": {
+            "planet": "Mars",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Vishakha",
+            "nakshatraLord": "Jupiter",
+            "subLord": "Saturn",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              7,
+              12
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "AK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2019-11-03T02:11:48.060Z",
+        "adLord": "Saturn",
+        "saturn": {
+          "sign": "Sagittarius",
+          "signNumber": 9,
+          "houseFromLagna": 8,
+          "houseFromMoon": 10,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Scorpio",
+          "signNumber": 8,
+          "houseFromLagna": 7,
+          "houseFromMoon": 9,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Gemini",
+          "signNumber": 3,
+          "houseFromLagna": 2
+        },
+        "ketu": {
+          "sign": "Sagittarius",
+          "signNumber": 9,
+          "houseFromLagna": 8
+        },
+        "sadeSatiActive": false,
+        "sadeSatiPhase": null,
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 4,
+        "jupiterBavScore": 4
+      }
+    },
+    {
+      "description": "Venus MD / Saturn AD / Rahu PD (2022-02-08 to 2022-08-01); pre-fix (0.6.0) measured score 68",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Saturn",
+          "start": "2019-11-03T02:11:48.060Z",
+          "end": "2023-01-02T16:37:36.060Z"
+        },
+        "pd": {
+          "lord": "Rahu",
+          "start": "2022-02-08T23:44:17.460Z",
+          "end": "2022-08-01T11:30:09.660Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Saturn",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Swati",
+            "nakshatraLord": "Rahu",
+            "subLord": "Sun",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              9,
+              10
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "BK"
+          },
+          "pdLord": {
+            "planet": "Rahu",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Rohini",
+            "nakshatraLord": "Moon",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [],
+            "occupiesHouse": 1,
+            "karakaRole": null
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2019-11-03T02:11:48.060Z",
+        "adLord": "Saturn",
+        "saturn": {
+          "sign": "Sagittarius",
+          "signNumber": 9,
+          "houseFromLagna": 8,
+          "houseFromMoon": 10,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Scorpio",
+          "signNumber": 8,
+          "houseFromLagna": 7,
+          "houseFromMoon": 9,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Gemini",
+          "signNumber": 3,
+          "houseFromLagna": 2
+        },
+        "ketu": {
+          "sign": "Sagittarius",
+          "signNumber": 9,
+          "houseFromLagna": 8
+        },
+        "sadeSatiActive": false,
+        "sadeSatiPhase": null,
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 4,
+        "jupiterBavScore": 4
+      }
+    },
+    {
+      "description": "Venus MD / Saturn AD / Jupiter PD (2022-08-01 to 2023-01-02); pre-fix (0.6.0) measured score 68",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Saturn",
+          "start": "2019-11-03T02:11:48.060Z",
+          "end": "2023-01-02T16:37:36.060Z"
+        },
+        "pd": {
+          "lord": "Jupiter",
+          "start": "2022-08-01T11:30:09.660Z",
+          "end": "2023-01-02T16:37:36.060Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Saturn",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Swati",
+            "nakshatraLord": "Rahu",
+            "subLord": "Sun",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              9,
+              10
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "BK"
+          },
+          "pdLord": {
+            "planet": "Jupiter",
+            "sign": "Sagittarius",
+            "house": 8,
+            "nakshatra": "Purva Ashadha",
+            "nakshatraLord": "Venus",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Saturn trikona owner"
+            ],
+            "ownsHouses": [
+              8,
+              11
+            ],
+            "occupiesHouse": 8,
+            "karakaRole": "AmK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2019-11-03T02:11:48.060Z",
+        "adLord": "Saturn",
+        "saturn": {
+          "sign": "Sagittarius",
+          "signNumber": 9,
+          "houseFromLagna": 8,
+          "houseFromMoon": 10,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Scorpio",
+          "signNumber": 8,
+          "houseFromLagna": 7,
+          "houseFromMoon": 9,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Gemini",
+          "signNumber": 3,
+          "houseFromLagna": 2
+        },
+        "ketu": {
+          "sign": "Sagittarius",
+          "signNumber": 9,
+          "houseFromLagna": 8
+        },
+        "sadeSatiActive": false,
+        "sadeSatiPhase": null,
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 4,
+        "jupiterBavScore": 4
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Mercury PD (2023-01-02 to 2023-05-29); pre-fix (0.6.0) measured score 67",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2023-05-29T07:07:45.960Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Ketu PD (2023-05-29 to 2023-07-28); pre-fix (0.6.0) measured score 65",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Ketu",
+          "start": "2023-05-29T07:07:45.960Z",
+          "end": "2023-07-28T15:55:28.860Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Venus PD (2023-07-28 to 2024-01-17); pre-fix (0.6.0) measured score 69",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Venus",
+          "start": "2023-07-28T15:55:28.860Z",
+          "end": "2024-01-17T03:20:22.860Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Sun PD (2024-01-17 to 2024-03-08); pre-fix (0.6.0) measured score 67",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Sun",
+          "start": "2024-01-17T03:20:22.860Z",
+          "end": "2024-03-08T21:09:51.060Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Sun",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Rohini",
+            "nakshatraLord": "Moon",
+            "subLord": "Mars",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              4
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "GK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Moon PD (2024-03-08 to 2024-06-03); pre-fix (0.6.0) measured score 66",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Moon",
+          "start": "2024-03-08T21:09:51.060Z",
+          "end": "2024-06-03T02:52:18.060Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Moon",
+            "sign": "Pisces",
+            "house": 11,
+            "nakshatra": "Revati",
+            "nakshatraLord": "Mercury",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              3
+            ],
+            "occupiesHouse": 11,
+            "karakaRole": "MK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Mars PD (2024-06-03 to 2024-08-02); pre-fix (0.6.0) measured score 65",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Mars",
+          "start": "2024-06-03T02:52:18.060Z",
+          "end": "2024-08-02T11:40:00.960Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Mars",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Vishakha",
+            "nakshatraLord": "Jupiter",
+            "subLord": "Saturn",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              7,
+              12
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "AK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Rahu PD (2024-08-02 to 2025-01-04); pre-fix (0.6.0) measured score 66",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Rahu",
+          "start": "2024-08-02T11:40:00.960Z",
+          "end": "2025-01-04T17:08:25.560Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Rahu",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Rohini",
+            "nakshatraLord": "Moon",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [],
+            "occupiesHouse": 1,
+            "karakaRole": null
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Jupiter PD (2025-01-04 to 2025-05-22); pre-fix (0.6.0) measured score 66",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Jupiter",
+          "start": "2025-01-04T17:08:25.560Z",
+          "end": "2025-05-22T16:40:20.760Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Jupiter",
+            "sign": "Sagittarius",
+            "house": 8,
+            "nakshatra": "Purva Ashadha",
+            "nakshatraLord": "Venus",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              8,
+              11
+            ],
+            "occupiesHouse": 8,
+            "karakaRole": "AmK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Mercury AD / Saturn PD (2025-05-22 to 2025-11-02); pre-fix (0.6.0) measured score 70",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Mercury",
+          "start": "2023-01-02T16:37:36.060Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "pd": {
+          "lord": "Saturn",
+          "start": "2025-05-22T16:40:20.760Z",
+          "end": "2025-11-02T13:07:00.060Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Mercury",
+            "sign": "Aries",
+            "house": 12,
+            "nakshatra": "Bharani",
+            "nakshatraLord": "Venus",
+            "subLord": "Moon",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              2,
+              5
+            ],
+            "occupiesHouse": 12,
+            "karakaRole": "PK"
+          },
+          "pdLord": {
+            "planet": "Saturn",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Swati",
+            "nakshatraLord": "Rahu",
+            "subLord": "Sun",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [
+              "Raja Yoga substrate — Venus kendra owner, Mercury trikona owner",
+              "Dhana Yoga substrate — Mercury H2 + Venus H1"
+            ],
+            "ownsHouses": [
+              9,
+              10
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "BK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2023-01-02T16:37:36.060Z",
+        "adLord": "Mercury",
+        "saturn": {
+          "sign": "Capricorn",
+          "signNumber": 10,
+          "houseFromLagna": 9,
+          "houseFromMoon": 11,
+          "retrograde": false
+        },
+        "jupiter": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aries",
+          "signNumber": 1,
+          "houseFromLagna": 12
+        },
+        "ketu": {
+          "sign": "Libra",
+          "signNumber": 7,
+          "houseFromLagna": 6
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "rising",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 2,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Ketu PD (2025-11-02 to 2025-11-27); pre-fix (0.6.0) measured score 59",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2025-11-27T09:40:45.960Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Venus PD (2025-11-27 to 2026-02-06); pre-fix (0.6.0) measured score 63",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Venus",
+          "start": "2025-11-27T09:40:45.960Z",
+          "end": "2026-02-06T10:08:39.960Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Sun PD (2026-02-06 to 2026-02-27); pre-fix (0.6.0) measured score 61",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Sun",
+          "start": "2026-02-06T10:08:39.960Z",
+          "end": "2026-02-27T17:29:02.160Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Sun",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Rohini",
+            "nakshatraLord": "Moon",
+            "subLord": "Mars",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              4
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "GK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Moon PD (2026-02-27 to 2026-04-04); pre-fix (0.6.0) measured score 61",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Moon",
+          "start": "2026-02-27T17:29:02.160Z",
+          "end": "2026-04-04T05:42:59.160Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Moon",
+            "sign": "Pisces",
+            "house": 11,
+            "nakshatra": "Revati",
+            "nakshatraLord": "Mercury",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              3
+            ],
+            "occupiesHouse": 11,
+            "karakaRole": "MK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Mars PD (2026-04-04 to 2026-04-29); pre-fix (0.6.0) measured score 58",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Mars",
+          "start": "2026-04-04T05:42:59.160Z",
+          "end": "2026-04-29T02:16:45.060Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Mars",
+            "sign": "Libra",
+            "house": 6,
+            "nakshatra": "Vishakha",
+            "nakshatraLord": "Jupiter",
+            "subLord": "Saturn",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              7,
+              12
+            ],
+            "occupiesHouse": 6,
+            "karakaRole": "AK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Rahu PD (2026-04-29 to 2026-07-02); pre-fix (0.6.0) measured score 60",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Rahu",
+          "start": "2026-04-29T02:16:45.060Z",
+          "end": "2026-07-02T00:17:51.660Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Rahu",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Rohini",
+            "nakshatraLord": "Moon",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 1,
+            "karakaRole": null
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    },
+    {
+      "description": "Venus MD / Ketu AD / Jupiter PD (2026-07-02 to 2026-08-27); pre-fix (0.6.0) measured score 61",
+      "slice": {
+        "md": {
+          "lord": "Venus",
+          "start": "2007-01-02T19:30:24.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "ad": {
+          "lord": "Ketu",
+          "start": "2025-11-02T13:07:00.060Z",
+          "end": "2027-01-02T15:54:24.060Z"
+        },
+        "pd": {
+          "lord": "Jupiter",
+          "start": "2026-07-02T00:17:51.660Z",
+          "end": "2026-08-27T19:52:10.860Z"
+        },
+        "lordAnnotations": {
+          "mdLord": {
+            "planet": "Venus",
+            "sign": "Taurus",
+            "house": 1,
+            "nakshatra": "Krittika",
+            "nakshatraLord": "Sun",
+            "subLord": "Mercury",
+            "retrograde": false,
+            "combust": true,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              1,
+              6
+            ],
+            "occupiesHouse": 1,
+            "karakaRole": "DK"
+          },
+          "adLord": {
+            "planet": "Ketu",
+            "sign": "Scorpio",
+            "house": 7,
+            "nakshatra": "Anuradha",
+            "nakshatraLord": "Saturn",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [],
+            "occupiesHouse": 7,
+            "karakaRole": null
+          },
+          "pdLord": {
+            "planet": "Jupiter",
+            "sign": "Sagittarius",
+            "house": 8,
+            "nakshatra": "Purva Ashadha",
+            "nakshatraLord": "Venus",
+            "subLord": "Rahu",
+            "retrograde": true,
+            "combust": false,
+            "cazimi": false,
+            "activatedYogas": [],
+            "ownsHouses": [
+              8,
+              11
+            ],
+            "occupiesHouse": 8,
+            "karakaRole": "AmK"
+          }
+        }
+      },
+      "transitOverlay": {
+        "adStart": "2025-11-02T13:07:00.060Z",
+        "adLord": "Ketu",
+        "saturn": {
+          "sign": "Pisces",
+          "signNumber": 12,
+          "houseFromLagna": 11,
+          "houseFromMoon": 1,
+          "retrograde": true
+        },
+        "jupiter": {
+          "sign": "Cancer",
+          "signNumber": 4,
+          "houseFromLagna": 3,
+          "houseFromMoon": 5,
+          "retrograde": false
+        },
+        "rahu": {
+          "sign": "Aquarius",
+          "signNumber": 11,
+          "houseFromLagna": 10
+        },
+        "ketu": {
+          "sign": "Leo",
+          "signNumber": 5,
+          "houseFromLagna": 4
+        },
+        "sadeSatiActive": true,
+        "sadeSatiPhase": "peak",
+        "ashtamaShani": false,
+        "kantakaShani": false,
+        "saturnBavScore": 6,
+        "jupiterBavScore": 5
+      }
+    }
+  ],
+  "_preFixBaseline0_6_0": {
+    "weightsVersion": "0.6.0-provisional",
+    "description": "Pre-fix scores for these exact 19 periods, in order 1-19, measured via a fresh compute under WEIGHTS_VERSION 0.6.0-provisional before the scorer-dynamic-range fix.",
+    "scores": [
+      66,
+      68,
+      68,
+      67,
+      65,
+      69,
+      67,
+      66,
+      65,
+      66,
+      66,
+      70,
+      59,
+      63,
+      61,
+      61,
+      58,
+      60,
+      61
+    ],
+    "range": {
+      "min": 58,
+      "max": 70,
+      "spread": 12
+    },
+    "windows": {
+      "highExperienceWindow": "2022-01 to 2023-06",
+      "collapseWindow": "2024-08 to 2025-01",
+      "lowExperienceWindow": "2025-02 to 2026-07",
+      "worstReportedWindow": "2025-06 to 2026-07 (practitioner-reported 10-15/100)"
+    }
+  }
+}

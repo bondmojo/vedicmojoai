@@ -54,7 +54,10 @@ and excessive token usage.
 - Consolidate the entire system into **one TypeScript / Next.js project**.
 
 ### 1.5 Non-Goals (Phase 1)
-- No authentication or multi-tenant support (single internal user).
+- ~~No authentication or multi-tenant support (single internal user).~~
+  **Superseded** — see `.kiro/specs/user-management/` (signup/login/forgot-
+  password, `UnifiedChart` ownership per user, per-user MCP tokens). OAuth/
+  social login remains a non-goal there.
 - No birth-chart calculation — the chart arrives as `ChartInputV1` JSON.
 - No payments, subscriptions, or client-facing accounts.
 - No mobile application.
@@ -125,7 +128,10 @@ gives it a web front end, a database, and persistent report storage.
 
 **Phase-1 constraints (locked):**
 
-- Single internal user (the practitioner). **No auth.**
+- ~~Single internal user (the practitioner). **No auth.**~~ **Superseded** —
+  real accounts + per-user chart ownership shipped in `.kiro/specs/user-management/`.
+  The ~10 reports/month scale assumption (below) still holds; this just adds
+  a real `User` instead of implicitly assuming one practitioner.
 - ~10 reports/month. Right-sized infrastructure, not enterprise scale.
 - **Chart calculation is out of scope.** The system receives a fully computed
   chart as `ChartInputV1` JSON from the front end.
@@ -605,7 +611,7 @@ marriage and partnership readings are as structured as other domain reports.
 |---|---|---|
 | **Phase 1 (MVP)** | US-1.1–1.3, 2.1–2.2, 3.1–3.2, 4.1, 4.3, 5.1–5.5, 6.1, 7.1–7.2, 7.4, 8.1–8.3, 9.1–9.2, 10.1–10.2, 11.1–11.2 | Working web tool: submit → run → view, with follow-ups, dasha engine, career + marriage agents, Wave-1 caching, 4C fact-consolidation, and critical-error halt gate |
 | **Phase 2** | US-2.3, 3.3, 4.2, 6.2, 7.3 | Optimization, model config UI, resumable runs, report sharing |
-| **Later** | Parking-lot items, multi-user/auth, chart-calculation engine, remedies agent | Client-facing expansion |
+| **Later** | Parking-lot items, ~~multi-user/auth~~ (shipped, `.kiro/specs/user-management/`), chart-calculation engine, remedies agent | Client-facing expansion |
 
 ---
 

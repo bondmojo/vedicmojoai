@@ -11,6 +11,7 @@ import { prisma } from '@/lib/db'
 import { callLLM, readPromptFile } from '@/engine/llm'
 import { extractCategoryData } from '@/engine/durationAnalysis/extractor'
 import { extractJsonBlock } from '@/engine/durationAnalysis/agentJson'
+import { resolveRequestUser } from '@/lib/auth'
 import type { DA1Output, DA2Output, DA3Output, DurationCategory } from '@/lib/durationTypes'
 
 const ChatSchema = z.object({
@@ -22,6 +23,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   let body: unknown
   try {
     body = await request.json()
@@ -40,10 +46,10 @@ export async function POST(
 
   const analysis = await prisma.durationAnalysis.findUnique({
     where: { id: params.id },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    include: { messages: { orderBy: { createdAt: 'asc' } }, unifiedChart: { select: { userId: true } } },
   })
 
-  if (!analysis) {
+  if (!analysis || analysis.unifiedChart.userId !== userId) {
     return NextResponse.json({ error: 'Analysis not found' }, { status: 404 })
   }
   if (analysis.status !== 'done') {

@@ -26,6 +26,13 @@ services:
     environment:
       DATABASE_URL: postgresql://vedicmojo:vedicmojo_dev@db:5432/vedicmojoai?schema=public
       NODE_ENV: production
+      # Auth.js's own trustHost defaults to true only when NODE_ENV !== 'production'
+      # (or AUTH_URL/VERCEL/CF_PAGES is set) — none of which apply here, so without
+      # this every auth() call fails with "UntrustedHost" and every authenticated
+      # route 401s. Safe to trust unconditionally: this is a single container with
+      # no reverse proxy in front, so the Host header Docker forwards is genuine,
+      # not attacker-controlled.
+      AUTH_TRUST_HOST: "true"
     env_file:
       - .env
     depends_on:

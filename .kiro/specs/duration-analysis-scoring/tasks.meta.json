@@ -1,0 +1,169 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add scoring types to `lib/durationTypes.ts`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913200795
+      },
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913248302
+      }
+    ],
+    "1.2 Implement `DOMAIN_SCORING_WEIGHTS` and resolver in `engine/durationAnalysis/scoringWeights.ts`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913200877
+      },
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913249463
+      }
+    ],
+    "2.1 Add Karaka_Role tagging to `engine/durationAnalysis/slicer.ts`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913200977
+      }
+    ],
+    "2.3 Extend `engine/durationAnalysis/extractor.ts` with deterministic injection": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201045
+      }
+    ],
+    "3. Checkpoint — verify config, slicer, and extractor layers": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201113
+      }
+    ],
+    "4. Scoring engine — `engine/durationAnalysis/scoring.ts`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201175
+      }
+    ],
+    "4.1a Implement the core scoring formula and the 11 original factors": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201225
+      }
+    ],
+    "4.1b Implement the four new astrological factors": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201273
+      }
+    ],
+    "4.2 Implement `identifyPeaks` with the significance floor": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201326
+      }
+    ],
+    "5. Checkpoint — verify scoring engine": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201374
+      }
+    ],
+    "6.1 Add Step 0d scoring and persist scored slices + peaks": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201461
+      }
+    ],
+    "6.2 Implement the compute-first merge and authoritative peaks": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201514
+      }
+    ],
+    "6.3 Inject engine verdicts and peaks into DA-3 via `buildDA3Prompt`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201590
+      }
+    ],
+    "7.1 Add the Compute-First Contract block to `prompts/agents/duration_da1_domain_analyser.md`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201641
+      }
+    ],
+    "7.2 Add the Consistency Contract block to `prompts/agents/duration_da3_future_analyser.md`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201692
+      }
+    ],
+    "7.3 Add a DA-2 clarifying comment to `prompts/agents/duration_da2_symptom_validator.md`": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201741
+      }
+    ],
+    "8.1 Surface scores, breakdowns, and peaks additively": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201795
+      }
+    ],
+    "9. Checkpoint — verify pipeline, prompts, and API": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201844
+      }
+    ],
+    "10.4 Add the Sanity_Backtest fixture suite and pin calibration constants": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201888
+      }
+    ],
+    "11.1 Update maintenance docs to reflect the scoring layer": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913201972
+      }
+    ],
+    "11.2 Flip `docs/ROADMAP.md` Phase 1 status": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913202025
+      }
+    ],
+    "12. Final checkpoint — Ensure all tests pass": [
+      {
+        "executionId": "9db84f7e-dcb9-4732-a8b0-25c0340b5bb4",
+        "chatSessionId": "sess_5e246e47-751e-4f3f-aa69-b75e91393367",
+        "timestamp": 1783913202078
+      }
+    ]
+  }
+}

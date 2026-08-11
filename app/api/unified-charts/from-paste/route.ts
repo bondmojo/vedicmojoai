@@ -13,10 +13,16 @@ import { prisma } from '@/lib/db'
 import { validateChartInput } from '@/lib/validation'
 import { ChartValidationError } from '@/lib/errors'
 import { mapPastedToUnified } from '@/lib/chart-mapper'
+import { resolveRequestUser } from '@/lib/auth'
 
 // ─── Route Handler ──────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  const userId = await resolveRequestUser(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Sign in required.' }, { status: 401 })
+  }
+
   let body: unknown
 
   try {
@@ -46,9 +52,10 @@ export async function POST(request: NextRequest) {
     // Map to UnifiedChart create input
     const createInput = mapPastedToUnified(chartInput)
 
-    // Check for duplicate
+    // Check for duplicate, scoped to this user (the same birth data may be
+    // saved independently by a different practitioner).
     const existing = await prisma.unifiedChart.findUnique({
-      where: { chartHash: createInput.chartHash },
+      where: { userId_chartHash: { userId, chartHash: createInput.chartHash } },
       select: { id: true, name: true },
     })
 
@@ -66,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Persist to UnifiedChart
     const saved = await prisma.unifiedChart.create({
-      data: createInput,
+      data: { ...createInput, userId },
       select: {
         id: true,
         name: true,

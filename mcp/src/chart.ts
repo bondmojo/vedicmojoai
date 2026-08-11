@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod'
-import { api } from './http.js'
+import type { ApiClient } from './http.js'
 
 export const birthDataSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
@@ -48,6 +48,8 @@ export interface NormalizedChart {
   transits: unknown
   pindaStrength: unknown
   dashaTree: unknown
+  /** Deterministic named-yoga catalogue (engine/compute/yogas.ts). Null on paste charts. */
+  yogas: unknown
   /** Birth input (for stored compute-path charts); allows recomputation. */
   birthInput?: unknown
   /** Set for stored paste-source charts, which have no computed domains. */
@@ -59,10 +61,10 @@ function pick(obj: Record<string, unknown>, key: string): unknown {
 }
 
 /** Resolve a chart from either a stored id or raw birth data, normalized. */
-export async function resolveChart(args: {
-  chartId?: string
-  birthData?: BirthData
-}): Promise<NormalizedChart> {
+export async function resolveChart(
+  api: ApiClient,
+  args: { chartId?: string; birthData?: BirthData }
+): Promise<NormalizedChart> {
   if (args.chartId) {
     const c = (await api.get(`/api/unified-charts/${args.chartId}`)) as Record<string, unknown>
     const isPaste = c.source === 'paste' && c.planets == null
@@ -84,6 +86,7 @@ export async function resolveChart(args: {
       transits: pick(c, 'transits'),
       pindaStrength: pick(c, 'pindaStrength'),
       dashaTree: pick(c, 'dashaTree'),
+      yogas: pick(c, 'yogas'),
       birthInput: pick(c, 'birthInput'),
       isPasteWithoutComputed: isPaste,
     }
@@ -113,6 +116,7 @@ export async function resolveChart(args: {
       transits: pick(ch, 'transits'),
       pindaStrength: pick(ch, 'pindaStrength'),
       dashaTree: r.dashaTree, // top-level sibling of `chart`
+      yogas: pick(ch, 'yogas'),
     }
   }
 
@@ -155,10 +159,10 @@ interface CharaPeriodLite {
   antardashas?: { sign: string; signNumber: number; start: string; end: string }[]
 }
 
-export async function resolveCharaDasha(args: {
-  chartId?: string
-  birthData?: BirthData
-}): Promise<{ name?: string; charaDasha: unknown }> {
+export async function resolveCharaDasha(
+  api: ApiClient,
+  args: { chartId?: string; birthData?: BirthData }
+): Promise<{ name?: string; charaDasha: unknown }> {
   if (args.birthData) {
     const r = (await api.post('/api/compute', args.birthData)) as { charaDasha?: unknown }
     return { name: args.birthData.name, charaDasha: r.charaDasha ?? null }

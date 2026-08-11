@@ -6,6 +6,12 @@
 2. **Wave 1 runs only on first query** for a chart (LLM/paste path). Results are cached in `Wave1Cache` (keyed by `chart_hash`).
    - **Compute path exception:** `source="compute"` unified charts skip Wave 1 entirely.
      `wave1_delta` is built from deterministic domain columns. See `ai-backend.md → Deterministic Wave 1`.
+   - **Named-yoga detection is deterministic on the compute path.** `engine/compute/yogas.ts`
+     computes a chart-wide `Yoga[]` catalogue (Mahapurusha, Raja/DKA, Dhana, Viparita,
+     Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari) from the
+     already-computed `relationships` geometry; it rides in `wave1_delta` under `1D` and
+     Wave 2A validates/interprets it instead of re-deriving formation. See
+     `.kiro/specs/named-yoga-engine/`.
 3. **Waves 2–3 are parallel within wave, sequential across waves.** Only planner-selected agents run.
 4. **Wave 4 is strictly sequential:** 4X → 4A → HALT GATE → 4B → 4C.
 5. **Critical Error Halt Gate:** If `4A.critical_errors > 0`, pipeline halts. No 4B, no 4C, no report.

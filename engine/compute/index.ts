@@ -25,6 +25,7 @@ import { computeShadbala } from './shadbala'
 import { computeNakshatraRelationships } from './nakshatraRelationships'
 import { computeJaimini } from './jaimini'
 import { computeBhavaBala } from './bhavaBala'
+import { computeYogas } from './yogas'
 
 // Re-export all types
 export type { BirthInput, ComputedChart } from './types'
@@ -43,6 +44,8 @@ export type {
   TransitPlanet,
   TransitAnalysis,
   SadeSatiInfo,
+  DegreeSadeSatiPeriod,
+  DegreeSadeSatiInfo,
   RelationshipGeometry,
   ShadbalResult,
   NakshatraRelationships,
@@ -51,8 +54,25 @@ export type {
   CharaDashaResult,
   CharaDashaPeriod,
   CharaAntardasha,
+  Yoga,
+  YogaCategory,
+  YogaStrength,
+  YogaEvidence,
+  MatchRole,
+  KootaKey,
+  Cancellation,
+  KootaEvidence,
+  KootaScore,
+  MatchVerdict,
+  BoundaryRisk,
+  AshtakootaResult,
+  MangalDoshaNative,
+  MatchResult,
 } from './types'
 export { computeCharaDasha } from './charaDasha'
+export { computeYogas } from './yogas'
+export type { YogaInput } from './yogas'
+export { MATCHMAKING_TABLES_VERSION } from './matchmakingTables'
 
 /**
  * Computes a complete Vedic chart from birth data.
@@ -201,7 +221,8 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     birthYear,
     new Date(),
     input.latitude,
-    input.longitude
+    input.longitude,
+    moon?.longitude,
   )
 
   // Step 14: Deterministic relationship / strength modules (replaces LLM agents).
@@ -259,6 +280,19 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     relationships.combustion // FIX-F: same single combustion source
   )
 
+  // Step 15: Named-yoga catalogue (deterministic, no LLM) — runs after relationships
+  // so it can consume houseLords/aspects/conjunctions/mutualReception/combustion as
+  // the single source of truth (never re-derives them).
+  const yogas = computeYogas({
+    planets,
+    lagnaSignNumber: ascendant.signNumber,
+    houseLordsD1: relationships.houseLords[1] ?? {},
+    aspects: relationships.aspects,
+    conjunctions: relationships.conjunctions,
+    mutualReception: relationships.mutualReception,
+    combustion: relationships.combustion,
+  })
+
   return {
     input,
     sunriseMode: sunriseFallback ? 'jhora' : sunriseMode,
@@ -284,5 +318,6 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     computedNakshatra,
     computedJaimini,
     bhavaBala,
+    yogas,
   }
 }

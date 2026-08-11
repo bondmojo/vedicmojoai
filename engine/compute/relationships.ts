@@ -533,8 +533,11 @@ export function computeMutualReception(
 const CAZIMI_ORB = 0.283 // ~0°17'
 
 /**
- * REQ-2.7 / FIX-13 — Combustion (asta). Excludes the Sun. `combust` when within
- * the (direction-specific) threshold; `cazimi` (within 0°17') overrides combust;
+ * REQ-2.7 / FIX-13 — Combustion (asta). Excludes the Sun. `combust` is
+ * threshold-only (degreeFromSun < threshold); per classical Parashari astangata
+ * there is no cazimi strengthening exception, so a planet within the cazimi orb
+ * (`cazimi`, within 0°17') is still combust — in fact the most deeply combust.
+ * `cazimi` is still computed and reported but no longer cancels `combust`.
  * `nearCombust` when within 1.5× threshold but not combust. For the Moon, the
  * strict 8° flag is also emitted alongside the standard 12° result.
  */
@@ -553,7 +556,7 @@ export function computeCombustion(planets: PlanetPosition[]): CombustionResult[]
     const threshold = retrogradeThresholdApplied ? thresholds.retro : thresholds.direct
 
     const cazimi = degreeFromSun < CAZIMI_ORB
-    const combust = degreeFromSun < threshold && !cazimi
+    const combust = degreeFromSun < threshold
     const nearCombust = degreeFromSun < threshold * 1.5 && !combust
 
     const result: CombustionResult = {
