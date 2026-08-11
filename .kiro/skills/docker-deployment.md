@@ -63,6 +63,10 @@ single `docker compose up --build` therefore builds **both** the app and the
 MCP server together; `mcp/dist/` isn't baked into the image, it's produced
 fresh each start from the live bind-mounted `mcp/src/`.
 
+`npm run build` itself runs `prisma generate && next build`. This deliberate
+duplication is harmless in Docker and ensures a Vercel build cannot reuse a
+cached Prisma Client that predates a schema or binary-target change.
+
 The MCP server itself is a stdio process meant to be spawned directly by
 Claude Desktop on the host (see `mcp/README.md`) — it isn't a docker-compose
 service. Docker's job here is only to keep its build in sync with the app's.
@@ -136,6 +140,9 @@ deployment" section for the full incident writeup.
 - Vercel needs Node 20 (pinned by `.nvmrc` and `package.json`) because
   `swisseph-v2` contains a native addon. `next.config.mjs` must retain the
   output-file-tracing inclusions for `swisseph-v2` and `prompts/`.
+- The `build` script runs `prisma generate && next build`, forcing Prisma to
+  regenerate its Vercel-compatible client and `rhel-openssl-3.0.x` engine even
+  when Vercel restores cached dependencies.
 - `waitUntil()` plus route `maxDuration` provides a bounded window for AI and
   Duration Analysis after their `202` response. It is not a durable job queue;
   use the persisted run status/recovery routes when a pipeline outlives it.

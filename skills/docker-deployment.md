@@ -57,6 +57,10 @@ single `docker compose up --build` therefore builds **both** the app and the
 MCP server together; `mcp/dist/` isn't baked into the image, it's produced
 fresh each start from the live bind-mounted `mcp/src/`.
 
+`npm run build` itself runs `prisma generate && next build`. This deliberate
+duplication is harmless in Docker and ensures a Vercel build cannot reuse a
+cached Prisma Client that predates a schema or binary-target change.
+
 The MCP server itself is a stdio process meant to be spawned directly by
 Claude Desktop on the host (see `mcp/README.md`) — it isn't a docker-compose
 service. Docker's job here is only to keep its build in sync with the app's.

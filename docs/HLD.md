@@ -926,6 +926,9 @@ Vercel (serverless)                            Supabase (PostgreSQL)
    normal app queries — serverless creates many short-lived connections
    that would otherwise exhaust Postgres's connection limit — while
    `DIRECT_URL` is the unpooled connection `prisma migrate deploy` needs.
+   The `build` script starts with `prisma generate && next build`, ensuring
+   Vercel regenerates the Prisma Client (including `rhel-openssl-3.0.x`) even
+   when it restores a cached `node_modules` directory.
 5. **Health check.** `/api/health`'s reports-directory writability check is
    bypassed (`checks.reports_dir = 'ok'`) when `process.env.VERCEL` is set.
 6. **MCP HTTP transport** (`POST /api/mcp`, §3.9) needed no code change — it

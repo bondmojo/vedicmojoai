@@ -375,7 +375,10 @@ filesystem is read-only). The AI Analysis and Duration Analysis pipelines
 are kept alive past their `202` response via `waitUntil()`, bounded by an
 explicit `maxDuration` — not a guarantee for pipelines that run longer than
 that ceiling. `COOKIE_SECURE=true` must be set explicitly on Vercel (not
-auto-derived). See the spec folder for the full requirements/design/tasks.
+auto-derived). The `build` script runs `prisma generate` before `next build`
+so Vercel's dependency cache cannot retain a Prisma Client that predates a
+schema or binary-target change. See the spec folder for the full
+requirements/design/tasks.
 
 ---
 
