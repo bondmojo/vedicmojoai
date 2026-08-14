@@ -17,12 +17,12 @@
  * import from `@/engine/compute/gochar`, which pulls in the native
  * `swisseph-v2` binary.
  *
- * This is the same reasoning that keeps the Gochar types out of
- * `engine/compute/types.ts` (spec Task 1.1), but it bites harder here: the
- * client-side `useGocharRange` hook (Task 8.2) and the Transits-tab
- * `includeMoon` label (Task 9.1, which must state BOTH span tiers) read
- * `MAX_SPAN_WITH_MOON_MS` / `MAX_SPAN_WITHOUT_MOON_MS` from this file. A
- * transitive native dependency would fail the client bundle.
+ * This is also the client-safe home for the Gochar response contracts. The
+ * client-side `useGocharRange` hook (Task 8.2) and display components MUST
+ * import those types from this module, never from `@/engine/compute`: a
+ * non-type engine import would pull the native `swisseph-v2` binary into the
+ * client bundle. Keeping the contracts next to the span constants makes that
+ * boundary structural rather than a convention.
  *
  * Enforced by `lib/gocharRange.test.ts` — "import hygiene".
  *
@@ -48,6 +48,47 @@ export interface ParsedGocharBounds {
   end: Date
 }
 
+/** The nine grahas that may appear in a Gochar range response. */
+export type GocharGraha =
+  | 'Sun'
+  | 'Moon'
+  | 'Mars'
+  | 'Mercury'
+  | 'Jupiter'
+  | 'Venus'
+  | 'Saturn'
+  | 'Rahu'
+  | 'Ketu'
+
+/** One contiguous, UTC whole-sign occupancy for a graha. */
+export interface GocharOccupancyInterval {
+  planet: GocharGraha
+  sign: string
+  signNumber: number
+  houseFromMoon: number
+  houseFromLagna: number
+  start: string               // ISO-8601 UTC, inclusive
+  end: string                 // ISO-8601 UTC, exclusive
+}
+
+/** Deterministic engine output for a resolved Gochar range. */
+export interface GocharRangeResult {
+  rangeStart: string          // ISO-8601 UTC, inclusive
+  rangeEnd: string            // ISO-8601 UTC, exclusive
+  includedGrahas: GocharGraha[]
+  moonIncluded: boolean
+  intervals: GocharOccupancyInterval[]
+}
+
+/** Complete successful `POST /api/gochar` response. */
+export interface GocharApiResponse extends GocharRangeResult {
+  /** Normalized UTC inclusive start bound. */
+  dateFrom: string
+  /** Normalized UTC exclusive end bound. */
+  dateTo: string
+  ayanamsa: 'Lahiri'
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 /** Regex for a bare calendar date: exactly `YYYY-MM-DD` with no time component. */
@@ -60,9 +101,6 @@ const BARE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
  * as UTC, with the explicit `Z` suffix required.
  */
 const FULL_INSTANT_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$/
-
-/** 1 ms, used for boundary-tests. */
-const MS = 1
 
 /**
  * Maximum allowed span in milliseconds when `includeMoon: true`.

@@ -157,6 +157,40 @@ export function registerTools(server: McpServer, api: ApiClient): void {
   extractor('get_dasha_tree', 'Get the full Vimshottari dasha tree', 'Complete MD → AD → PD Vimshottari tree with start/end dates.', (c) => ({ domain: 'dashaTree', value: c.dashaTree }))
 
   server.registerTool(
+    'get_gochar',
+    {
+      title: 'Get date-ranged Gochar',
+      description:
+        'Dated Lahiri sidereal Gochar occupancy intervals by whole-sign house from the natal Moon and Lagna. ' +
+        'All returned instants are UTC. The Moon is excluded unless `includeMoon: true`; use `includedGrahas` ' +
+        'in the response as the authoritative list of what was computed, so an absent Moon is never treated ' +
+        'as a Moon that did not change house.',
+      inputSchema: {
+        ...chartRefShape,
+        dateFrom: z.string().describe('YYYY-MM-DD or a full UTC ISO-8601 instant ending in Z'),
+        dateTo: z.string().describe('YYYY-MM-DD or a full UTC ISO-8601 instant ending in Z'),
+        includeMoon: z.boolean().optional().describe('Include the Moon; defaults to false and limits the range to one year'),
+      },
+    },
+    async (a) =>
+      guard(async () => {
+        const chartId = a.chartId as string | undefined
+        const birthData = a.birthData
+        if ((chartId !== undefined) === (birthData !== undefined)) {
+          return fail('Provide exactly one of `chartId` or `birthData`.')
+        }
+
+        const data = await api.post('/api/gochar', {
+          dateFrom: a.dateFrom,
+          dateTo: a.dateTo,
+          ...(a.includeMoon === undefined ? {} : { includeMoon: a.includeMoon }),
+          ...(chartId !== undefined ? { unifiedChartId: chartId } : { birthData }),
+        })
+        return ok(data)
+      })
+  )
+
+  server.registerTool(
     'get_divisional_chart',
     {
       title: 'Get divisional chart(s)',

@@ -291,7 +291,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 | Page | Route | Purpose |
 |---|---|---|
-| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
+| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Transits → Gochar shows natal D1, a JHora-style Transit Moment Chart from the moving Ascendant at the snapshot moment/place, and Gochar charts from birth Lagna and natal Moon; it also provides a Moon-opt-in UTC date-range form. Vimshottari PD rows expose the same range in a single expandable **View Gochar** panel using their exact UTC bounds. Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
@@ -315,6 +315,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 |---|---|---|
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
 | `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
+| `/api/gochar` | POST | Authenticated, deterministic, read-only Lahiri Gochar range. Resolves natal Moon/Lagna signs from a saved chart's scalar longitudes or unsaved birth data, then returns UTC whole-sign occupancy intervals; Moon is opt-in. The home Transits Gochar section and Vimshottari PD expansion send the birth-data snapshot captured with the chart on screen, so later form edits cannot create a wrong-chart request. PD requests preserve the dasha tree's exact ISO UTC bounds. |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
 | `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` (shared creator: `lib/unified-chart-create.ts`) |
 | `/api/unified-charts/from-paste` | POST | **Generate Chart (Path B)** — validate + persist pasted `ChartInputV1` as `source="paste"` |
@@ -551,7 +552,7 @@ Three primitives:
   compute (`compute_chart`, `compute_varshaphal`), focused extractors
   (`get_shadbala`, `get_divisional_chart`, `get_dasha_tree`, `get_active_dasha`,
   `get_chara_dasha`, `get_ashtakavarga`, `get_relationships`, `get_jaimini`,
-  `get_bhava_bala`, `get_transits` — each taking a stored `chartId` **or** raw `birthData`),
+  `get_bhava_bala`, `get_transits`, `get_gochar` — each taking a stored `chartId` **or** raw `birthData`),
   timeline (`get_timeline_periods`, `get_domain_dataset`), matchmaking
   (`compute_match` — Ashtakoota/Mangal Dosha for two stored charts, calling
   only `POST /api/matchmaking/preview`, never the persisting route — see §8.4),
@@ -563,8 +564,8 @@ Three primitives:
   instructs Claude which Tools to call for the given client (the "recipe →
   ingredients → cook" loop).
 
-Backed by two new read-only, no-LLM routes: `POST /api/timeline` and
-`GET /api/knowledge/**` (§3.2). Auth resolves to a specific `User` via a
+Backed by three read-only, no-LLM routes: `POST /api/timeline`,
+`POST /api/gochar`, and `GET /api/knowledge/**` (§3.2). Auth resolves to a specific `User` via a
 per-user `McpApiToken` (§3.10) — the old shared `MCP_TOKEN` secret is gone.
 Full details: `mcp/README.md`.
 

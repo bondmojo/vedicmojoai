@@ -8,7 +8,9 @@ running Next.js app and holds **no astrology logic**.
 **Golden rule:** the MCP must NEVER call the paid pipelines
 (`POST /api/unified-charts/[id]/analyze`, `POST /api/duration-analysis`). This is
 enforced by `tests/mcp-cost-guard.test.ts` (static scan of `mcp/src`). Only these
-POSTs are allow-listed: `/api/compute`, `/api/compute/varshaphal`, `/api/timeline`.
+deterministic/read-only POSTs are allow-listed: `/api/compute`,
+`/api/compute/varshaphal`, `/api/gochar`, `/api/timeline`, and
+`/api/matchmaking/preview`.
 The guard also requires every `api.get/post/getText` call's path to be a literal
 string/template literal (not a variable or concatenation) — an indirected path
 can't be regex-audited, so the test fails loudly rather than let one slip through.
@@ -33,6 +35,10 @@ can't be regex-audited, so the test fails loudly rather than let one slip throug
   → `extractCategoryData` → `scorePeriod`/`identifyPeaks`. Returns scored MD/AD/PD
   periods, transit overlay, peaks, and (optional) the domain-scoped `categoryData`.
   Requires `category` (scoring is domain-weighted). 10-year span cap.
+- `POST /api/gochar` (`app/api/gochar/route.ts`) — deterministic, **no LLM**.
+  Accepts exactly one saved chart reference or unsaved birth data and returns
+  Lahiri sidereal whole-sign occupancy intervals in UTC. It does not persist a
+  chart or pipeline run; the Moon is included only with `includeMoon: true`.
 - `GET /api/knowledge` + `GET /api/knowledge/[type]/[name]`
   (`app/api/knowledge/**`) — `type`=`domains`|`frameworks`; returns `readPromptFile()`
   output (`{{include:}}`-expanded). `name` allow-listed against the real directory
@@ -53,7 +59,8 @@ can't be regex-audited, so the test fails loudly rather than let one slip throug
 - Compute (stateless): `compute_chart`, `compute_varshaphal`.
 - Extractors (stored `chartId` OR raw `birthData`): `get_shadbala`, `get_divisional_chart`
   (filter by `divisions`), `get_dasha_tree`, `get_active_dasha`, `get_ashtakavarga`,
-  `get_relationships`, `get_jaimini` (incl. chara karakas), `get_bhava_bala`, `get_transits`.
+  `get_relationships`, `get_jaimini` (incl. chara karakas), `get_bhava_bala`, `get_transits`,
+  `get_gochar` (dated UTC Lahiri range; Moon opt-in).
 - Timeline: `get_timeline_periods` (trigger points), `get_domain_dataset` (data + timeline,
   dates default to a 3-year window).
 - Knowledge: `list_knowledge`, `get_domain_knowledge`, `get_framework`.

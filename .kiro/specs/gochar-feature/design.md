@@ -53,22 +53,16 @@ does not call an AI-analysis endpoint.
 
 ### New module and public contracts
 
-Add `engine/compute/gochar.ts`. Keep its types in `engine/compute/types.ts` and
-re-export public types/functions from `engine/compute/index.ts`; do not import
-the Swiss-Ephemeris-bearing module from `types.ts`.
+Add `engine/compute/gochar.ts` for the Swiss-Ephemeris computation. Put the
+serializable response contracts (`GocharGraha`, `GocharOccupancyInterval`,
+`GocharRangeResult`, and `GocharApiResponse`) in the client-safe
+`lib/gocharRange.ts` leaf beside the range/span constants. UI code imports them
+directly from that file, never from `@/engine/compute`; this prevents a future
+non-type engine import from pulling the native Swiss Ephemeris chain into a
+client bundle. `gochar.ts` may type-import and re-export those contracts for
+server compatibility, but retains the engine-only input/context types.
 
 ```ts
-export type GocharGraha =
-  | 'Sun'
-  | 'Moon'
-  | 'Mars'
-  | 'Mercury'
-  | 'Jupiter'
-  | 'Venus'
-  | 'Saturn'
-  | 'Rahu'
-  | 'Ketu'
-
 export interface GocharRangeInput {
   natalMoonSignNumber: number
   natalLagnaSignNumber: number
@@ -77,25 +71,20 @@ export interface GocharRangeInput {
   includeMoon: boolean
 }
 
-export interface GocharOccupancyInterval {
-  planet: GocharGraha
-  sign: string
-  signNumber: number
-  houseFromMoon: number
-  houseFromLagna: number
-  start: string               // ISO-8601 UTC, inclusive
-  end: string                 // ISO-8601 UTC, exclusive
-}
-
-export interface GocharRangeResult {
-  rangeStart: string
-  rangeEnd: string
-  includedGrahas: GocharGraha[]
-  moonIncluded: boolean
-  intervals: GocharOccupancyInterval[]
-}
-
 export function computeGocharRange(input: GocharRangeInput): GocharRangeResult
+```
+
+`lib/gocharRange.ts` owns the client-safe response shape:
+
+```ts
+export type GocharGraha = /* nine-graha union */
+export interface GocharOccupancyInterval { /* UTC interval fields */ }
+export interface GocharRangeResult { /* range + included grahas + intervals */ }
+export interface GocharApiResponse extends GocharRangeResult {
+  dateFrom: string // normalized UTC inclusive start
+  dateTo: string   // normalized UTC exclusive end
+  ayanamsa: 'Lahiri'
+}
 ```
 
 ### Graha selection
@@ -389,8 +378,8 @@ reachable.
 ### Shared types and rendering
 
 Add a typed `GocharRangeTable` component in `app/components/` that receives
-`GocharRangeResult` and an optional label. It groups `intervals` by `planet` in
-the returned stable order and renders:
+`GocharRangeResult` from `@/lib/gocharRange` and an optional label. It groups
+`intervals` by `planet` in the returned stable order and renders:
 
 | Graha | From (UTC) | To (UTC) | Sign | H/Moon | H/Lagna |
 |---|---|---|---|---|
@@ -455,6 +444,20 @@ The hook sends `POST /api/gochar`, preserves caller-controlled dates and
 finishes first (compare against a monotonically increasing request id, not
 response arrival order).
 
+Its visible result, error, and loading state are scoped to the current natal
+source key. If an application changes the chart/birth-data snapshot, a completed
+or in-flight response for the prior source is hidden immediately and may not
+update the new source's view; the component-lifetime cache remains source-keyed
+for safe reuse.
+
+**Failure message.** For a non-success API JSON body shaped as
+`{ error?: string, details?: Record<string, string[]> }`, expose the first
+available message in `details` (the first field in object insertion order, then
+its first message). If no such message exists, expose `error`; otherwise use a
+generic request-failed message. Do not concatenate every field/message: a
+range-cap error is intentionally represented against both date fields by the
+route and would otherwise be displayed twice.
+
 **Response cache.** The hook keys results on
 `source + dateFrom + dateTo + includeMoon` in a component-lifetime `Map`. Gochar
 is a pure function of those inputs, so a repeat is always safe to serve from
@@ -465,25 +468,35 @@ skip the network entirely and SHALL NOT flip `loading` to `true`.
 ### Transits tab
 
 `TransitsView` remains the owner of its existing inner section state
-(`gochar | sadesati | moon | asc`). Its `gochar` section gains a range form below
-the existing current-position table:
+(`gochar | sadesati | moon | asc`). Its `gochar` section displays the existing
+current-position table, then four compact North-Indian charts from the same
+`TransitAnalysis.asOf` snapshot: natal D1; a JHora-style Transit Moment Chart
+whose H1 is the moving Ascendant at the birthplace and exact snapshot instant;
+Gochar from birth Lagna; and Gochar from natal Moon. The
+range form remains below those current-snapshot charts:
 
 - `dateFrom` and `dateTo` are native date inputs for practitioner-entered
   calendar ranges; full ISO instants remain available to API/MCP callers and PD
   integration.
+- The form continues to display its controlled, user-entered calendar dates.
+  It does not present the API's normalized `dateTo` echo as the selected end
+  date: a bare end date is inclusive to the practitioner but resolves to the
+  following UTC midnight as the engine's exclusive end bound.
 - `includeMoon` is an unchecked checkbox, labelled with the one-year limit and
   increased-row-count warning.
 - The submit button is disabled while the request is loading.
 - Success renders `GocharRangeTable`; failure renders a `role="status"` message
   without clearing the date or checkbox state.
 
-Update `app/page.tsx` to pass the current computed form's `birthData` into
-`TransitsView`. The current static `result.chart.transits` remains unchanged and
-continues to power the current-position and Sade Sati displays.
+Update `app/page.tsx` to capture a `BirthInput` snapshot with every successful
+chart computation, and pass that snapshot into `TransitsView`. The live form may
+then be edited without making a Gochar request disagree with the chart still on
+screen. The current static `result.chart.transits` remains unchanged and
+continues to power the current-position, Gochar-chart, and Sade Sati displays.
 
 ### Vimshottari PD rows
 
-Update `DashaTimeline` to accept the same `birthData` context. Replace each
+Update `DashaTimeline` to accept the same computed birth-data snapshot. Replace each
 plain PD row wrapper with a focusable button/control containing its existing
 MD–AD–PD label and a `View Gochar` action.
 

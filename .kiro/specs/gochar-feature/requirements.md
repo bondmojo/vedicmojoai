@@ -163,6 +163,11 @@ from the Gochar view, so that I can move beyond the current-position snapshot.
    the user's selected dates or `includeMoon` choice.
 8. THE range result table SHALL remain usable at narrow viewport widths through
    responsive layout or horizontal table scrolling.
+9. FOR a range submitted through bare calendar-date controls, THE UI SHALL retain
+   and display the practitioner's inclusive calendar `dateTo`; it SHALL NOT
+   substitute the response's resolved exclusive-next-midnight echo as the
+   selected date. Exact-instant consumers, including PD Gochar, SHALL display
+   their actual UTC bounds.
 
 ### Requirement 4 — Vimshottari PD Gochar
 
@@ -283,6 +288,9 @@ consistent with existing chart behavior.
 8. Documentation updated with implementation SHALL state that this feature adds
    positional Gochar timing only, in UTC, and does not add transit interpretation
    or persistence.
+9. Client Gochar response types SHALL be imported from a client-safe module that
+   does not transitively reach Swiss Ephemeris. UI modules SHALL NOT import from
+   `@/engine/compute` merely to obtain Gochar API types.
 
 ### Requirement 8 — UTC disclosure
 

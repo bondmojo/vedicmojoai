@@ -32,6 +32,7 @@ const HTTP_ROUTE = path.resolve(__dirname, '..', 'app', 'api', 'mcp', 'route.ts'
 const ALLOWED_POST_ROUTES = new Set([
   '/api/compute',
   '/api/compute/varshaphal',
+  '/api/gochar',
   '/api/timeline',
   '/api/matchmaking/preview',
 ])

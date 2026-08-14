@@ -2,12 +2,10 @@
  * engine/compute/gochar.ts — Deterministic date-ranged Gochar (transit)
  * occupancy intervals.
  *
- * This module owns its own public types rather than living in
- * `engine/compute/types.ts`, because it (like `transits.ts`) imports the
- * Swiss-Ephemeris-bearing runtime. `types.ts` must stay free of that import
- * chain, so the public contracts declared here are re-exported individually
- * from `engine/compute/index.ts` instead (mirroring how `YogaInput` is
- * re-exported from `./yogas`).
+ * Engine-only inputs and helpers live here because this module imports the
+ * Swiss-Ephemeris-bearing runtime. The Gochar response contracts themselves
+ * live in `lib/gocharRange.ts`, a client-safe leaf, so UI code never needs to
+ * reach this native import chain merely to describe API data.
  *
  * Spec: .kiro/specs/gochar-feature/
  */
@@ -17,6 +15,17 @@ import path from 'path'
 import { getSignName, birthInputToJulianDay, computeAscendant, computePlanetPositions } from './planets'
 import type { BirthInput } from './types'
 import { GocharValidationError } from '@/lib/errors'
+import type {
+  GocharGraha,
+  GocharOccupancyInterval,
+  GocharRangeResult,
+} from '@/lib/gocharRange'
+
+export type {
+  GocharGraha,
+  GocharOccupancyInterval,
+  GocharRangeResult,
+} from '@/lib/gocharRange'
 
 /**
  * Re-exported so this module's public surface is unchanged. The class itself is
@@ -29,41 +38,12 @@ export { GocharValidationError }
 
 // ─── Public contracts ──────────────────────────────────────────────────
 
-export type GocharGraha =
-  | 'Sun'
-  | 'Moon'
-  | 'Mars'
-  | 'Mercury'
-  | 'Jupiter'
-  | 'Venus'
-  | 'Saturn'
-  | 'Rahu'
-  | 'Ketu'
-
 export interface GocharRangeInput {
   natalMoonSignNumber: number
   natalLagnaSignNumber: number
   start: Date                 // inclusive UTC instant
   end: Date                   // exclusive UTC instant
   includeMoon: boolean
-}
-
-export interface GocharOccupancyInterval {
-  planet: GocharGraha
-  sign: string
-  signNumber: number
-  houseFromMoon: number
-  houseFromLagna: number
-  start: string               // ISO-8601 UTC, inclusive
-  end: string                 // ISO-8601 UTC, exclusive
-}
-
-export interface GocharRangeResult {
-  rangeStart: string
-  rangeEnd: string
-  includedGrahas: GocharGraha[]
-  moonIncluded: boolean
-  intervals: GocharOccupancyInterval[]
 }
 
 /**

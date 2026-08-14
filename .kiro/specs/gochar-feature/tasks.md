@@ -34,15 +34,15 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
 
 ## Tasks
 
-- [x] 1. Gochar engine types and stable constants (`engine/compute/gochar.ts`)
+- [x] 1. Gochar contracts and stable constants
   - [x] 1.1 Add `GocharGraha`, `GocharRangeInput`, `GocharOccupancyInterval`,
     `GocharRangeResult`, `NatalGocharContext` exactly as specified in
     design.md's "New module and public contracts"
-    - New file `engine/compute/gochar.ts`. Do **not** put these types in
-      `engine/compute/types.ts` — that module must stay free of the
-      Swiss-Ephemeris-bearing import chain; re-export the public names from
-      `engine/compute/index.ts` instead (mirroring how `computeYogas`/`YogaInput`
-      are re-exported there today)
+    - Put serializable response contracts in `lib/gocharRange.ts`, the
+      client-safe leaf; `engine/compute/gochar.ts` owns only engine-specific
+      input/context types and type-imports the response contracts. Client
+      consumers MUST import response types directly from `@/lib/gocharRange`,
+      never from the Swiss-Ephemeris-bearing compute barrel.
     - _Design: Compute Engine — "New module and public contracts"_
     - _Requirements: R1.1, R1.3_
   - [x] 1.2 Add `DEFAULT_GOCHAR_GRAHAS` (8) and `ALL_GOCHAR_GRAHAS` (9) as
@@ -258,8 +258,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       while leaving the whole suite green — R4.8 is otherwise an unverified claim
     - _Requirements: R4.8_
 
-- [ ] 6. `POST /api/gochar` route
-  - [ ] 6.1 Implement the Zod request schema and handler
+- [x] 6. `POST /api/gochar` route
+  - [x] 6.1 Implement the Zod request schema and handler
     - New file `app/api/gochar/route.ts`. `resolveRequestUser(request)` first,
       401 if absent, following the exact convention in
       `app/api/timeline/route.ts`
@@ -283,7 +283,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       `waitUntil()`/SSE — the route is synchronous and read-only end to end
     - _Design: API Design — "POST /api/gochar"_
     - _Requirements: R5.1, R5.2, R5.3, R5.4, R5.5, R5.6, R5.7, R5.8, R8.1_
-  - [ ] 6.2 Write route tests
+  - [x] 6.2 Write route tests
     - File: `tests/gochar-api.test.ts`, mirroring the mocking conventions in
       `tests/mcp-auth.test.ts` / `tests/mcp-token-routes.test.ts`. Cover:
       missing auth (401); malformed JSON (400); neither/both chart sources
@@ -296,8 +296,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Testing Strategy — "Route tests"_
     - _Requirements: R7.4_
 
-- [ ] 7. MCP `get_gochar` tool
-  - [ ] 7.1 Register the tool in `mcp/src/tools.ts`
+- [x] 7. MCP `get_gochar` tool
+  - [x] 7.1 Register the tool in `mcp/src/tools.ts`
     - Add beside `get_transits`/`get_dasha_tree`. Input:
       `{ chartId?, birthData?, dateFrom, dateTo, includeMoon? }` following the
       existing chart-reference convention used by the other extractor tools in
@@ -316,14 +316,14 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       never narrated as "did not change house"
     - _Design: MCP Design_
     - _Requirements: R6.1, R6.2, R6.3, R6.4, R6.6, R8.4_
-  - [ ] 7.2 Add `/api/gochar` to `ALLOWED_POST_ROUTES` in
+  - [x] 7.2 Add `/api/gochar` to `ALLOWED_POST_ROUTES` in
     `tests/mcp-cost-guard.test.ts`
     - One-line addition to the existing `Set` in that file — the same pattern
       the `marriage-matchmaking` and `user-management` specs used for their own
       additions. Do not modify any other guard logic in that file
     - _Design: MCP Design — "Add /api/gochar to ALLOWED_POST_ROUTES"_
     - _Requirements: R6.5_
-  - [ ] 7.3 Write MCP tool tests
+  - [x] 7.3 Write MCP tool tests
     - File: **`tests/mcp-gochar.test.ts`** — not `mcp/src/`. Every existing MCP
       test lives in `tests/` (`mcp-auth`, `mcp-token-routes`, `mcp-cost-guard`);
       `mcp/` is a separate package with its own `package.json`, `node_modules`,
@@ -338,12 +338,12 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Testing Strategy — "MCP tool tests"_
     - _Requirements: R7.6_
 
-- [ ] 8. Shared UI: `GocharRangeTable` and `useGocharRange`
-  - [ ] 8.1 Implement `GocharRangeTable` (`app/components/GocharRangeTable.tsx`)
-    - Props: `GocharRangeResult` (or the API response shape) plus an optional
-      label. Groups `intervals` by `planet` in the array's own stable order (no
-      re-sorting); columns Graha / From (UTC) / To (UTC) / Sign / H/Moon /
-      H/Lagna, using the existing overflow-x table pattern and semantic
+- [x] 8. Shared UI: `GocharRangeTable` and `useGocharRange`
+  - [x] 8.1 Implement `GocharRangeTable` (`app/components/GocharRangeTable.tsx`)
+    - Props: `GocharRangeResult` (or the API response shape) imported directly
+      from `@/lib/gocharRange`, plus an optional label. Groups `intervals` by
+      `planet` in the array's own stable order (no re-sorting); columns Graha /
+      From (UTC) / To (UTC) / Sign / H/Moon / H/Lagna, using the existing overflow-x table pattern and semantic
       `<table>`/`<th scope="col">` markup already used by `GrahasTable.tsx`
     - UTC formatter includes `HH:mm` (never date-only), per design.md's
       "Sub-day intervals must remain legible" — use the `Intl.DateTimeFormat`
@@ -354,7 +354,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       inferable from row absence
     - _Design: UI Design — "Shared types and rendering"_
     - _Requirements: R3.5, R3.6, R8.1, R8.2_
-  - [ ] 8.2 Implement `useGocharRange` (`app/components/useGocharRange.ts`)
+  - [x] 8.2 Implement `useGocharRange` (`app/components/useGocharRange.ts`)
     - Discriminated `GocharRequestSource` union
       (`{ kind: 'saved'; unifiedChartId }` | `{ kind: 'unsaved'; birthData }`)
       exactly as in design.md — never a `birthData`-only shape. Maps the union
@@ -363,12 +363,20 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       (tracked by a monotonically increasing id, not arrival order) has since
       been issued; on failure, preserve the caller's last dates/`includeMoon`
       rather than clearing them
+    - For a non-success JSON response, set `error` to the first available
+      `details` message (first field, then first message), falling back to its
+      `error` string and then a generic request-failed message. Do **not** join
+      all field messages: a span-cap error is intentionally attached to both
+      dates by the API and must render once.
     - Response cache keyed on `source + dateFrom + dateTo + includeMoon` in a
       component-lifetime `Map`; a cache hit resolves synchronously and SHALL
       NOT set `loading: true`
+    - Scope visible result, error, and loading state to the current source key;
+      editing birth data SHALL immediately hide a response or in-flight state
+      belonging to the former natal context.
     - _Design: UI Design — "Shared types and rendering" (hook + cache)_
     - _Requirements: R3.7, R4.6_
-  - [ ] 8.3 Write component tests for `GocharRangeTable` and `useGocharRange`
+  - [x] 8.3 Write component tests for `GocharRangeTable` and `useGocharRange`
     - Follow the existing "call the component directly as a function, inspect
       the returned element tree" pattern from `GrahasTable.test.tsx` /
       `YogasView.test.tsx` — no `@testing-library/react`, no new dependency
@@ -380,8 +388,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Testing Strategy — "Component tests"_
     - _Requirements: R7.5_
 
-- [ ] 9. Transits tab: Gochar range form
-  - [ ] 9.1 Add the range form to `TransitsView`'s existing `gochar` section
+- [x] 9. Transits tab: Gochar range form
+  - [x] 9.1 Add the range form to `TransitsView`'s existing `gochar` section
     - Below the current current-position table (which remains the section's
       default view, unchanged). Native `dateFrom`/`dateTo` date inputs; an
       unchecked-by-default `includeMoon` checkbox; a submit action disabled while
@@ -394,27 +402,27 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       message without clearing the form's current date/checkbox state (reuse
       `useGocharRange`'s failure-preservation from Task 8.2, don't re-implement
       it here)
+    - Keep the form's submitted bare dates as the visible selected range; do not
+      replace its inclusive calendar `dateTo` with the API echo's following
+      midnight. The table still labels every returned interval UTC.
     - THE UI states the data is Lahiri sidereal Gochar (near the existing
       "Sidereal Lahiri" text already in this section)
     - _Design: UI Design — "Transits tab"_
     - _Requirements: R3.1, R3.2, R3.3, R3.4, R3.5, R3.6, R3.7, R3.8_
-  - [ ] 9.2 Wire chart context into `TransitsView` from `app/page.tsx`
+  - [x] 9.2 Wire chart context into `TransitsView` from `app/page.tsx`
     - `TransitsView` currently receives `data` and `birthDate`; extend its props
       to also receive a `GocharRequestSource`
-    - **Use `{ kind: 'unsaved', birthData }` built from the CURRENT form state.**
-      Do **not** pass `loadedChartId` as `{ kind: 'saved' }` from this page:
-      `loadedChartId` remains set while the user edits the form (the page renders
-      an "Editing a saved chart — Save Chart will update it" banner for exactly
-      this state), so a `saved` source would compute natal context from the
-      **stored** chart while the screen shows **edited** data — a silent
-      wrong-chart result. If a `saved` source is ever wanted here, it must be
-      gated on the form being unmodified since load/save
+    - **Use `{ kind: 'unsaved', birthData }` captured as a snapshot when the
+      visible chart is computed.** Do not pass either the live form state or
+      `loadedChartId`: either can diverge from the displayed chart after the
+      practitioner edits the form. A Gochar request must always derive natal
+      context from the same birth data that produced the chart on screen.
     - The existing static `result.chart.transits`-driven current-position
       display, Sade Sati panel, and Moon/Ascendant transit sections are unchanged
     - _Design: UI Design — "Update app/page.tsx to pass the current computed
       form's birthData into TransitsView"_
     - _Requirements: R3.1_
-  - [ ] 9.3 Write UI tests for the Transits tab range form
+  - [x] 9.3 Write UI tests for the Transits tab range form
     - New `app/components/TransitsView.gochar.test.tsx` using the same
       direct-function-call pattern. Cover: default unchecked Moon state;
       loading-disabled submit; error state retains prior selection; the
@@ -422,9 +430,17 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       via the existing overflow-x pattern (assert the wrapper class, not layout)
     - _Design: Testing Strategy — "Component tests"_
     - _Requirements: R7.5_
+  - [x] 9.4 Add current Gochar chart panels
+    - Render natal D1, a JHora-style Transit Moment Chart from the moving
+      Ascendant, plus North-Indian current Gochar charts referenced from the
+      birth Lagna and natal Moon.
+    - Use the immutable chart result's `TransitAnalysis.asOf` snapshot rather
+      than a date-range response, so all four panels share one exact instant.
+    - File: `app/components/GocharCharts.test.tsx` verifies all four anchors and
+      their whole-sign house assignments.
 
-- [ ] 10. Vimshottari PD Gochar
-  - [ ] 10.1 Convert PD rows to focusable controls with a `View Gochar` action
+- [x] 10. Vimshottari PD Gochar
+  - [x] 10.1 Convert PD rows to focusable controls with a `View Gochar` action
     - In `DashaTimeline.tsx`, the PD row is currently a plain `<div>` (inside the
       `ad.pratyantardashas.map((pd, k) => ...)` block). Replace its wrapper with
       a `<button type="button">` (or equivalent focusable control) carrying the
@@ -433,7 +449,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       MD/AD buttons in this file
     - _Design: UI Design — "Vimshottari PD rows"_
     - _Requirements: R4.1_
-  - [ ] 10.2 Add PD Gochar expansion state and exact-instant request wiring
+  - [x] 10.2 Add PD Gochar expansion state and exact-instant request wiring
     - `DashaTimeline` accepts the same `GocharRequestSource` context as
       `TransitsView` (Task 9.2, same stale-context caveat applies) via a new prop
     - One `selectedPD` state (identified by `[mdIndex, adIndex, pdIndex]`) plus
@@ -451,7 +467,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       losing the selected PD
     - _Design: UI Design — "Vimshottari PD rows"_
     - _Requirements: R4.2, R4.3, R4.4, R4.5, R4.6, R4.7_
-  - [ ] 10.3 Write `DashaTimeline` PD-Gochar tests
+  - [x] 10.3 Write `DashaTimeline` PD-Gochar tests
     - Cover: PD row is a real focusable control; selecting it forwards the PD's
       exact ISO `start`/`end` (not a date-truncated version) to the request
       function; opening a second PD closes the first; a failed PD request
@@ -461,8 +477,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Testing Strategy — "PD action-to-date-range wiring"_
     - _Requirements: R7.5_
 
-- [ ] 11. Manual JHora/PVR verification (pre-release gate)
-  - [ ] 11.1 Compare a fixed Gochar range against Jagannatha Hora reference
+- [x] 11. Manual JHora/PVR verification (pre-release gate)
+  - [x] 11.1 Compare a fixed Gochar range against Jagannatha Hora reference
     output
     - Pick one fixed natal chart and one fixed date range covering at least one
       ingress per default graha. Convert the JHora local-time ingress display to
@@ -475,14 +491,14 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Testing Strategy — "Manual practitioner acceptance"_
     - _Requirements: R7.7_
 
-- [ ] 12. Documentation sync
-  - [ ] 12.1 Update `docs/computation_transits_sadesati.md`
+- [x] 12. Documentation sync
+  - [x] 12.1 Update `docs/computation_transits_sadesati.md`
     - Add the range-scan algorithm summary (including the cusp-proximity
       refinement and why a fixed step is insufficient), the Moon opt-in default
       and rationale, the two-tier span cap, and the UTC-vs-JHora-local-time
       disclosure note from R8.3
     - _Requirements: R7.8, R8.3_
-  - [ ] 12.2 Update `Agents.md`, `Claude.md`, `docs/HLD.md`, `docs/DFD.md`,
+  - [x] 12.2 Update `Agents.md`, `Claude.md`, `docs/HLD.md`, `docs/DFD.md`,
     `docs/ERD.md`, the MCP README, and the relevant backend/frontend skill
     guides
     - `docs/ERD.md`: note explicitly that no schema change occurred — Gochar

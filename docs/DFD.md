@@ -110,8 +110,22 @@
   It calls the app over HTTP and **never** flows into P4 (wave pipeline) or P10
   (duration pipeline) — the paid LLM processes. New external entity: **CLAUDE
   DESKTOP**. See the Level 2 — P11 section.
-- New data stores/flows are read-only: `POST /api/timeline` (deterministic scoring,
-  reuses P10.2/P10.3 pre-steps sans LLM) and `GET /api/knowledge/**` (rubric files).
+- New deterministic read-only flows are `POST /api/timeline` (scoring that
+  reuses P10.2/P10.3 pre-steps sans LLM), `POST /api/gochar` (UTC Lahiri
+  occupancy intervals), and `GET /api/knowledge/**` (rubric files).
+- `POST /api/gochar` is also read-only: authenticated callers provide a saved-chart
+  reference or unsaved birth data, the route derives only natal Moon/Lagna signs,
+  and the deterministic engine returns Lahiri whole-sign occupancy intervals in UTC.
+  It creates no chart, pipeline run, or other persisted record. The home Transits
+  Gochar form and Vimshottari PD expansion send the immutable birth-data snapshot
+  captured with the displayed chart rather than a loaded-chart id or live form,
+  so later edits cannot query a different natal context. PD calls forward the
+  dasha tree's exact ISO UTC start/end bounds.
+- The same immutable chart result feeds the four current-snapshot diagrams in
+  Transits → Gochar: natal D1, JHora-style Transit Moment Chart from the moving
+  Ascendant at `TransitAnalysis.asOf`/birthplace, and Gochar from birth Lagna
+  and natal Moon. All three Gochar panels consume `TransitAnalysis.asOf`
+  positions directly, while the range route remains an ingress-interval flow.
 
 ---
 
@@ -873,6 +887,9 @@ CLAUDE DESKTOP
       │ HTTP (localhost, optional x-mcp-token)
       ├──────────────► GET  /api/unified-charts[/id]     (D: UnifiedChart)   read
       ├──────────────► POST /api/compute[/varshaphal]    (stateless compute) no DB, no LLM
+      ├──────────────► POST /api/gochar ─────────────────► UTC Lahiri whole-sign Gochar range
+      │                                                    (saved-chart scalar read or in-memory natal context;
+      │                                                    no DB write, no LLM)
       ├──────────────► POST /api/timeline ───────────────► P10.2 slicer + P10.3 overlay
       │                                                    + deterministic scorePeriod + identifyPeaks
       │                                                    + buildPeriodInsights (driver digest) + domainContext
@@ -897,6 +914,7 @@ CLAUDE DESKTOP
 |---|---|---|
 | discover | P11 → UnifiedChart | list/detail (read) |
 | compute | P11 → compute engine | ComputedChart + dashaTree (stateless) |
+| gochar | P11 → `/api/gochar` | UTC Lahiri whole-sign occupancy intervals; Moon opt-in |
 | timeline | P11 → `/api/timeline` | scored MD/AD/PD periods + peaks + transit overlay |
 | knowledge | P11 → `/api/knowledge` | domain/framework rubric text (include-expanded) |
 | reports | P11 → runs / duration reads | already-generated results (no new cost) |

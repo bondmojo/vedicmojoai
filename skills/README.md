@@ -17,7 +17,8 @@ Kiro, Cursor, etc.) produces code consistent with the existing codebase.
 | `engine-pipeline.md` | Pipeline execution rules, dasha computation, model tiers, wave strategy |
 | `database-prisma.md` | All DB tables (incl. `UnifiedChart`), constraints, Prisma usage, indexes |
 | `ai-backend.md` | LLM pipeline engine, orchestrator, compute modules, unified-chart routes |
-| `ai-frontend.md` | Next.js UI patterns, SSE, unified-charts pages, chart components |
+| `ai-frontend.md` | Next.js UI patterns, SSE, unified-charts pages, chart components, and linked Gochar conventions |
+| `frontend/gochar.md` | Gochar diagrams, date ranges, PD expansion, UTC and request-source rules |
 | `docker-deployment.md` | Docker/Cloud Run setup, env vars, health check, migration commands |
 
 ## Maintenance

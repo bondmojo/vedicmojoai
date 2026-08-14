@@ -6,6 +6,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import GocharRangeTable from './GocharRangeTable'
+import { useGocharRange } from './useGocharRange'
+import type { GocharRequestSource } from './useGocharRange'
 
 interface DashaPeriod {
   lord: string
@@ -20,6 +23,8 @@ interface DashaTree {
   balance_years: number
   mahadashas: DashaPeriod[]
 }
+
+type SelectedPD = readonly [mdIndex: number, adIndex: number, pdIndex: number]
 
 // Planet colors for the timeline bar — using subtle, brand-aligned tones
 // that harmonize with the indigo+gold palette. These are background colors
@@ -70,7 +75,13 @@ function isActive(start: string, end: string, now: Date): boolean {
   return new Date(start) <= now && new Date(end) > now
 }
 
-export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
+export default function DashaTimeline({
+  dashaTree,
+  gocharSource,
+}: {
+  dashaTree: DashaTree
+  gocharSource: GocharRequestSource
+}) {
   const now = new Date()
   const hasData = Boolean(dashaTree?.mahadashas?.length)
 
@@ -90,8 +101,40 @@ export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
   const [expandedAD, setExpandedAD] = useState<number | null>(
     currentADIndex >= 0 ? currentADIndex : null
   )
+  const [selectedPD, setSelectedPD] = useState<SelectedPD | null>(null)
+  const [pdIncludeMoon, setPdIncludeMoon] = useState(false)
+  const gochar = useGocharRange(gocharSource)
 
   const currentMDRef = useRef<HTMLDivElement>(null)
+
+  function isSelectedPD(mdIndex: number, adIndex: number, pdIndex: number): boolean {
+    return selectedPD?.[0] === mdIndex
+      && selectedPD[1] === adIndex
+      && selectedPD[2] === pdIndex
+  }
+
+  function requestPD(pd: DashaPeriod, includeMoon: boolean): void {
+    void gochar.request({
+      dateFrom: pd.start,
+      dateTo: pd.end,
+      includeMoon,
+    })
+  }
+
+  function togglePDGochar(mdIndex: number, adIndex: number, pdIndex: number, pd: DashaPeriod): void {
+    if (isSelectedPD(mdIndex, adIndex, pdIndex)) {
+      setSelectedPD(null)
+      gochar.clear()
+      return
+    }
+
+    // One Gochar result belongs to exactly one PD at a time. Clearing first also
+    // invalidates any in-flight response for the previously selected PD.
+    gochar.clear()
+    setSelectedPD([mdIndex, adIndex, pdIndex])
+    setPdIncludeMoon(false)
+    requestPD(pd, false)
+  }
 
   useEffect(() => {
     currentMDRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -248,20 +291,84 @@ export default function DashaTimeline({ dashaTree }: { dashaTree: DashaTree }) {
                           <div className="ml-3 sm:ml-6 mt-1 space-y-0.5 border-l border-gray-700/40 pl-3">
                             {ad.pratyantardashas.map((pd, k) => {
                               const isCurrentPD = isCurrentAD && isActive(pd.start, pd.end, now)
+                              const isPDSelected = isSelectedPD(i, j, k)
+                              const pdLabel = `${md.lord}-${ad.lord}-${pd.lord}`
                               return (
                                 <div
                                   key={k}
-                                  className={`flex items-center justify-between px-3 py-1.5 text-[10px] rounded ${isCurrentPD ? 'bg-gold-900/30 border border-gold-700/50 text-gold-300' : 'text-gray-500'}`}
+                                  className={`rounded ${isCurrentPD ? 'bg-gold-900/30 border border-gold-700/50 text-gold-300' : 'text-gray-500'}`}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <span>{md.lord}-{ad.lord}-{pd.lord}</span>
-                                    {isCurrentPD && (
-                                      <span className="text-gold-300 text-[9px] px-1.5 py-0.5 rounded-full bg-gold-900/40 font-medium">
-                                        active
+                                  <button
+                                    type="button"
+                                    onClick={() => togglePDGochar(i, j, k, pd)}
+                                    aria-expanded={isPDSelected}
+                                    aria-controls={isPDSelected ? `pd-gochar-${i}-${j}-${k}` : undefined}
+                                    aria-label={`View Gochar for ${pdLabel}`}
+                                    className={`w-full rounded px-3 py-1.5 text-left text-[10px] transition-colors hover:bg-gray-700/40 focus:outline-none focus:ring-2 focus:ring-brand-500 ${isPDSelected ? 'bg-brand-900/30' : ''}`}
+                                  >
+                                    <span className="flex items-center justify-between gap-3">
+                                      <span className="flex items-center gap-2">
+                                        <span>{pdLabel}</span>
+                                        {isCurrentPD && (
+                                          <span className="text-gold-300 text-[9px] px-1.5 py-0.5 rounded-full bg-gold-900/40 font-medium">
+                                            active
+                                          </span>
+                                        )}
                                       </span>
-                                    )}
-                                  </div>
-                                  <span>{formatDateShort(pd.start)} → {formatDateShort(pd.end)}</span>
+                                      <span className="flex items-center gap-3 whitespace-nowrap">
+                                        <span>{formatDateShort(pd.start)} → {formatDateShort(pd.end)}</span>
+                                        <span className="font-medium text-brand-300">{isPDSelected ? 'Hide Gochar' : 'View Gochar'}</span>
+                                      </span>
+                                    </span>
+                                  </button>
+
+                                  {isPDSelected && (
+                                    <section
+                                      id={`pd-gochar-${i}-${j}-${k}`}
+                                      className="mx-3 mb-2 mt-1 space-y-3 rounded border border-gray-700 bg-gray-900/40 p-3 text-xs text-gray-300"
+                                      aria-label={`Gochar for ${pdLabel}`}
+                                    >
+                                      <div>
+                                        <h4 className="font-medium text-ink">{pdLabel} Gochar</h4>
+                                        <p className="mt-1 text-gray-400">
+                                          Exact UTC range: <code className="text-gray-200">{pd.start}</code> → <code className="text-gray-200">{pd.end}</code>
+                                        </p>
+                                      </div>
+                                      <label className="flex items-start gap-2 text-gray-300" htmlFor={`pd-gochar-moon-${i}-${j}-${k}`}>
+                                        <input
+                                          id={`pd-gochar-moon-${i}-${j}-${k}`}
+                                          type="checkbox"
+                                          checked={pdIncludeMoon}
+                                          onChange={(event) => {
+                                            const includeMoon = event.target.checked
+                                            setPdIncludeMoon(includeMoon)
+                                            // The previous result describes a different graha set.
+                                            // Hide it while the newly requested PD view is loading.
+                                            gochar.clear()
+                                            requestPD(pd, includeMoon)
+                                          }}
+                                          className="mt-0.5"
+                                        />
+                                        <span>Include Moon for this PD.</span>
+                                      </label>
+                                      {gochar.loading && (
+                                        <p role="status" className="text-gray-400">Loading Gochar…</p>
+                                      )}
+                                      {gochar.error && (
+                                        <div role="status" className="flex flex-wrap items-center gap-2 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-red-300">
+                                          <span>{gochar.error}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => requestPD(pd, pdIncludeMoon)}
+                                            className="rounded border border-red-700 px-2 py-1 font-medium hover:bg-red-900/40"
+                                          >
+                                            Retry Gochar
+                                          </button>
+                                        </div>
+                                      )}
+                                      {gochar.result && <GocharRangeTable result={gochar.result} label={`${pdLabel} Gochar intervals`} />}
+                                    </section>
+                                  )}
                                 </div>
                               )
                             })}

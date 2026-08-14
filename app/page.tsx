@@ -10,7 +10,7 @@ import ChartSummaryTab from './components/ChartSummaryTab'
 import ChartGrid from './components/ChartGrid'
 import GrahasTable from './components/GrahasTable'
 import YogasView from './components/YogasView'
-import { SectionBoundary } from './components/SectionUnavailable'
+import { SectionBoundary, SectionUnavailable } from './components/SectionUnavailable'
 import AshtakavargaView from './components/AshtakavargaView'
 import DashaTimeline from './components/DashaTimeline'
 import CharaDashaView from './components/CharaDashaView'
@@ -31,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { Card, CardContent } from '@/components/ui/card'
 import PageHeader from './components/PageHeader'
+import type { BirthInput } from '@/engine/compute/types'
 
 type Tab = 'summary' | 'grahas' | 'charts' | 'ashtakavarga' | 'yogas' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
 
@@ -70,9 +71,32 @@ interface SavedChartSummary {
   createdAt: string
 }
 
+interface ComputeForm {
+  name: string
+  date: string
+  time: string
+  timezone: string
+  latitude: string
+  longitude: string
+  sunriseMode: 'precise' | 'jhora'
+}
+
+/** Birth context must stay paired with the chart result that it produced. */
+function birthInputFromForm(form: ComputeForm): BirthInput {
+  return {
+    name: form.name || undefined,
+    date: form.date,
+    time: form.time,
+    timezone: parseFloat(form.timezone),
+    latitude: parseFloat(form.latitude),
+    longitude: parseFloat(form.longitude),
+    sunriseMode: form.sunriseMode,
+  }
+}
+
 export default function ComputePage() {
   const router = useRouter()
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ComputeForm>({
     name: '',
     date: '',
     time: '',
@@ -84,6 +108,7 @@ export default function ComputePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]   = useState<string | null>(null)
   const [result, setResult] = useState<any | null>(null)
+  const [resultBirthData, setResultBirthData] = useState<BirthInput | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('summary')
 
   // Save chart state
@@ -132,21 +157,16 @@ export default function ComputePage() {
     setError(null)
     setSaveMessage(null)
     try {
+      const submittedBirthData = birthInputFromForm(form)
       const res = await fetch('/api/compute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name || undefined,
-          date: form.date, time: form.time,
-          timezone: parseFloat(form.timezone),
-          latitude: parseFloat(form.latitude),
-          longitude: parseFloat(form.longitude),
-          sunriseMode: form.sunriseMode,
-        }),
+        body: JSON.stringify(submittedBirthData),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Computation failed'); return }
       setResult(data)
+      setResultBirthData(submittedBirthData)
       setActiveTab('summary')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error')
@@ -270,6 +290,7 @@ export default function ComputePage() {
         longitude: String(birth.longitude ?? ''),
         sunriseMode: (birth.sunriseMode ?? data.sunriseMode ?? 'precise') as 'precise' | 'jhora',
       }
+      const loadedBirthData = birthInputFromForm(loadedForm)
       setForm(loadedForm)
 
       // Recompute for display — deterministic and fast, avoids storing a
@@ -277,15 +298,7 @@ export default function ComputePage() {
       const computeRes = await fetch('/api/compute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: loadedForm.name || undefined,
-          date: loadedForm.date,
-          time: loadedForm.time,
-          timezone: parseFloat(loadedForm.timezone),
-          latitude: parseFloat(loadedForm.latitude),
-          longitude: parseFloat(loadedForm.longitude),
-          sunriseMode: loadedForm.sunriseMode,
-        }),
+        body: JSON.stringify(loadedBirthData),
       })
       const computed = await computeRes.json()
       if (!computeRes.ok) {
@@ -294,6 +307,7 @@ export default function ComputePage() {
       }
 
       setResult(computed)
+      setResultBirthData(loadedBirthData)
       setActiveTab('summary')
       setSaveMessage(null)
       setError(null)
@@ -579,7 +593,14 @@ export default function ComputePage() {
             )}
             {activeTab === 'dasha' && (
               <SectionBoundary section="Dasha (Vimshottari)">
-                <DashaTimeline dashaTree={result.dashaTree} />
+                {resultBirthData ? (
+                  <DashaTimeline
+                    dashaTree={result.dashaTree}
+                    gocharSource={{ kind: 'unsaved', birthData: resultBirthData }}
+                  />
+                ) : (
+                  <SectionUnavailable section="Dasha (Vimshottari)" />
+                )}
               </SectionBoundary>
             )}
             {activeTab === 'charadasha' && (
@@ -589,7 +610,18 @@ export default function ComputePage() {
             )}
             {activeTab === 'transits' && (
               <SectionBoundary section="Transits">
-                <TransitsView data={result.chart.transits} birthDate={form.date} />
+                {resultBirthData ? (
+                  <TransitsView
+                    data={result.chart.transits}
+                    birthDate={resultBirthData.date}
+                    gocharSource={{ kind: 'unsaved', birthData: resultBirthData }}
+                    natalD1={Array.isArray(result.chart.divisionalCharts)
+                      ? result.chart.divisionalCharts.find((chart: { division?: number }) => chart.division === 1)
+                      : undefined}
+                  />
+                ) : (
+                  <SectionUnavailable section="Transits" />
+                )}
               </SectionBoundary>
             )}
             {activeTab === 'pinda' && (

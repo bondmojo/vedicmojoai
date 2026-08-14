@@ -22,8 +22,9 @@ Claude Desktop ──stdio──▶ this server ──HTTP──▶ Next.js app 
     `get_divisional_chart`, `get_dasha_tree`, `get_active_dasha`,
     `get_ashtakavarga`, `get_relationships`, `get_jaimini`, `get_bhava_bala`,
     `get_transits`
-  - Timeline: `get_timeline_periods` (scored MD/AD/PD "trigger points"),
-    `get_domain_dataset` (domain-scoped data + timeline)
+  - Dated ranges: `get_gochar` (UTC Lahiri sign/whole-sign-house occupancy;
+    Moon opt-in), `get_timeline_periods` (scored MD/AD/PD "trigger points")
+  - Timeline data: `get_domain_dataset` (domain-scoped data + timeline)
   - Matchmaking: `compute_match` (Ashtakoota/Guna Milan + Mangal Dosha for two
     saved charts — read-only preview, never persists a `CompatibilityMatch`)
   - Knowledge: `list_knowledge`, `get_domain_knowledge`, `get_framework`

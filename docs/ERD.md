@@ -173,6 +173,12 @@ chart data regardless of how it was ingested, using **one JSONB column per
 domain**. This lets the AI pipeline read exactly the domain it needs and lets the
 compute path skip LLM Wave 1 entirely.
 
+**Gochar note (no schema change):** `POST /api/gochar` is a read-only compute
+path. For a saved chart it reads the existing `moonLongitude` and
+`lagnaLongitude` scalar fields; for unsaved birth data it derives the same two
+values in memory. Gochar intervals are never persisted, and this feature adds no
+table, column, index, relation, or migration.
+
 ```
 ┌───────────────────────────────────────────────┐    1:N (nullable)   ┌──────────────────────┐
 │              UnifiedChart                      │────────────────────▶│     PipelineRun      │

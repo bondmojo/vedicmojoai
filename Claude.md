@@ -80,6 +80,22 @@ tab (`app/components/GrahasTable.tsx`; `KarakaTable.tsx` deleted, `PlanetTable.t
 added a **Yogas** tab after Ashtakavarga rendering the deterministic `chart.yogas`
 catalogue.
 
+The **Transits → Gochar** section keeps the current-position table, renders four
+compact North-Indian charts (natal D1, JHora-style Transit Moment Chart from the
+moving Ascendant, plus current Lahiri Gochar from birth Lagna and natal Moon), and
+adds a date-range form backed by `POST /api/gochar`. The four diagrams use the
+current `TransitAnalysis.asOf`
+snapshot; the range form remains the UTC ingress-interval view. It uses the
+immutable unsaved birth-data snapshot captured with the visible chart (never a
+live form or potentially stale loaded-chart id), preserves the inclusive calendar
+end date the practitioner chose, and excludes the Moon unless explicitly selected.
+
+The **Dasha (Vimshottari)** timeline also gives every PD a focusable `View Gochar`
+control. One PD expansion is open at a time; it forwards that PD's exact UTC ISO
+start/end instants, defaults the Moon off with a local opt-in, and keeps a failed
+request selected so it can be retried in place. It uses the same immutable chart
+birth-data snapshot as the Transits section.
+
 Alongside these, the home page also offers
 **Varshaphal** (Tajika annual solar-return chart) as an on-demand, stateless
 tool: `POST /api/compute/varshaphal`
@@ -147,9 +163,9 @@ ready-to-run analysis workflows (Prompts) so the *reasoning* is billed to the
 caller's own Claude subscription, not this app's API budget. **Deliberately
 never calls the paid pipelines** (`analyze`, `duration-analysis` POST) —
 enforced by `tests/mcp-cost-guard.test.ts`, which statically scans
-`mcp/src/*.ts` regardless of transport. Backed by two new read-only, no-LLM
-routes: `POST /api/timeline` (deterministic period scoring) and
-`GET /api/knowledge/**` (rubrics). Auth is a per-user `McpApiToken` (see User
+`mcp/src/*.ts` regardless of transport. Backed by three read-only, no-LLM
+routes: `POST /api/timeline` (deterministic period scoring), `POST /api/gochar`
+(UTC Lahiri Gochar range), and `GET /api/knowledge/**` (rubrics). Auth is a per-user `McpApiToken` (see User
 Management above) — each practitioner generates their own token from
 `/account`.
 
@@ -275,7 +291,7 @@ app/            Next.js App Router (pages + /api routes)
   account/        Account settings — logout, MCP token generate/revoke
   oauth/authorize/  MCP OAuth consent screen (Server Component)
   .well-known/    RFC 8414/9728 OAuth discovery metadata routes
-  api/            Route handlers (auth, account, charts, compute, unified-charts, matchmaking, runs, reports, health, mcp, oauth)
+  api/            Route handlers (auth, account, charts, compute, gochar, unified-charts, matchmaking, runs, reports, health, mcp, oauth)
 engine/         Pipeline + deterministic compute
   compute/        Swiss Ephemeris modules (pure functions, no DB)
   waves/          wave1–wave4 utilities

@@ -14,7 +14,7 @@ when the Chart Compute UI became the home page):
 | `NorthIndianChart.tsx` | Diamond-style Rashi chart |
 | `SouthIndianChart.tsx` | South Indian square chart |
 | `ChartGrid.tsx` | Multi-chart grid (D1–D60) |
-| `DashaTimeline.tsx` | Visual dasha period timeline |
+| `DashaTimeline.tsx` | Visual Vimshottari dasha hierarchy. Every PD is a focusable `View Gochar` control; its single local expansion requests the PD's unmodified exact UTC ISO bounds through `useGocharRange`, defaults the Moon off, supports a local Moon opt-in/retry, and renders `GocharRangeTable`. It receives the immutable birth-data snapshot captured with the displayed chart, so later form edits cannot change Gochar's natal context. |
 | `GrahasTable.tsx` | **Grahas tab** — one row per graha, 14 columns (sign, degree, house, retro, D1 dignity, nakshatra/pada/lord/sub-lord, karaka, speed, longitude). Merges the former Planets / Nakshatras / Karakas tabs; the karaka cell is a hover/focus disclosure, not a column |
 | `PlanetTable.tsx` | Planet positions/dignities table — **no longer on the home tab strip**; kept because `DurationComputationResults` still consumes it |
 | `NakshatraTable.tsx` | Nakshatra analysis view — same: embedded-only, kept for `DurationComputationResults` |
@@ -25,7 +25,10 @@ when the Chart Compute UI became the home page):
 | `KeyDignitiesPanel.tsx` | Summary-tab "Key Dignities" card (extracted from `ChartSummaryTab.tsx`) — dignity, vargottama and combustion chips, each a `<button aria-describedby>` disclosure carrying a `getVargaDignityReason` sentence |
 | `SadeSatiPanel.tsx` | Both Sade Sati readings (sign-based + degree-based) as two separately labelled groups with different row shapes; extracted from `TransitsView`'s `sadesati` sub-tab |
 | `PindaStrengthView.tsx` | Pinda/Bala strength bars |
-| `TransitsView.tsx` | Current transits overlay |
+| `GocharRangeTable.tsx` | Shared UTC occupancy-interval table for Gochar range responses. It groups in returned graha order, keeps time-of-day visible for sub-day re-entries, declares `includedGrahas`/Moon inclusion, and uses horizontal overflow at narrow widths. Its contracts import only from `@/lib/gocharRange`, never the compute barrel. |
+| `GocharCharts.tsx` | Four compact North-Indian diagrams in Transits → Gochar: natal D1, a JHora-style Transit Moment Chart from the moving Ascendant at `asOf`/birthplace, and current Lahiri Gochar from birth Lagna and natal Moon. It uses the same immutable chart result as the surrounding current-transit table; it is not a date-range/ingress renderer. |
+| `useGocharRange.ts` | Client-only deterministic `POST /api/gochar` hook. Uses a discriminated saved/unsaved chart source, component-lifetime cache, request-sequence stale-response protection, and a single-message API-error rule. |
+| `TransitsView.tsx` | Current transits overlay, four Lahiri Gochar charts, and a Gochar range form. The charts and form receive the immutable result/birth-data snapshots captured with the displayed chart from `app/page.tsx`, so later edits cannot query or render a different natal context; its bare `dateTo` remains the user-visible inclusive calendar date even though the API resolves an exclusive next-midnight bound. |
 | `VarshaphalView.tsx` | Tajika annual solar-return chart (year picker + results) |
 | `SectionUnavailable.tsx` | Shared `SectionUnavailable` message (`role="status"`) + `SectionBoundary` client error boundary — one fixed wording for absent/malformed/throwing sections, never an exception type, stack or field path |
 
@@ -43,6 +46,9 @@ when the Chart Compute UI became the home page):
 - Use SVG for chart diagrams (not canvas)
 - All chart types defined in `chartTypes.ts`
 - Responsive: work at 300px–800px widths
+- Client-safe Gochar types come from `@/lib/gocharRange`. Do not import Gochar
+  response types from `@/engine/compute`, whose runtime chain includes native
+  Swiss Ephemeris.
 - A section whose data is absent or malformed renders `<SectionUnavailable section="…" />`
   rather than throwing or rendering a partial diagram — guard with `sectionGuards.ts`
 - **The guard is two layers, and both are wired.** `guardSection` at the top of a pane checks the
