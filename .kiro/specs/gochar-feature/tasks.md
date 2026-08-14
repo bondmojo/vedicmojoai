@@ -34,8 +34,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
 
 ## Tasks
 
-- [ ] 1. Gochar engine types and stable constants (`engine/compute/gochar.ts`)
-  - [ ] 1.1 Add `GocharGraha`, `GocharRangeInput`, `GocharOccupancyInterval`,
+- [x] 1. Gochar engine types and stable constants (`engine/compute/gochar.ts`)
+  - [x] 1.1 Add `GocharGraha`, `GocharRangeInput`, `GocharOccupancyInterval`,
     `GocharRangeResult`, `NatalGocharContext` exactly as specified in
     design.md's "New module and public contracts"
     - New file `engine/compute/gochar.ts`. Do **not** put these types in
@@ -45,11 +45,11 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       are re-exported there today)
     - _Design: Compute Engine — "New module and public contracts"_
     - _Requirements: R1.1, R1.3_
-  - [ ] 1.2 Add `DEFAULT_GOCHAR_GRAHAS` (8) and `ALL_GOCHAR_GRAHAS` (9) as
+  - [x] 1.2 Add `DEFAULT_GOCHAR_GRAHAS` (8) and `ALL_GOCHAR_GRAHAS` (9) as
     `readonly` tuples, in the stable output order design.md specifies
     - _Design: Compute Engine — "Graha selection"_
     - _Requirements: R2.5, R7.2_
-  - [ ] 1.3 Add `GOCHAR_BODY_IDS` as the single ephemeris-boundary widening
+  - [x] 1.3 Add `GOCHAR_BODY_IDS` as the single ephemeris-boundary widening
     point from loose `string` planet names to `GocharGraha`
     - Mirror `PLANET_IDS` from `engine/compute/transits.ts`. The ids there are
       **verified** as: Sun=0, Moon=1, Mercury=2, Venus=3, Mars=4, Jupiter=5,
@@ -59,18 +59,18 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       `PLANET_IDS` with a cast
     - _Design: Compute Engine — "Type boundary with `transits.ts`"_
     - _Requirements: R1.2_
-  - [ ] 1.4 Write the body-table drift test
+  - [x] 1.4 Write the body-table drift test
     - File: `engine/compute/gochar.bodyIds.test.ts`. Assert `GOCHAR_BODY_IDS`
       entries against the literal id values `transits.ts` uses (listed in 1.3)
       for every `GocharGraha` except `'Ketu'`, and that `'Ketu'` is absent
     - _Design: Testing Strategy — "Body-table drift"_
     - _Requirements: R1.2_
 
-- [ ] 2. Ephemeris setup + cusp-proximity adaptive boundary scanner
+- [x] 2. Ephemeris setup + cusp-proximity adaptive boundary scanner
   - **This is the correctness-critical task.** Do not let Task 3's fixed-date
     regression tests substitute for it: per design.md an ordinary retrograde
     fixture spans weeks and cannot exercise the defect 2.2 exists to close
-  - [ ] 2.1 Establish sidereal ephemeris setup — do this FIRST, before any
+  - [x] 2.1 Establish sidereal ephemeris setup — do this FIRST, before any
     scanning logic
     - Every swisseph entry point in `transits.ts` performs these three steps, and
       the Gochar module MUST do the same:
@@ -96,7 +96,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Resolved Design Decisions — "Ephemeris/model"; Compute Engine —
       "Use the same body IDs and Lahiri sidereal flags as `transits.ts`"_
     - _Requirements: R1.2, R1.5_
-  - [ ] 2.2 Write the sidereal-setup assertion test
+  - [x] 2.2 Write the sidereal-setup assertion test
     - File: `engine/compute/gochar.sidereal.test.ts`. For one fixed JD, assert
       the Gochar module's own longitude reader returns a **sidereal** value —
       i.e. it differs from the tropical longitude for the same body/JD by
@@ -106,7 +106,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - This is the guard for both silent failure modes in 2.1 and must exist
       before 2.3 is written
     - _Requirements: R1.2, R1.5_
-  - [ ] 2.3 Implement `degreesToNearestCusp()` and `stepIsSafe()`
+  - [x] 2.3 Implement `degreesToNearestCusp()` and `stepIsSafe()`
     - Exactly as given in design.md's "Cusp-proximity refinement" — distance to
       the nearest 30° cusp in `[0, 15]`, and a safety check using the body's
       **instantaneous** `longitudeSpeed` from the same `swe_calc_ut` call that
@@ -115,7 +115,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Compute Engine — "Cusp-proximity refinement (required for
       correctness)"_
     - _Requirements: R1.5, R2.7, R2.8_
-  - [ ] 2.4 Implement the end-bounded, adaptive-step state-change scanner
+  - [x] 2.4 Implement the end-bounded, adaptive-step state-change scanner
     - New internal helper distinct from `transits.ts`'s `nextStateChange()`
       (which scans forward unbounded, guarded at 5000 iterations, and cannot be
       reused as-is per design.md)
@@ -129,7 +129,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Compute Engine — "Range scan algorithm", "Cusp-proximity
       refinement"_
     - _Requirements: R1.5, R2.6, R2.7, R2.8_
-  - [ ] 2.5 Derive and pin cusp-proximity fixture instants
+  - [x] 2.5 Derive and pin cusp-proximity fixture instants
     - Write a throwaway local search (run once; not committed as a script) that
       walks a wide horizon per slow graha (Jupiter, Saturn, Rahu) looking for an
       instant within ~0.5° of a 30° cusp with `|longitudeSpeed|` near zero
@@ -139,7 +139,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       test time
     - _Design: Testing Strategy — "Derive the fixture, do not guess a date"_
     - _Requirements: R2.7, R2.8_
-  - [ ] 2.6 Write cusp-proximity differential, round-trip, and cost-guard tests
+  - [x] 2.6 Write cusp-proximity differential, round-trip, and cost-guard tests
     - File: `engine/compute/gochar.cuspProximity.test.ts`
     - **Differential assertion**: for each pinned window, the adaptive scanner
       SHALL return strictly more intervals than a deliberately naive fixed-step
@@ -156,8 +156,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       case)"_
     - _Requirements: R2.7, R2.8, R2.9_
 
-- [ ] 3. `computeGocharRange()` — public entry point
-  - [ ] 3.1 Implement input validation and the per-graha scan loop
+- [x] 3. `computeGocharRange()` — public entry point
+  - [x] 3.1 Implement input validation and the per-graha scan loop
     - Validate finite natal sign numbers in `1..12`, finite `start`/`end` dates,
       and `start < end`; throw a typed validation error otherwise (the engine is
       not responsible for request-shape validation — that is the API's job)
@@ -173,11 +173,11 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       `moonIncluded` always populated
     - _Design: Compute Engine — "Range scan algorithm"_
     - _Requirements: R1.1, R1.2, R1.3, R1.4, R1.6, R1.7, R2.5, R2.6, R2.9, R8.1_
-  - [ ] 3.2 Re-export `computeGocharRange`, `GocharGraha`,
+  - [x] 3.2 Re-export `computeGocharRange`, `GocharGraha`,
     `GocharRangeResult`, `GocharOccupancyInterval`, `DEFAULT_GOCHAR_GRAHAS`,
     `ALL_GOCHAR_GRAHAS` from `engine/compute/index.ts`
     - _Design: Compute Engine — "New module and public contracts"_
-  - [ ] 3.3 Write fixed-date regression tests
+  - [x] 3.3 Write fixed-date regression tests
     - File: `engine/compute/gochar.range.test.ts`. For a fixed natal
       Moon/Lagna sign pair and a fixed one-year range: stable graha order,
       requested-range clipping at both ends, first/last interval boundary
@@ -187,22 +187,22 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       local-time serialization regression fails loudly (R8.1)
     - _Design: Testing Strategy — "Fixed-date regression tests"_
     - _Requirements: R1.1, R1.7, R2.6, R2.9, R7.1, R8.1_
-  - [ ] 3.4 Write Moon opt-in tests
+  - [x] 3.4 Write Moon opt-in tests
     - Same file as 3.3. `includeMoon: false` returns exactly
       `DEFAULT_GOCHAR_GRAHAS` (8, no `'Moon'` entry); `includeMoon: true` returns
       all 9. Coverage assertions from 3.3 must be re-run per returned graha, not
       against a hardcoded count of 9
     - _Design: Testing Strategy — "Moon tests"_
     - _Requirements: R1.1, R2.5, R7.2_
-  - [ ] 3.5 Write whole-sign house arithmetic tests
+  - [x] 3.5 Write whole-sign house arithmetic tests
     - Same file as 3.3, against 2–3 known Moon/Lagna sign combinations, including
       a wrap-around case (e.g. natal sign 11 or 12) to exercise the `% 12`
       modulo correctly
     - _Design: Compute Engine — house formula_
     - _Requirements: R1.4_
 
-- [ ] 4. Minimal natal-context helper (avoid `computeFullChart()`)
-  - [ ] 4.1 Implement `resolveNatalGocharContext(input: BirthInput)`
+- [x] 4. Minimal natal-context helper (avoid `computeFullChart()`)
+  - [x] 4.1 Implement `resolveNatalGocharContext(input: BirthInput)`
     - Co-locate with the Gochar module or in `engine/compute/planets.ts`, using
       only existing exports: `birthInputToJulianDay()` → `computeAscendant()` →
       `computePlanetPositions()`, exactly as given in design.md. Throw if the
@@ -214,7 +214,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: API Design — "Minimal natal context (do not call
       computeFullChart())"_
     - _Requirements: R1.6, R5.3_
-  - [ ] 4.2 Write the natal-context equivalence test
+  - [x] 4.2 Write the natal-context equivalence test
     - File: `engine/compute/gochar.natalContext.test.ts`. For a fixed birth
       input, assert `resolveNatalGocharContext()` returns the identical two sign
       numbers `computeFullChart()` would (`chart.planets.find(p =>
@@ -224,8 +224,8 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - _Design: Testing Strategy — "Natal-context equivalence"_
     - _Requirements: R1.6_
 
-- [ ] 5. Date-bound parsing and span policy (`lib/gocharRange.ts`)
-  - [ ] 5.1 Implement `parseGocharBounds(dateFrom, dateTo)`
+- [x] 5. Date-bound parsing and span policy (`lib/gocharRange.ts`)
+  - [x] 5.1 Implement `parseGocharBounds(dateFrom, dateTo)`
     - Bare `YYYY-MM-DD` → that date's `00:00:00.000Z` (dateFrom) / the following
       UTC midnight (dateTo); a full ISO instant (must carry `Z`) is used
       verbatim; mixed bare/full input across the two fields is supported under
@@ -234,14 +234,14 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
     - `start >= end` throws a typed validation error
     - _Design: Compute Engine — "Date-bound parsing and span policy"_
     - _Requirements: R2.1, R2.2, R2.3, R2.4, R2.11, R8.1_
-  - [ ] 5.2 Implement `validateGocharSpan(bounds, includeMoon)`
+  - [x] 5.2 Implement `validateGocharSpan(bounds, includeMoon)`
     - Duration-based check (not calendar-year label comparison): throws when the
       resolved `end - start` exceeds 366 days with `includeMoon: true`, or 1096
       days with `includeMoon: false`
     - _Design: Compute Engine — "The limits are duration limits, not
       calendar-year label comparisons"_
     - _Requirements: R2.10_
-  - [ ] 5.3 Write date-parser and span-policy unit tests
+  - [x] 5.3 Write date-parser and span-policy unit tests
     - File: `lib/gocharRange.test.ts`. Cover: bare dates, full ISO instants,
       mixed bounds, reversed bounds, malformed input, no-timezone-offset
       application (assert against explicit UTC millis, not
@@ -250,7 +250,7 @@ Run tests single-shot only: `npx vitest run` (never watch mode).
       (passes) and one millisecond beyond it (fails)
     - _Design: Testing Strategy — "Date parser tests", "Span tests"_
     - _Requirements: R7.3, R7.4_
-  - [ ] 5.4 Write the "span cap never blocks a PD" invariant test
+  - [x] 5.4 Write the "span cap never blocks a PD" invariant test
     - Same file as 5.3. Assert a **203-day** span (the longest possible
       Vimshottari PD — Venus–Venus–Venus, `20 × 20/120 × 20/120` years) passes
       `validateGocharSpan()` for `includeMoon: false` **and** `includeMoon: true`

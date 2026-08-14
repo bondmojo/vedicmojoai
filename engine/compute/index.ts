@@ -73,6 +73,14 @@ export { computeCharaDasha } from './charaDasha'
 export { computeYogas } from './yogas'
 export type { YogaInput } from './yogas'
 export { MATCHMAKING_TABLES_VERSION } from './matchmakingTables'
+export type {
+  GocharGraha,
+  GocharRangeInput,
+  GocharOccupancyInterval,
+  GocharRangeResult,
+  NatalGocharContext,
+} from './gochar'
+export { DEFAULT_GOCHAR_GRAHAS, ALL_GOCHAR_GRAHAS, GOCHAR_BODY_IDS, computeGocharRange, GocharValidationError, resolveNatalGocharContext } from './gochar'
 
 /**
  * Computes a complete Vedic chart from birth data.
