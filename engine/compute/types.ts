@@ -689,7 +689,21 @@ export interface ComputedChart {
   lagnaLongitude: number
   lagnaDegreeInSign: number
   planets: PlanetPosition[]
+  /**
+   * The 9 grahas' nakshatra entries followed by a final `planet: 'Ascendant'`
+   * entry (10 total). Consumers that reason about planet-to-planet nakshatra
+   * geometry MUST filter `planet !== 'Ascendant'` first — `computeFullChart`
+   * already passes a planets-only array into `computeNakshatraRelationships`.
+   */
   nakshatras: NakshatraInfo[]
+  /**
+   * The Ascendant (Lagna) nakshatra — the same longitude→nakshatra arithmetic
+   * used for the grahas applied to `lagnaLongitude` (PVR/JHora methodology).
+   * Prefer this over scanning `nakshatras` for `planet === 'Ascendant'`.
+   * Purely derived from `lagnaLongitude`, so it can always be recomputed for
+   * charts stored before this field existed.
+   */
+  ascendantNakshatra: NakshatraInfo
   divisionalCharts: DivisionalChart[]
   charaKarakas: CharaKaraka[]
   ashtakavarga: AshtakavargaResult

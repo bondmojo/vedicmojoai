@@ -80,7 +80,11 @@ export function getOAuthIssuerUrl(): string {
 }
 
 export const AUTHORIZATION_CODE_TTL_MS = 5 * 60 * 1000
-export const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000
+/**
+ * Access-token lifetime — 10 years, i.e. "effectively never expires" for the
+ * MCP clients that hold these tokens (no periodic re-auth in practice).
+ */
+export const ACCESS_TOKEN_TTL_MS = 10 * 365.25 * 24 * 60 * 60 * 1000
 export const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000
 
 /**

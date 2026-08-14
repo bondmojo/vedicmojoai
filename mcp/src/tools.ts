@@ -111,7 +111,7 @@ export function registerTools(server: McpServer, api: ApiClient): void {
     {
       title: 'Compute a full natal chart from birth data',
       description:
-        'Deterministic Swiss-Ephemeris computation: planets, 13 divisional charts (D1–D60), nakshatras, karakas, ashtakavarga, shadbala, relationships, Jaimini, bhava bala, plus the Vimshottari dasha tree and the Jaimini Chara Dasha. Nothing is saved.',
+        'Deterministic Swiss-Ephemeris computation: planets, 13 divisional charts (D1–D60), nakshatras, karakas, ashtakavarga, shadbala, relationships, Jaimini, bhava bala, plus the Vimshottari dasha tree and the Jaimini Chara Dasha. Nothing is saved. NOTE: `nakshatras` carries the 9 grahas PLUS a final entry with `planet: "Ascendant"` — the Lagna nakshatra/pada/lord/sub-lord. Filter it out when you need grahas only.',
       inputSchema: birthDataSchema.shape,
     },
     async (a) => guard(async () => ok(await api.post('/api/compute', a)))

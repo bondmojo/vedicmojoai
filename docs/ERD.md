@@ -191,7 +191,7 @@ compute path skip LLM Wave 1 entirely.
 │    gender            TEXT?  "male"|"female"|"other" (v1.5) │
 │ ── domain JSONB columns (compute engine) ──    │
 │    planets           JSONB?  PlanetPosition[]  │
-│    nakshatras        JSONB?  NakshatraInfo[]   │
+│    nakshatras        JSONB?  NakshatraInfo[]   │ ← 9 grahas + 'Ascendant'
 │    divisionalCharts  JSONB?  DivisionalChart[] │
 │    karakas           JSONB?  CharaKaraka[]     │
 │    ashtakavarga      JSONB?  AshtakavargaResult│
@@ -601,9 +601,11 @@ ComputedChart (root)
 │   ├── planet, longitude, latitude, speed
 │   ├── retrograde, sign, signNumber
 │   ├── degreeInSign, house
-├── nakshatras[]: NakshatraInfo[]
+├── nakshatras[]: NakshatraInfo[]            ← 9 grahas + a final 'Ascendant' entry (10 total)
 │   ├── planet, nakshatra, nakshatraIndex
-│   ├── pada, nakshatraLord, degreeInNakshatra
+│   ├── pada, nakshatraLord, degreeInNakshatra, subLord
+├── ascendantNakshatra: NakshatraInfo        ← Lagna nakshatra (planet: 'Ascendant');
+│                                              derived purely from lagnaLongitude
 ├── divisionalCharts[]: DivisionalChart[]    ← D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60
 │   ├── division, name, shortName
 │   ├── lagna, lagnaSignNumber, lagnaDegreee
