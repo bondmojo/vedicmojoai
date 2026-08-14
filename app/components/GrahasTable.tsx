@@ -135,11 +135,16 @@ export default function GrahasTable({
     isNonEmptyArray<CharaKaraka>(charaKarakas) &&
     charaKarakas.some((k) => grahas.some((p) => p.planet === k.planet))
 
+  // Ascendant Nakshatra entry (if present in the nakshatras array)
+  const ascNak = isNonEmptyArray<NakshatraInfo>(nakshatras)
+    ? nakshatras.find((n) => n.planet === 'Ascendant')
+    : undefined
+
   return (
     <div className="rounded-lg border border-gray-700 overflow-hidden">
       <div className="bg-gray-800/50 px-4 py-3 border-b border-gray-700 space-y-1">
         <h3 className="text-sm font-semibold">Grahas</h3>
-        <p className="text-xs text-gray-500">Lagna: {lagna} | Sidereal (Lahiri Ayanamsa)</p>
+        <p className="text-xs text-gray-500">Lagna: {lagna}{ascNak ? ` | Nak: ${ascNak.nakshatra} (P${ascNak.pada}) | Nak Lord: ${ascNak.nakshatraLord} | Sub Lord: ${ascNak.subLord}` : ''} | Sidereal (Lahiri Ayanamsa)</p>
         {/* R4.1 legend — static text, no hover/click/expansion. */}
         <p className="text-xs text-gray-500">
           Graha text colour identifies the graha only — it carries no strength or dignity meaning.

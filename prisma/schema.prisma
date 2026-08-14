@@ -54,7 +54,7 @@ model UnifiedChart {
 
   // ─── Domain JSONB columns (compute engine output) ───
   planets          Json?    // PlanetPosition[]
-  nakshatras       Json?    // NakshatraInfo[]
+  nakshatras       Json?    // NakshatraInfo[] — 9 grahas + a final 'Ascendant' (lagna) entry
   divisionalCharts Json?    // DivisionalChart[]
   karakas          Json?    // CharaKaraka[]
   ashtakavarga     Json?    // AshtakavargaResult

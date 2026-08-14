@@ -19,7 +19,7 @@
  * test.tsx`, `AshtakavargaView.test.tsx`) calls its component directly as a plain function and
  * inspects the returned React element tree structurally.
  *
- * `ComputePage` is far more stateful than any of those: 13 `useState` calls, one `useEffect`, one
+ * `ComputePage` is far more stateful than any of those: 14 `useState` calls, one `useEffect`, one
  * `useCallback`, and `useRouter()` from `next/navigation`. Calling it directly requires:
  *   - A hook dispatcher stub (same mechanism `AshtakavargaView.test.tsx` already uses) that
  *     additionally covers `useEffect` (no-op — the effect body, and therefore the real
@@ -39,7 +39,7 @@
  * exercise the real `ComputePage` function body and its real `TABS.map(...)` block, while the
  * malformed data flows into (but never executes) each pane.
  *
- * `activeTab` is stubbed via an index-based `useState` override (the 4th `useState` call in
+ * `activeTab` is stubbed via an index-based `useState` override (the 6th `useState` call in
  * source order) so every one of the ten tabs can be exercised as "active" in turn, each time
  * confirming: (a) the tab strip still renders exactly the same ten buttons in the same order with
  * working `onClick` handlers, and (b) constructing the whole page — including the JSX branch for
@@ -64,6 +64,8 @@ vi.mock('next/navigation', () => ({
 }))
 
 import ComputePage from './page'
+import DashaTimeline from './components/DashaTimeline'
+import TransitsView from './components/TransitsView'
 
 // ─── Hook dispatcher stub ────────────────────────────────────────────────
 //
@@ -81,8 +83,9 @@ const REACT_INTERNALS = (React as unknown as {
 /**
  * Runs `fn` with a minimal hook dispatcher installed. `useState` calls are matched by their
  * 0-based call order in `ComputePage`'s source (`form`=0, `loading`=1, `error`=2, `result`=3,
- * `activeTab`=4, `saving`=5, `saveMessage`=6, `loadedChartId`=7, `analyzeSaving`=8,
- * `showCopyPanel`=9, `savedCharts`=10, `loadingCharts`=11, `loadingChart`=12); `stateOverrides`
+ * `resultBirthData`=4, `activeTab`=5, `saving`=6, `saveMessage`=7, `loadedChartId`=8,
+ * `analyzeSaving`=9, `showCopyPanel`=10, `savedCharts`=11, `loadingCharts`=12,
+ * `loadingChart`=13); `stateOverrides`
  * substitutes a value for specific call indices (used here for `result` and `activeTab`) while
  * every other call returns its own initializer verbatim, exactly like a real first render.
  * `useEffect` is a no-op; `useCallback` returns its callback unchanged.
@@ -108,9 +111,11 @@ function callWithStubbedHooks<T>(fn: () => T, stateOverrides: Record<number, unk
   }
 }
 
-// `result` is the 4th `useState` call (0-indexed 3); `activeTab` is the 5th (0-indexed 4).
+// `result` is the 4th `useState` call (0-indexed 3); its paired birth snapshot is the 5th;
+// `activeTab` is the 6th.
 const RESULT_STATE_INDEX = 3
-const ACTIVE_TAB_STATE_INDEX = 4
+const RESULT_BIRTH_DATA_STATE_INDEX = 4
+const ACTIVE_TAB_STATE_INDEX = 5
 
 // ─── Tree-walking helpers (mirrors the sibling component tests) ────────────
 
@@ -155,6 +160,20 @@ function findAll(root: ReactNode, tag: string): ReactElement[] {
     if (el.type === tag) found.push(el)
   })
   return found
+}
+
+function findComponent(root: ReactNode, component: unknown): ReactElement | undefined {
+  if (root === null || root === undefined || typeof root === 'boolean' || typeof root === 'string' || typeof root === 'number') return undefined
+  if (Array.isArray(root)) {
+    for (const child of root) {
+      const found = findComponent(child, component)
+      if (found) return found
+    }
+    return undefined
+  }
+  const element = root as ReactElement
+  if (element.type === component) return element
+  return findComponent(element.props?.children, component)
 }
 
 // ─── Fixture — a chart whose non-tab-strip pane data is malformed or absent ────────────────────
@@ -265,5 +284,51 @@ describe('ComputePage — tab-strip resilience (R8.5)', () => {
     for (const texts of perTabButtonTexts) {
       expect(texts).toEqual(first)
     }
+  })
+})
+
+describe('ComputePage — Gochar chart context', () => {
+  const RESULT_BIRTH_SNAPSHOT = {
+    name: 'Computed chart',
+    date: '1990-04-27',
+    time: '12:00',
+    timezone: 5.5,
+    latitude: 28.6139,
+    longitude: 77.209,
+    sunriseMode: 'precise' as const,
+  }
+
+  it.each([
+    ['transits', TransitsView],
+    ['dasha', DashaTimeline],
+  ])('passes the birth snapshot that produced the visible chart to %s Gochar', (activeTab, component) => {
+    const page = callWithStubbedHooks(() => ComputePage(), {
+      [RESULT_STATE_INDEX]: buildMalformedResult(),
+      [RESULT_BIRTH_DATA_STATE_INDEX]: RESULT_BIRTH_SNAPSHOT,
+      [ACTIVE_TAB_STATE_INDEX]: activeTab,
+    }) as ReactElement
+    const child = findComponent(page, component)
+
+    expect(child?.props.gocharSource).toEqual({ kind: 'unsaved', birthData: RESULT_BIRTH_SNAPSHOT })
+  })
+
+  it('passes the natal D1 belonging to the displayed chart to the Transits Gochar charts', () => {
+    const result = buildMalformedResult()
+    const d1 = {
+      division: 1,
+      name: 'Rāśi',
+      shortName: 'D1',
+      lagna: 'Leo',
+      lagnaSignNumber: 5,
+      planets: [],
+    }
+    ;(result.chart as { divisionalCharts?: unknown }).divisionalCharts = [d1]
+    const page = callWithStubbedHooks(() => ComputePage(), {
+      [RESULT_STATE_INDEX]: result,
+      [RESULT_BIRTH_DATA_STATE_INDEX]: RESULT_BIRTH_SNAPSHOT,
+      [ACTIVE_TAB_STATE_INDEX]: 'transits',
+    }) as ReactElement
+
+    expect(findComponent(page, TransitsView)?.props.natalD1).toBe(d1)
   })
 })

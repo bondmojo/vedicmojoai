@@ -11,6 +11,7 @@
 import crypto from 'crypto'
 import { Prisma } from '@prisma/client'
 import type { ComputedChart, BirthInput, DivisionalChart as ComputeDivisionalChart } from '@/engine/compute/types'
+import { computeNakshatraForLongitude } from '@/engine/compute/nakshatras'
 import type { ChartInputV1, DashaTree, MahaDasha, AntarDasha, PratyanDasha, Gender } from '@/lib/types'
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -262,8 +263,14 @@ export function buildChartInputV1FromUnified(chart: {
       ? chart.moonLongitude
       : chart.moonLongitude.toNumber?.() ?? 0
 
-    // Find lagna nakshatra from nakshatras data (Ascendant entry if present)
-    const lagnaNakEntry = nakshatras?.find((n: any) => n.planet === 'Ascendant')
+    // Lagna nakshatra: prefer a stored 'Ascendant' entry, but fall back to
+    // deriving it from `lagnaLongitude` (a scalar column that has always been
+    // persisted). The derivation is the same pure arithmetic the compute engine
+    // uses, so charts saved BEFORE the Ascendant entry existed still resolve a
+    // lagna nakshatra here — no migration or backfill required.
+    const lagnaNakEntry =
+      nakshatras?.find((n: any) => n.planet === 'Ascendant') ??
+      computeNakshatraForLongitude(lagnaLong, 'Ascendant')
 
     // Map nakshatras to NatalPlanet format
     const natalNakshatras = planets.map((p: any) => {

@@ -21,6 +21,7 @@
 | `/api/reports` | GET | List all completed pipeline runs (Reports page) |
 | `/api/compute` | POST | Run deterministic compute engine (UI: home page `/`) |
 | `/api/compute/varshaphal` | POST | Tajika Varshaphal (annual solar-return chart) for a `varshaYear` — returns Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
+| `/api/gochar` | POST | Authenticated, read-only Lahiri sidereal Gochar range — accepts exactly one saved chart or unsaved birth-data source and returns UTC whole-sign occupancy intervals; Moon is opt-in |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) |
 | `/api/unified-charts/from-compute` | POST | Generate Chart (Path A) — compute + persist `source="compute"` |
 | `/api/unified-charts/from-paste` | POST | Generate Chart (Path B) — validate + persist `source="paste"` |

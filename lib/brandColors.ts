@@ -27,6 +27,7 @@ export const PLANET_COLORS: Record<string, string> = {
   Saturn: 'text-planet-saturn',
   Rahu: 'text-planet-rahu',
   Ketu: 'text-planet-ketu',
+  Ascendant: 'text-amber-400',
 }
 
 /** Safe planet color lookup with fallback to `text-ink`. */

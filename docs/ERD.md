@@ -173,6 +173,12 @@ chart data regardless of how it was ingested, using **one JSONB column per
 domain**. This lets the AI pipeline read exactly the domain it needs and lets the
 compute path skip LLM Wave 1 entirely.
 
+**Gochar note (no schema change):** `POST /api/gochar` is a read-only compute
+path. For a saved chart it reads the existing `moonLongitude` and
+`lagnaLongitude` scalar fields; for unsaved birth data it derives the same two
+values in memory. Gochar intervals are never persisted, and this feature adds no
+table, column, index, relation, or migration.
+
 ```
 ┌───────────────────────────────────────────────┐    1:N (nullable)   ┌──────────────────────┐
 │              UnifiedChart                      │────────────────────▶│     PipelineRun      │
@@ -191,7 +197,7 @@ compute path skip LLM Wave 1 entirely.
 │    gender            TEXT?  "male"|"female"|"other" (v1.5) │
 │ ── domain JSONB columns (compute engine) ──    │
 │    planets           JSONB?  PlanetPosition[]  │
-│    nakshatras        JSONB?  NakshatraInfo[]   │
+│    nakshatras        JSONB?  NakshatraInfo[]   │ ← 9 grahas + 'Ascendant'
 │    divisionalCharts  JSONB?  DivisionalChart[] │
 │    karakas           JSONB?  CharaKaraka[]     │
 │    ashtakavarga      JSONB?  AshtakavargaResult│
@@ -601,9 +607,11 @@ ComputedChart (root)
 │   ├── planet, longitude, latitude, speed
 │   ├── retrograde, sign, signNumber
 │   ├── degreeInSign, house
-├── nakshatras[]: NakshatraInfo[]
+├── nakshatras[]: NakshatraInfo[]            ← 9 grahas + a final 'Ascendant' entry (10 total)
 │   ├── planet, nakshatra, nakshatraIndex
-│   ├── pada, nakshatraLord, degreeInNakshatra
+│   ├── pada, nakshatraLord, degreeInNakshatra, subLord
+├── ascendantNakshatra: NakshatraInfo        ← Lagna nakshatra (planet: 'Ascendant');
+│                                              derived purely from lagnaLongitude
 ├── divisionalCharts[]: DivisionalChart[]    ← D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60
 │   ├── division, name, shortName
 │   ├── lagna, lagnaSignNumber, lagnaDegreee

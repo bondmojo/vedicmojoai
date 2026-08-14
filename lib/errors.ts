@@ -99,3 +99,31 @@ export class InvalidResetTokenError extends Error {
     this.name = 'InvalidResetTokenError'
   }
 }
+
+/**
+ * Thrown when Gochar range inputs are invalid — a natal sign number outside
+ * `1..12`, a non-finite date, reversed bounds, a malformed/non-UTC date string,
+ * or a span exceeding the per-Moon-tier cap. Distinct from an ephemeris
+ * (runtime) failure so `POST /api/gochar` can return 400 rather than 500.
+ *
+ * **Why it lives here and not in `engine/compute/gochar.ts`.** Two modules throw
+ * it: the ephemeris-bearing range engine (`engine/compute/gochar.ts`, which
+ * imports the native `swisseph-v2`) and the pure date parser
+ * (`lib/gocharRange.ts`, which has no astronomical logic at all). If the class
+ * were owned by the engine module, importing the parser would transitively pull
+ * the native ephemeris binary into any consumer — including the client-side
+ * `useGocharRange` hook and the Transits-tab form, which read the span-cap
+ * constants from the parser and would fail to bundle a `.node` binary.
+ *
+ * `lib/errors.ts` has zero imports, so it is safe for both sides to depend on,
+ * and there is exactly one class definition — `instanceof` works uniformly
+ * whichever module threw.
+ *
+ * Spec: .kiro/specs/gochar-feature/ — design.md "Error Handling"
+ */
+export class GocharValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GocharValidationError'
+  }
+}

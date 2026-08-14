@@ -54,6 +54,7 @@ function callWithStubbedHooks<T>(fn: () => T): T {
     ],
     useEffect: () => {},
     useCallback: (cb: unknown) => cb,
+    useRef: (initial: unknown) => ({ current: initial }),
   }
   try {
     return fn()

@@ -17,6 +17,53 @@ The following are shown:
 
 ---
 
+## Date-Range Gochar (Dated Sign and House Occupancy)
+
+The **Transits → Gochar** section can also calculate a requested date range. It
+returns the exact UTC intervals during which each requested graha occupies a
+sidereal sign, together with its whole-sign house from the natal Moon and birth
+Lagna. The result is positional data only: it does not add interpretation,
+aspects, stations, or a persisted transit record.
+
+### Grahas, bounds, and UTC display
+
+- The default range returns Sun, Mercury, Venus, Mars, Jupiter, Saturn, Rahu,
+  and Ketu. Moon is an explicit opt-in because it creates roughly 162 extra
+  intervals per year; the other eight together usually produce about 55–70.
+- A bare `dateFrom` and `dateTo` are inclusive UTC calendar dates. Internally,
+  the end is resolved to the following UTC midnight so every interval is a
+  half-open `[start, end)` range. Exact ISO UTC instants are accepted for
+  Vimshottari PD requests and are preserved without date truncation.
+- The maximum duration is three years without Moon and one year with Moon.
+  These are duration limits, not calendar-year labels.
+- All returned boundaries are labelled **UTC**. Jagannatha Hora may display an
+  ingress in local civil time, so comparisons must first convert its displayed
+  local timestamp to UTC; an ingress near local midnight can legitimately have
+  a different calendar date after that conversion.
+
+### How exact occupancy intervals are found
+
+The engine uses the same Swiss Ephemeris Lahiri sidereal setup as current
+transits. For each graha it opens an interval at the requested start, scans
+forward until a sign state changes, refines the crossing with 42 bisection
+iterations, closes that interval, and opens the next one. The final interval is
+clipped exactly to the requested end. Rahu is calculated directly and Ketu is
+derived as the opposite point.
+
+A fixed coarse step alone is not reliable near a retrograde station: a slow
+graha can briefly cross a sign cusp and re-enter before the next sample. Before
+accepting a no-change step, the scanner checks the graha's instantaneous
+longitude speed and distance to the nearest 30° sign cusp. It halves an unsafe
+step down to a one-hour floor, then retains every resulting re-entry interval,
+including sub-day intervals. This preserves complete per-graha coverage rather
+than silently smoothing a real retrograde excursion away.
+
+The Vimshottari timeline uses the same range calculation from each PD's exact
+UTC start and end. A PD row has a focusable **View Gochar** control; only one PD
+range is expanded at a time and Moon remains opt-in there too.
+
+---
+
 ## Sade Sati
 
 ### Definition

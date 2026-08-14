@@ -11,7 +11,7 @@ import {
   getAyanamsa,
 } from './planets'
 import { computeDivisionalCharts, vargaSignForLongitude } from './divisional'
-import { computeNakshatras, computeSubLord } from './nakshatras'
+import { computeNakshatras, computeNakshatraForLongitude } from './nakshatras'
 import { computeCharaKarakas } from './karakas'
 import { computeAshtakavarga } from './ashtakavarga'
 import { computeUpagrahas } from './upagrahas'
@@ -73,6 +73,16 @@ export { computeCharaDasha } from './charaDasha'
 export { computeYogas } from './yogas'
 export type { YogaInput } from './yogas'
 export { MATCHMAKING_TABLES_VERSION } from './matchmakingTables'
+export type {
+  GocharRangeInput,
+  NatalGocharContext,
+} from './gochar'
+export type {
+  GocharGraha,
+  GocharOccupancyInterval,
+  GocharRangeResult,
+} from '@/lib/gocharRange'
+export { DEFAULT_GOCHAR_GRAHAS, ALL_GOCHAR_GRAHAS, GOCHAR_BODY_IDS, computeGocharRange, GocharValidationError, resolveNatalGocharContext } from './gochar'
 
 /**
  * Computes a complete Vedic chart from birth data.
@@ -90,8 +100,17 @@ export function computeFullChart(input: BirthInput): ComputedChart {
   // Step 4: Planetary positions
   const planets = computePlanetPositions(julianDay, ascendant.signNumber)
 
-  // Step 5: Nakshatras
-  const nakshatras = computeNakshatras(planets)
+  // Step 5: Nakshatras — EXACTLY one entry per graha (9 entries). Everything
+  // downstream that reasons about planet-to-planet nakshatra geometry
+  // (nakshatraRelationships.ts) depends on this array staying planets-only.
+  const planetNakshatras = computeNakshatras(planets)
+
+  // Step 5b: Ascendant (Lagna) Nakshatra — PVR/JHora methodology: the same
+  // sidereal longitude→nakshatra arithmetic used for the grahas, applied to the
+  // lagna degree. Kept OUT of `planetNakshatras` so it can never be mistaken for
+  // a graha by the relationship/parivartana/cluster scans; it is exposed as its
+  // own `ascendantNakshatra` field and appended to the display array below.
+  const ascendantNakshatra = computeNakshatraForLongitude(ascendant.longitude, 'Ascendant')
 
   // Step 6: Divisional charts (D1, D2, D3, D4, D5, D6, D7, D9, D10, D12, D24, D30, D60)
   const divisionalCharts = computeDivisionalCharts(planets, ascendant.longitude)
@@ -259,8 +278,13 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     relationships.combustion // FIX-F: single combustion source
   )
 
-  const lagnaSubLord = computeSubLord(ascendant.longitude)
-  const computedNakshatra = computeNakshatraRelationships(nakshatras, lagnaSubLord)
+  // The lagna's sub-lord is exactly the Ascendant nakshatra entry's sub-lord
+  // (same longitude, same computeSubLord call) — reuse it instead of
+  // recomputing, and pass the PLANETS-ONLY array so the lagna appears exactly
+  // once in `subLords` (as the 'Lagna' entry this function adds itself) and
+  // never inside the planet-to-planet parivartana / cluster / sympathy scans.
+  const lagnaSubLord = ascendantNakshatra.subLord
+  const computedNakshatra = computeNakshatraRelationships(planetNakshatras, lagnaSubLord)
 
   const computedJaimini = computeJaimini(
     planets,
@@ -304,7 +328,13 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     lagnaLongitude: ascendant.longitude,
     lagnaDegreeInSign: ascendant.degreeInSign,
     planets,
-    nakshatras,
+    // Display/serialization array: the 9 grahas followed by the Ascendant. The
+    // Ascendant is LAST so any consumer that slices/zips the first 9 against
+    // `planets` is unaffected. Readers that need grahas only must filter on
+    // `planet !== 'Ascendant'` (or use `planets`); readers that want the lagna
+    // nakshatra should prefer the `ascendantNakshatra` field below.
+    nakshatras: [...planetNakshatras, ascendantNakshatra],
+    ascendantNakshatra,
     divisionalCharts,
     charaKarakas,
     ashtakavarga,
