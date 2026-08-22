@@ -114,4 +114,4 @@ after migrating its unique strengths.
 
 | ID | Decision | Impact | Status |
 |---|---|---|---|
-| **OD-1** | Surya Siddhanta computational basis (vs current Swiss Ephemeris + Lahiri + True Node + Whole Sign) | Foundational — changes Moon longitude → Vimshottari boundaries → every period score. Ripples through the whole pipeline. | Open — out of scope for Phase 1 |
+| **OD-1** | Sri Surya Siddhanta generalized-Makaranda profile (independent from current Swiss Ephemeris + Lahiri + True Node + Whole Sign) | Foundational — its Moon longitude and true-sidereal-solar-year Vimshottari boundaries propagate into every derived computation and period score. Existing Lahiri charts remain unchanged. | **Decision made; specification drafted.** Planned, not implemented — see `.kiro/specs/surya-siddhanta-makaranda/` and `docs/reference/surya-siddhanta-makaranda/`. |

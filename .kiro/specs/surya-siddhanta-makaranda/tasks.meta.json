@@ -1,0 +1,264 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Add `CalculationProfileId`, `CalculationProfile`, a profile resolver,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573153
+      }
+    ],
+    "1.2 Extend birth-time parsing/JD conversion to preserve fractional seconds;": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573197
+      }
+    ],
+    "1.3 Add hand-transcribed India and Mojo fixture data in a test-only module;": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573231
+      }
+    ],
+    "1.4 Add failing golden-test skeletons for profile identity, India/Mojo": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573255
+      }
+    ],
+    "2.1 Define `AstronomyProvider` and move Swiss ephemeris sidereal planet,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573287
+      }
+    ],
+    "2.2 Thread the selected provider through `computeFullChart`, natal Gochar": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573315
+      }
+    ],
+    "2.3 Preserve all current Drik/Lahiri unit and integration outputs exactly;": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573364
+      }
+    ],
+    "3.1 Implement pure-TypeScript normalized civil-time/JD and Makaranda": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573396
+      }
+    ],
+    "3.2 Implement the generalized Makaranda mean and corrected places for Sun,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573432
+      }
+    ],
+    "3.3 Implement Sri Surya Siddhanta ayanamsa with no adjustment and mean": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573453
+      }
+    ],
+    "3.4 Implement the SSS/Makaranda Lagna calculation and whole-sign house": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573473
+      }
+    ],
+    "3.5 Make the India and Mojo graha/Lagna golden tests pass within the agreed": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573502
+      }
+    ],
+    "4.1 Feed SSS positions into nakshatra, varga, karaka, Ashtakavarga,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573528
+      }
+    ],
+    "4.2 Split precise sunrise *instant* from Sun longitude at sunrise; obtain": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573546
+      }
+    ],
+    "4.3 Run the India/Mojo varga and special-lagna screenshots as manual": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573579
+      }
+    ],
+    "4.4 Make SSS Chara Dasha and Varshaphal return an explicit unsupported": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573623
+      }
+    ],
+    "5.1 Refactor `computeVimshottari` to receive a profile year-basis strategy": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573653
+      }
+    ],
+    "5.2 Implement and document the true-sidereal-solar-year strategy as an": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573684
+      }
+    ],
+    "5.3 Apply the approved Moon/D1/Krittika/zodiacal/forward settings. Given": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573712
+      }
+    ],
+    "5.4 Keep existing Drik dasha behavior covered by non-regression tests.": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573740
+      }
+    ],
+    "5.5 Add a capability gate that returns": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573778
+      }
+    ],
+    "6.1 Add calculation profile/version/settings fields to `UnifiedChart` via": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573804
+      }
+    ],
+    "6.2 Make canonical chart hashes, legacy compatibility hashes, and Wave-1": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573829
+      }
+    ],
+    "6.3 Update mappers, `ChartInputV1` synthesis, and generated metadata so": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573855
+      }
+    ],
+    "6.4 Add migration and dedup tests proving same birth input / different": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573880
+      }
+    ],
+    "7.1 Implement SSS longitude evaluation for current transits, date-ranged": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573905
+      }
+    ],
+    "7.2 Thread profile provenance into Duration Analysis slicing, transit": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573963
+      }
+    ],
+    "7.3 Add profile-consistency guards so a saved chart, dasha tree, and": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406573988
+      }
+    ],
+    "7.4 Reject mismatched profile ID/version in matchmaking preview and": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574015
+      }
+    ],
+    "8.1 Add validated `calculationProfile` input to every supported compute,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574037
+      }
+    ],
+    "8.2 Add the calculation-profile selector and a non-destructive": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574057
+      }
+    ],
+    "8.3 Replace universal Lahiri wording in chart tables, Dasha, Gochar,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574085
+      }
+    ],
+    "8.4 Verify existing Lahiri UI snapshots and interactions still work.": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574105
+      }
+    ],
+    "9.1 Run full type-check, unit, integration, API, and UI test suites.": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574130
+      }
+    ],
+    "9.2 Verify India and Mojo against JHora screenshots; record any remaining": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574161
+      }
+    ],
+    "9.3 Update `Agents.md`, `.kiro/skills/`, `docs/ERD.md`, `docs/HLD.md`,": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574182
+      }
+    ],
+    "9.4 Release with Drik/Lahiri as default and no automatic recomputation of": [
+      {
+        "executionId": "661a25d9-e861-4d34-bab0-73977b5e6586",
+        "chatSessionId": "sess_d994a4e4-0928-4ae3-a404-f52028d2a86b",
+        "timestamp": 1787406574212
+      }
+    ]
+  }
+}
