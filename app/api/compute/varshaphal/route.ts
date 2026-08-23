@@ -13,15 +13,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { computeVarshaphal } from '@/engine/compute/varshaphal'
 import { resolveRequestUser } from '@/lib/auth'
+import { resolveAstronomyProvider } from '@/engine/compute/astronomy'
+import { CalculationProfileUnavailableError, resolveCalculationProfile } from '@/engine/compute/profiles'
+import { normalizeBirthTime } from '@/engine/compute/time'
 
 const VarshaphalInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
-  time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Time must be HH:MM or HH:MM:SS format'),
+  time: z.string().regex(/^\d{2}:\d{2}(:\d{2}(?:\.\d{1,6})?)?$/, 'Time must be HH:MM, HH:MM:SS, or HH:MM:SS.s format'),
   timezone: z.number().min(-12).max(14),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   name: z.string().optional(),
   sunriseMode: z.enum(['precise', 'jhora']).optional(),
+  calculationProfile: z.enum(['drik_lahiri_v1', 'surya_siddhanta_makaranda_v1']).optional(),
   varshaYear: z
     .number()
     .int()
@@ -47,7 +51,10 @@ export async function POST(request: NextRequest) {
     }
 
     const input = parsed.data
-    const time = input.time.length === 5 ? `${input.time}:00` : input.time
+    const time = normalizeBirthTime(input.time)
+    // Task 4 owns the independent SSS Varshaphal convention. Resolve here so
+    // an SSS request cannot accidentally use the legacy Drik calculation.
+    resolveAstronomyProvider(resolveCalculationProfile(input.calculationProfile))
 
     const [birthYear] = input.date.split('-').map(Number)
     if (input.varshaYear < birthYear) {
@@ -70,6 +77,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, varshaphal })
   } catch (error) {
+    if (error instanceof CalculationProfileUnavailableError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code, calculationProfile: error.calculationProfile },
+        { status: 422 }
+      )
+    }
     console.error('Varshaphal computation error:', error)
     return NextResponse.json(
       {
@@ -88,13 +101,14 @@ export async function GET() {
     description: 'Compute a Tajika Varshaphal (annual solar-return chart) for a given year',
     input: {
       date: 'string (YYYY-MM-DD)',
-      time: 'string (HH:MM or HH:MM:SS, 24h)',
+      time: 'string (HH:MM, HH:MM:SS, or HH:MM:SS.s, 24h)',
       timezone: 'number (offset hours, e.g. 5.5 for IST)',
       latitude: 'number (-90..90)',
       longitude: 'number (-180..180)',
       varshaYear: 'number (civil year, 1800..2399)',
       name: 'string (optional)',
       sunriseMode: "'precise' | 'jhora' (optional)",
+      calculationProfile: "'drik_lahiri_v1' | 'surya_siddhanta_makaranda_v1' (optional; SSS provider pending)",
     },
     output: {
       varshaphal:

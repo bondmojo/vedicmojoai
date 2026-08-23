@@ -7,9 +7,9 @@ The following data are human transcriptions of values visibly displayed by JHora
 They are suitable to define the initial acceptance contract, but a textual JHora
 export can later tighten their display-precision tolerance. The initial reading was
 checked by the Opus review; a two-pass human audit remains a release gate. Each
-future edit must state its evidence source and reviewer status. Tests consume this
-document's corresponding test-only transcription rather than attempting to parse
-screenshots.
+future edit must state its evidence source and reviewer status. Tests consume this document's corresponding test-only, provenance-carrying
+transcription rather than attempting to parse screenshots. The transcription is
+not release-audited while its human audit status is pending.
 
 ### Transcription audit status
 

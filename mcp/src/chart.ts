@@ -15,12 +15,13 @@ import type { ApiClient } from './http.js'
 
 export const birthDataSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
-  time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'time must be HH:MM or HH:MM:SS (24h)'),
+  time: z.string().regex(/^\d{2}:\d{2}(:\d{2}(?:\.\d{1,6})?)?$/, 'time must be HH:MM, HH:MM:SS, or HH:MM:SS.s (24h)'),
   timezone: z.number().min(-12).max(14).describe('offset in hours, e.g. 5.5 for IST'),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   name: z.string().optional(),
   sunriseMode: z.enum(['precise', 'jhora']).optional(),
+  calculationProfile: z.enum(['drik_lahiri_v1', 'surya_siddhanta_makaranda_v1']).optional(),
 })
 export type BirthData = z.infer<typeof birthDataSchema>
 
@@ -173,7 +174,7 @@ export async function resolveCharaDasha(
     // Future-proof: use a stored charaDasha column if one ever exists.
     if (c.charaDasha) return { name: c.name as string | undefined, charaDasha: c.charaDasha }
     const birth = c.birthInput as
-      | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
+      | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string; calculationProfile?: string }
       | null
     if (c.source === 'compute' && birth?.date && birth?.time) {
       const r = (await api.post('/api/compute', {
@@ -184,6 +185,7 @@ export async function resolveCharaDasha(
         longitude: birth.longitude,
         name: c.name,
         sunriseMode: birth.sunriseMode ?? (c.sunriseMode as string | undefined) ?? 'precise',
+        calculationProfile: birth.calculationProfile,
       })) as { charaDasha?: unknown }
       return { name: c.name as string | undefined, charaDasha: r.charaDasha ?? null }
     }

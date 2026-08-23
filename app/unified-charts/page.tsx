@@ -202,7 +202,7 @@ function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
           <label className="block text-sm text-gray-400 mb-1">Birth Time (24h)</label>
           <input
             type="time"
-            step="1"
+            step="0.000001"
             value={form.time}
             onChange={(e) => setForm({ ...form, time: e.target.value })}
             required

@@ -3,13 +3,10 @@
  */
 
 import type { BirthInput, ComputedChart } from './types'
-import {
-  birthInputToJulianDay,
-  computeAscendant,
-  computePlanetPositions,
-  computeSunrise,
-  getAyanamsa,
-} from './planets'
+import { calculationSettingsSnapshot, CalculationProfileValidationError, resolveCalculationProfile } from './profiles'
+import { resolveAstronomyProvider } from './astronomy'
+import { resolveExternalSunriseReferences } from './sunrise'
+import { parseBirthTime } from './time'
 import { computeDivisionalCharts, vargaSignForLongitude } from './divisional'
 import { computeNakshatras, computeNakshatraForLongitude } from './nakshatras'
 import { computeCharaKarakas } from './karakas'
@@ -29,6 +26,18 @@ import { computeYogas } from './yogas'
 
 // Re-export all types
 export type { BirthInput, ComputedChart } from './types'
+export type { CalculationProfile, CalculationProfileId, CalculationSettingsSnapshot } from './profiles'
+export {
+  CalculationProfilePersistenceUnavailableError,
+  CalculationProfileUnavailableError,
+  CalculationProfileValidationError,
+  calculationSettingsSnapshot,
+  DEFAULT_CALCULATION_PROFILE_ID,
+  DRIK_LAHIRI_V1,
+  resolveCalculationProfile,
+  SURYA_SIDDHANTA_MAKARANDA_V1,
+} from './profiles'
+export type { AstronomyProvider } from './astronomy'
 export type {
   PlanetPosition,
   NakshatraInfo,
@@ -88,17 +97,27 @@ export { DEFAULT_GOCHAR_GRAHAS, ALL_GOCHAR_GRAHAS, GOCHAR_BODY_IDS, computeGocha
  * Computes a complete Vedic chart from birth data.
  */
 export function computeFullChart(input: BirthInput): ComputedChart {
+  const profile = resolveCalculationProfile(input.calculationProfile)
+  const sunriseMode = input.sunriseMode ?? 'precise'
+  if (profile.id === 'surya_siddhanta_makaranda_v1' && sunriseMode === 'jhora') {
+    throw new CalculationProfileValidationError(
+      profile.id,
+      'Sri Surya Siddhanta — Generalized Makaranda requires sunriseMode "precise"; the legacy JHora 06:00 convention is unavailable for this profile.'
+    )
+  }
+  const provider = resolveAstronomyProvider(profile)
+
   // Step 1: Julian Day (UT)
-  const julianDay = birthInputToJulianDay(input)
+  const julianDay = provider.birthInputToJulianDay(input)
 
   // Step 2: Ayanamsa
-  const ayanamsa = getAyanamsa(julianDay)
+  const ayanamsa = provider.getAyanamsa(julianDay)
 
   // Step 3: Ascendant
-  const ascendant = computeAscendant(julianDay, input.latitude, input.longitude)
+  const ascendant = provider.computeAscendant(julianDay, input.latitude, input.longitude)
 
   // Step 4: Planetary positions
-  const planets = computePlanetPositions(julianDay, ascendant.signNumber)
+  const planets = provider.computePlanets(julianDay, ascendant.signNumber)
 
   // Step 5: Nakshatras — EXACTLY one entry per graha (9 entries). Everything
   // downstream that reasons about planet-to-planet nakshatra geometry
@@ -122,8 +141,7 @@ export function computeFullChart(input: BirthInput): ComputedChart {
   const ashtakavarga = computeAshtakavarga(planets, ascendant.signNumber)
 
   // Step 9: Upagrahas (birth time in seconds from midnight)
-  const [h, m, s] = input.time.split(':').map(Number)
-  const birthTimeSeconds = h * 3600 + m * 60 + (s || 0)
+  const birthTimeSeconds = parseBirthTime(input.time).secondsSinceMidnight
   const [year, month, day] = input.date.split('-').map(Number)
   const birthDateLocal = new Date(year, month - 1, day)
 
@@ -145,32 +163,31 @@ export function computeFullChart(input: BirthInput): ComputedChart {
   const akInD9 = d9Chart?.planets.find((p) => p.planet === ak?.planet)
   const d9AKSignNumber = akInD9?.signNumber ?? d9LagnaSignNumber
 
-  // Actual sunrise → origin for the time-based lagnas (Bhava/Hora/Ghati).
-  // Mode is controlled by the caller: 'precise' uses real astronomical sunrise,
-  // 'jhora' uses fixed 6 AM local to match Jagannatha Hora's convention.
-  const sunriseMode = input.sunriseMode ?? 'precise'
-  const { sunriseJulianDay, sunLongitudeAtSunrise, sunriseFallback } = computeSunrise(
+  // The sunrise module returns only retained external instants. The selected
+  // provider, not the native sunrise bridge, supplies every sidereal Sun value.
+  const sunriseReferences = resolveExternalSunriseReferences({
     julianDay,
-    input.latitude,
-    input.longitude,
-    input.timezone,
-    sunriseMode
-  )
+    latitude: input.latitude,
+    longitude: input.longitude,
+    timezone: input.timezone,
+    sunriseMode,
+  })
+  const sunriseJulianDay = sunriseReferences.selected.sunriseJulianDay
+  const sunriseFallback = sunriseReferences.selected.sunriseFallback
+  const sunLongitudeAtSunrise = provider.longitudeAt(sunriseJulianDay, 'Sun').longitude
   let elapsedHoursSinceSunrise = (julianDay - sunriseJulianDay) * 24
+  // Preserves the Drik/JHora pre-06:00 result: legacy mode intentionally keeps
+  // same-day 06:00 as its raw anchor, then represents it as the prior civil-day
+  // elapsed interval. The SSS profile cannot select this mode.
   if (elapsedHoursSinceSunrise < 0) elapsedHoursSinceSunrise += 24
 
-  // Ghati Lagna (GL) always needs the precise astronomical sunrise regardless
-  // of sunriseMode — JHora does not apply the 6 AM convention to GL.
-  // In precise mode these values are the same as above; in jhora mode we
-  // compute an additional precise sunrise to feed GL.
-  let sunLongitudeAtPreciseSunrise = sunLongitudeAtSunrise
-  let elapsedHoursFromPreciseSunrise = elapsedHoursSinceSunrise
-  if (sunriseMode === 'jhora') {
-    const precise = computeSunrise(julianDay, input.latitude, input.longitude, input.timezone, 'precise')
-    sunLongitudeAtPreciseSunrise = precise.sunLongitudeAtSunrise
-    elapsedHoursFromPreciseSunrise = (julianDay - precise.sunriseJulianDay) * 24
-    if (elapsedHoursFromPreciseSunrise < 0) elapsedHoursFromPreciseSunrise += 24
-  }
+  // Ghati Lagna always needs the precise astronomical sunrise regardless of
+  // sunriseMode. In JHora mode the precise external instant is separate, but
+  // its Sun longitude still comes from the active provider.
+  const preciseSunriseJulianDay = sunriseReferences.precise.sunriseJulianDay
+  let sunLongitudeAtPreciseSunrise = provider.longitudeAt(preciseSunriseJulianDay, 'Sun').longitude
+  let elapsedHoursFromPreciseSunrise = (julianDay - preciseSunriseJulianDay) * 24
+  if (elapsedHoursFromPreciseSunrise < 0) elapsedHoursFromPreciseSunrise += 24
 
   const specialLagnas = computeSpecialLagnas({
     planets,
@@ -242,6 +259,7 @@ export function computeFullChart(input: BirthInput): ComputedChart {
     input.latitude,
     input.longitude,
     moon?.longitude,
+    provider,
   )
 
   // Step 14: Deterministic relationship / strength modules (replaces LLM agents).
@@ -319,6 +337,8 @@ export function computeFullChart(input: BirthInput): ComputedChart {
 
   return {
     input,
+    calculationProfile: profile.id,
+    calculationSettings: calculationSettingsSnapshot(profile),
     sunriseMode: sunriseFallback ? 'jhora' : sunriseMode,
     sunriseFallback,
     julianDay,

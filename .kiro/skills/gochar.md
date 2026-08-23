@@ -16,9 +16,9 @@ the Vimshottari PD **View Gochar** expansion, `POST /api/gochar`, or MCP
    [API route conventions](../../skills/backend/api-routes.md) and
    [MCP conventions](../../skills/backend/mcp-server.md).
 3. Treat `.kiro/specs/gochar-feature/requirements.md` and `design.md` as the
-   feature contracts. Preserve Lahiri sidereal whole-sign computation, Moon
-   opt-in, UTC interval disclosure, and the immutable displayed-chart birth-data
-   snapshot.
+   feature contracts. Preserve profile-selected sidereal whole-sign computation,
+   Moon opt-in, UTC interval disclosure, and the immutable displayed-chart
+   birth-data snapshot.
 
 ## Guardrails
 
@@ -28,3 +28,7 @@ the Vimshottari PD **View Gochar** expansion, `POST /api/gochar`, or MCP
   next-midnight echo.
 - Do not truncate PD ISO bounds or compute a range from live, edited birth-form
   state.
+- Resolve a birth input's calculation profile once and pass its astronomy
+  provider to both natal-context and range calculations. Before a profile has a
+  Gochar-capable provider, reject it; never use the Drik/Lahiri provider as a
+  silent fallback.

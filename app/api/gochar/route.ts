@@ -12,6 +12,9 @@ import {
   computeGocharRange,
   resolveNatalGocharContext,
 } from '@/engine/compute'
+import { resolveAstronomyProvider, type AstronomyProvider } from '@/engine/compute/astronomy'
+import { CalculationProfileUnavailableError, resolveCalculationProfile } from '@/engine/compute/profiles'
+import { drikLahiriProvider } from '@/engine/compute/astronomy/drikLahiri'
 import { prisma } from '@/lib/db'
 import { GocharValidationError } from '@/lib/errors'
 import { resolveRequestUser } from '@/lib/auth'
@@ -27,12 +30,13 @@ export type { GocharApiResponse } from '@/lib/gocharRange'
 
 const BirthDataSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
-  time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Time must be HH:MM or HH:MM:SS format'),
+  time: z.string().regex(/^\d{2}:\d{2}(:\d{2}(?:\.\d{1,6})?)?$/, 'Time must be HH:MM, HH:MM:SS, or HH:MM:SS.s format'),
   timezone: z.number().min(-12).max(14),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   name: z.string().optional(),
   sunriseMode: z.enum(['precise', 'jhora']).optional(),
+  calculationProfile: z.enum(['drik_lahiri_v1', 'surya_siddhanta_makaranda_v1']).optional(),
 })
 
 const GocharRequestSchema = z
@@ -102,6 +106,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let natalMoonSignNumber: number
   let natalLagnaSignNumber: number
+  // Existing persisted charts pre-date profile provenance (Task 6), and so
+  // are explicitly treated as legacy Drik/Lahiri records.
+  let provider: AstronomyProvider = drikLahiriProvider
 
   if (unifiedChartId) {
     try {
@@ -133,27 +140,47 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     try {
-      const context = resolveNatalGocharContext(birthData)
+      const profile = resolveCalculationProfile(birthData.calculationProfile)
+      const context = profile.id === 'drik_lahiri_v1'
+        ? resolveNatalGocharContext(birthData)
+        : resolveNatalGocharContext(
+            birthData,
+            (provider = resolveAstronomyProvider(profile))
+          )
       natalMoonSignNumber = context.natalMoonSignNumber
       natalLagnaSignNumber = context.natalLagnaSignNumber
-    } catch {
+    } catch (error) {
+      if (error instanceof CalculationProfileUnavailableError) {
+        return NextResponse.json(
+          { error: error.message, code: error.code, calculationProfile: error.calculationProfile },
+          { status: 422 }
+        )
+      }
       return validationResponse('birthData could not be used to derive natal Gochar context.', 'birthData')
     }
   }
 
   try {
-    const result = computeGocharRange({
+    const rangeInput = {
       natalMoonSignNumber,
       natalLagnaSignNumber,
       start: bounds.start,
       end: bounds.end,
       includeMoon,
-    })
+    }
+    // Retain the legacy single-argument route call for Drik, including its
+    // public test/mocking contract. Future providers receive the selected
+    // astronomy implementation explicitly.
+    const result = provider === drikLahiriProvider
+      ? computeGocharRange(rangeInput)
+      : computeGocharRange(rangeInput, provider)
 
     const response: GocharApiResponse = {
       ...result,
       dateFrom: bounds.dateFrom,
       dateTo: bounds.dateTo,
+      // The only available provider in this milestone is Drik/Lahiri. The
+      // profile-driven response label changes when the SSS range provider lands.
       ayanamsa: 'Lahiri',
     }
 

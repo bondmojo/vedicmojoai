@@ -27,6 +27,29 @@ inclusion: auto
 - Self-verification: sum of all MD durations = 120 years ± 1 day
 - If verification fails → `DashaIntegrityError` thrown before any LLM agent runs
 
+## Calculation Profiles and Astronomy Providers
+
+- Resolve the calculation profile once at the compute entry point, then pass its
+  `AstronomyProvider` into natal, current-transit, and Gochar work. Do not let a
+  non-Drik profile fall back to Swiss/Lahiri values.
+- `drik_lahiri_v1` is the current production provider. The registered
+  `surya_siddhanta_makaranda_v1` profile deliberately fails closed until the
+  standalone formula provider and profile-specific Dasha year strategy exist.
+  Resolve arbitrary runtime profile IDs through `resolveCalculationProfile()` so
+  invalid IDs produce `CalculationProfileValidationError`, never an undefined
+  provider or an accidental Drik fallback.
+- Until Task 6 creates profile-aware persistence/hash provenance,
+  `createUnifiedChartFromBirthData()` must reject every non-Drik profile with
+  `CalculationProfilePersistenceUnavailableError` before any legacy dedup lookup.
+- Keep external sunrise **instants** (`engine/compute/sunrise.ts`) separate from
+  the selected provider's Sun longitude. The current Drik helper keeps its legacy
+  06:00 fallback; do not claim the future SSS 72-hour/polar failure contract is
+  implemented before Task 4.
+- Public route/MCP schemas accept padded `HH:MM:SS.s` (up to six fractional
+  digits). `engine/compute/time.ts` additionally normalizes old persisted
+  unpadded hours for mappers/migrations. Use its split `PreciseUtcInstant` for
+  microsecond-capable transport; JavaScript `Date` remains millisecond-only.
+
 ## Planner Rules
 
 - `DOMAIN_AGENTS` map resolves `query_types[]` → Wave 2/3 agent IDs

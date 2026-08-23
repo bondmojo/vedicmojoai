@@ -23,6 +23,16 @@
   needs to run migrations. No schema change for this half — connection
   routing only.
 
+## Unreleased compute-foundation note
+
+- The SSS/Makaranda profile scaffold adds no database column, table, index, or
+  SSS persistence path yet. Profile provenance is intentionally deferred to its
+  dedicated migration task; existing `UnifiedChart` rows remain Drik/Lahiri by
+  behavior and are not recomputed. Until that profile-aware identity migration
+  lands, `from-compute` rejects an SSS persistence request with
+  `CALCULATION_PROFILE_PERSISTENCE_UNAVAILABLE` before the legacy Drik hash/dedup
+  lookup; this is a guard, not a provisional storage format.
+
 ## What changed in v1.5
 
 - Added **`CompatibilityMatch`** (migration `20260806083347_add_matchmaking_and_gender`,

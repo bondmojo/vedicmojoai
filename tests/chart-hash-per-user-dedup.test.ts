@@ -50,7 +50,9 @@ vi.mock('@/lib/validation', () => ({
 }))
 
 import { createUnifiedChartFromBirthData } from '../lib/unified-chart-create'
+import { POST as fromCompute } from '../app/api/unified-charts/from-compute/route'
 import { POST as fromPaste } from '../app/api/unified-charts/from-paste/route'
+import { computeFullChart } from '@/engine/compute'
 import { resolveRequestUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
@@ -108,6 +110,57 @@ describe('createUnifiedChartFromBirthData — per-user chartHash dedup', () => {
 
     expect(result.status).toBe('duplicate')
     expect(result.id).toBe('chart-1')
+  })
+  it('blocks SSS persistence before compute, mapping, or legacy Drik dedup can run', async () => {
+    await expect(createUnifiedChartFromBirthData({
+      ...BIRTH_INPUT,
+      userId: USER_A,
+      calculationProfile: 'surya_siddhanta_makaranda_v1',
+    })).rejects.toMatchObject({
+      code: 'CALCULATION_PROFILE_PERSISTENCE_UNAVAILABLE',
+      calculationProfile: 'surya_siddhanta_makaranda_v1',
+    })
+
+    expect(computeFullChart).not.toHaveBeenCalled()
+    expect(prisma.unifiedChart.findUnique).not.toHaveBeenCalled()
+    expect(prisma.unifiedChart.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/unified-charts/from-compute — profile safety', () => {
+  function makeComputeRequest(body: Record<string, unknown>): NextRequest {
+    return new NextRequest('http://localhost:3000/api/unified-charts/from-compute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('returns 422 with the temporary persistence code for an SSS create request', async () => {
+    ;(resolveRequestUser as any).mockResolvedValue(USER_A)
+
+    const response = await fromCompute(makeComputeRequest({
+      ...BIRTH_INPUT,
+      calculationProfile: 'surya_siddhanta_makaranda_v1',
+    }))
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'CALCULATION_PROFILE_PERSISTENCE_UNAVAILABLE',
+      calculationProfile: 'surya_siddhanta_makaranda_v1',
+    })
+  })
+
+  it('retains strict API profile validation as HTTP 400', async () => {
+    ;(resolveRequestUser as any).mockResolvedValue(USER_A)
+
+    const response = await fromCompute(makeComputeRequest({
+      ...BIRTH_INPUT,
+      calculationProfile: 'not-a-profile',
+    }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({ error: 'Invalid input' })
   })
 })
 

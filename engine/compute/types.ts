@@ -1,3 +1,5 @@
+import type { CalculationProfileId, CalculationSettingsSnapshot } from './profiles'
+
 /**
  * engine/compute/types.ts — Types for the chart computation engine.
  */
@@ -24,6 +26,12 @@ export interface BirthInput {
    * Defaults to "precise".
    */
   sunriseMode?: 'precise' | 'jhora'
+  /**
+   * Explicit astronomical calculation standard. Omitting it preserves the
+   * existing Drik/Lahiri behavior. The SSS profile is registered now but is
+   * unavailable until its standalone provider is implemented.
+   */
+  calculationProfile?: CalculationProfileId
 }
 
 export interface PlanetPosition {
@@ -679,6 +687,9 @@ export interface VarshaphalResult {
 
 export interface ComputedChart {
   input: BirthInput
+  /** The resolved immutable profile, always explicit in a computed result. */
+  calculationProfile: CalculationProfileId
+  calculationSettings: CalculationSettingsSnapshot
   sunriseMode: 'precise' | 'jhora'
   /** true when precise sunrise was requested but swe_rise_trans failed — 6 AM was used instead */
   sunriseFallback: boolean

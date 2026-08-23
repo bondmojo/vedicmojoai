@@ -2,17 +2,22 @@
  * engine/compute/gochar.ts — Deterministic date-ranged Gochar (transit)
  * occupancy intervals.
  *
- * Engine-only inputs and helpers live here because this module imports the
- * Swiss-Ephemeris-bearing runtime. The Gochar response contracts themselves
- * live in `lib/gocharRange.ts`, a client-safe leaf, so UI code never needs to
- * reach this native import chain merely to describe API data.
+ * Engine-only range scanning lives here. Astronomical samples arrive through an
+ * `AstronomyProvider`; the Swiss-Ephemeris-bearing Drik implementation is
+ * isolated in `astronomy/drikLahiri.ts`. The Gochar response contracts live in
+ * `lib/gocharRange.ts`, a client-safe leaf, so UI code never reaches native
+ * runtime code merely to describe API data.
  *
  * Spec: .kiro/specs/gochar-feature/
  */
 
-import swisseph from 'swisseph-v2'
-import path from 'path'
-import { getSignName, birthInputToJulianDay, computeAscendant, computePlanetPositions } from './planets'
+import { getSignName } from './planets'
+import {
+  drikLahiriProvider,
+  getDrikBodyForSwissId,
+} from './astronomy/drikLahiri'
+import { resolveAstronomyProvider, type AstronomyProvider } from './astronomy'
+import { resolveCalculationProfile } from './profiles'
 import type { BirthInput } from './types'
 import { GocharValidationError } from '@/lib/errors'
 import type {
@@ -31,8 +36,8 @@ export type {
  * Re-exported so this module's public surface is unchanged. The class itself is
  * defined in `lib/errors.ts` — a zero-import leaf — because `lib/gocharRange.ts`
  * (the pure date parser) also throws it and must not transitively import the
- * native `swisseph-v2` binary this module pulls in. See the class's own doc
- * comment in `lib/errors.ts` for the full rationale.
+ * native astronomy code. See the class's own doc comment in `lib/errors.ts`
+ * for the full rationale.
  */
 export { GocharValidationError }
 
@@ -61,23 +66,27 @@ export interface NatalGocharContext {
 
 /**
  * Resolves the two natal sign numbers required by `computeGocharRange()` from
- * a `BirthInput`, using only the minimal ephemeris path:
- *   `birthInputToJulianDay()` → `computeAscendant()` → `computePlanetPositions()`
+ * a `BirthInput`, using only the minimal provider path:
+ *   `birthInputToJulianDay()` → `computeAscendant()` → `computePlanets()`
  *
  * This deliberately does NOT call `computeFullChart()`, which additionally
  * computes 13 divisional charts, shadbala, ashtakavarga, yogas, jaimini,
  * bhava bala, arudhas, upagrahas, special lagnas, and the Sade Sati scans —
  * disproportionate cost for two sign numbers. The sign numbers produced here
- * are bit-for-bit identical to those `computeFullChart()` would produce, as
+ * are bit-for-bit identical to those `computeFullChart()` would produce for the
+ * same provider, as
  * verified by `gochar.natalContext.test.ts`.
  *
  * Design: API Design — "Minimal natal context (do not call computeFullChart())"
  * Requirements: R1.6, R5.3
  */
-export function resolveNatalGocharContext(input: BirthInput): NatalGocharContext {
-  const jd = birthInputToJulianDay(input)
-  const asc = computeAscendant(jd, input.latitude, input.longitude)
-  const moon = computePlanetPositions(jd, asc.signNumber).find((p) => p.planet === 'Moon')
+export function resolveNatalGocharContext(
+  input: BirthInput,
+  provider = resolveAstronomyProvider(resolveCalculationProfile(input.calculationProfile))
+): NatalGocharContext {
+  const jd = provider.birthInputToJulianDay(input)
+  const asc = provider.computeAscendant(jd, input.latitude, input.longitude)
+  const moon = provider.computePlanets(jd, asc.signNumber).find((p) => p.planet === 'Moon')
   if (!moon) throw new Error('Moon position could not be computed')
   return {
     natalMoonSignNumber: moon.signNumber,
@@ -133,40 +142,11 @@ export const GOCHAR_BODY_IDS: ReadonlyArray<{ graha: GocharGraha; id: number }> 
   { graha: 'Rahu',    id: 11 },
 ]
 
-// ─── Ephemeris setup ────────────────────────────────────────────────────
+// ─── Astronomy-provider date conversion ─────────────────────────────────
 
-/**
- * Guarded ephemeris path setup, replicated from `transits.ts`'s private
- * `ensureEph()` rather than imported from it. `transits.ts` does not export
- * it, and per this module's own header comment (it owns its public surface
- * independently of `transits.ts`), replicating this small guarded helper
- * keeps the module self-contained — the same choice
- * `transits.degreeSadeSati.test.ts` already makes for its own independent
- * ephemeris access.
- */
-let ephePathSet = false
-function ensureEph(): void {
-  if (ephePathSet) return
-  try {
-    const pkg = require.resolve('swisseph-v2/package.json')
-    swisseph.swe_set_ephe_path(path.join(path.dirname(pkg), 'ephe'))
-  } catch { /* fallback to swisseph's built-in Moshier ephemeris */ }
-  ephePathSet = true
-}
-
-/** Normalizes a longitude in degrees to [0, 360). */
-function normLong(lon: number): number {
-  return ((lon % 360) + 360) % 360
-}
-
-/** Converts a JS `Date` (UTC) to a Julian Day (UT), matching `transits.ts`'s `toJD()`. */
-function toJD(date: Date): number {
-  ensureEph()
-  return swisseph.swe_julday(
-    date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(),
-    date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600,
-    swisseph.SE_GREG_CAL
-  )
+/** Converts a JS `Date` (UTC) to a Julian Day (UT). */
+function toJD(date: Date, provider: AstronomyProvider = drikLahiriProvider): number {
+  return provider.dateToJulianDay(date)
 }
 
 /**
@@ -191,54 +171,37 @@ function toJD(date: Date): number {
  *
  * Guarded by `gochar.range.test.ts` — "millisecond-precision bounds".
  */
-function jdToDate(jd: number): Date {
-  const r = swisseph.swe_revjul(jd, swisseph.SE_GREG_CAL) as any
-  const hourFloat = r.hour ?? 0
-  const hour = Math.floor(hourFloat)
-  const minFloat = (hourFloat - hour) * 60
-  const min = Math.floor(minFloat)
-  const secFloat = (minFloat - min) * 60
-  let sec = Math.floor(secFloat)
-  let ms = Math.round((secFloat - sec) * 1000)
-  // Explicit carry: rounding 999.6 ms up yields 1000, which belongs to the next
-  // second. `Date.UTC` would normalize this anyway; doing it here keeps the
-  // intent legible and the arguments in their documented ranges.
-  if (ms >= 1000) {
-    ms -= 1000
-    sec += 1
-  }
-  return new Date(Date.UTC(r.year, r.month - 1, r.day, hour, min, sec, ms))
+function jdToDate(jd: number, provider: AstronomyProvider = drikLahiriProvider): Date {
+  return provider.julianDayToDate(jd, 'millisecond')
 }
 
 /** One ephemeris sample: normalized sidereal longitude plus its instantaneous speed. */
 export interface GocharLongitudeSample {
   longitude: number       // normalized [0, 360)
-  longitudeSpeed: number  // degrees/day, from the same swe_calc_ut call
+  longitudeSpeed: number  // degrees/day, from the same provider sample
 }
 
 /**
- * Reads a body's Lahiri sidereal longitude AND its instantaneous
- * `longitudeSpeed` from the same `swe_calc_ut` call.
+ * Reads a body's sidereal longitude AND its instantaneous `longitudeSpeed`
+ * from one provider sample.
  *
- * This performs the same three-step setup every `transits.ts` entry point
- * performs (`ensureEph()` → `swe_set_sid_mode(SE_SIDM_LAHIRI, ...)` →
- * `SEFLG_SWIEPH | SEFLG_SIDEREAL | SEFLG_SPEED`), so the module cannot
- * silently read tropical longitudes (wrong by ~24° undetected by any
- * structural test) or a zero `longitudeSpeed` (which would defeat
- * `stepIsSafe()` below and disable the adaptive refinement without a
- * failing test). See `gochar.sidereal.test.ts`.
+ * The default is the Drik/Lahiri provider for backwards compatibility. A
+ * caller can pass a different provider explicitly; implementations must not
+ * silently use tropical longitude or discard the speed required by
+ * `stepIsSafe()` below. See `gochar.sidereal.test.ts`.
  *
  * `longitudeSpeed` is never discarded — it is required by `stepIsSafe()`
  * (Task 2.3) to detect a station near a cusp.
  */
-export function getSiderealLongitude(jd: number, bodyId: number): GocharLongitudeSample {
-  ensureEph()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-  const flags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL | swisseph.SEFLG_SPEED
-  const r = swisseph.swe_calc_ut(jd, bodyId, flags) as any
+export function getSiderealLongitude(
+  jd: number,
+  bodyId: number,
+  provider: AstronomyProvider = drikLahiriProvider
+): GocharLongitudeSample {
+  const sample = provider.longitudeAt(jd, getDrikBodyForSwissId(bodyId))
   return {
-    longitude: normLong(r.longitude ?? 0),
-    longitudeSpeed: r.longitudeSpeed ?? 0,
+    longitude: sample.longitude,
+    longitudeSpeed: sample.longitudeSpeed,
   }
 }
 
@@ -268,7 +231,7 @@ export const CUSP_SAFETY_FACTOR = 2
  * must be subdivided.
  *
  * `speedDegPerDay` MUST be the body's instantaneous `longitudeSpeed` from
- * the same `swe_calc_ut` call that produced `lon` (see
+ * the same provider sample that produced `lon` (see
  * `getSiderealLongitude()`), never a hardcoded mean motion — a station is
  * detected from the ephemeris itself, not assumed.
  *
@@ -470,7 +433,10 @@ const COARSE_STEPS: Record<string, number> = {
  * Design: Compute Engine — "Range scan algorithm".
  * Requirements: R1.1, R1.2, R1.3, R1.4, R1.6, R1.7, R2.5, R2.6, R2.9, R8.1.
  */
-export function computeGocharRange(input: GocharRangeInput): GocharRangeResult {
+export function computeGocharRange(
+  input: GocharRangeInput,
+  provider: AstronomyProvider = drikLahiriProvider
+): GocharRangeResult {
   const { natalMoonSignNumber, natalLagnaSignNumber, start, end, includeMoon } = input
 
   // ── Validation ──────────────────────────────────────────────────────────
@@ -506,8 +472,8 @@ export function computeGocharRange(input: GocharRangeInput): GocharRangeResult {
   const selectedGrahas = (includeMoon ? ALL_GOCHAR_GRAHAS : DEFAULT_GOCHAR_GRAHAS) as readonly GocharGraha[]
 
   // ── Julian day bounds ──────────────────────────────────────────────────
-  const startJd = toJD(start)
-  const endJd   = toJD(end)
+  const startJd = toJD(start, provider)
+  const endJd   = toJD(end, provider)
 
   // ── House formula (whole-sign, identical to transits.ts) ───────────────
   const houseFrom = (signNumber: number, natalSign: number): number =>
@@ -569,7 +535,7 @@ export function computeGocharRange(input: GocharRangeInput): GocharRangeResult {
     const bounds: string[] = new Array(segments.length + 1)
     bounds[0] = startIso
     for (let i = 1; i < segments.length; i++) {
-      bounds[i] = jdToDate(segments[i].jdStart).toISOString()
+      bounds[i] = jdToDate(segments[i].jdStart, provider).toISOString()
     }
     bounds[segments.length] = endIso
 
@@ -602,7 +568,7 @@ export function computeGocharRange(input: GocharRangeInput): GocharRangeResult {
     const coarseStep = COARSE_STEPS[graha] ?? 1
 
     const sampleAt = (jd: number) => {
-      const s = getSiderealLongitude(jd, id)
+      const s = getSiderealLongitude(jd, id, provider)
       const signNum = Math.floor(s.longitude / 30) + 1
       return { state: signNum, longitude: s.longitude, longitudeSpeed: s.longitudeSpeed }
     }

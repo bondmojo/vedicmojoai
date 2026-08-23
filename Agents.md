@@ -57,6 +57,20 @@ so Wave 2A validates/interprets the supplied catalogue instead of re-deriving
 formation, is consumed by the Duration-Analysis slicer, and is exposed
 read-only via the `get_yogas` MCP tool. See the `named-yoga-engine` spec.
 
+**Calculation-profile foundation:** `engine/compute/profiles.ts` defines immutable
+`drik_lahiri_v1` and `surya_siddhanta_makaranda_v1` contracts. The extracted
+`astronomy/drikLahiri.ts` provider is the only available provider at present;
+the SSS profile is registered explicitly and fails closed until its standalone
+formula provider and true-sidereal Dasha strategy are implemented. Runtime
+profile resolution rejects unknown IDs with a typed validation error. Before the
+Task 6 provenance/hash migration, `from-compute` additionally rejects every
+non-Drik persistence attempt with
+`CALCULATION_PROFILE_PERSISTENCE_UNAVAILABLE`, preventing legacy Drik dedup
+from ever accepting an SSS chart. `sunrise.ts` retains the external legacy Drik
+sunrise instant separately from the active provider's Sun longitude; the strict
+SSS 72-hour/polar error contract remains Task 4 work. This keeps the current
+deterministic pipeline Drik/Lahiri-only and prevents mixed results.
+
 **Prompt files:** `prompts/agents/{wave}_{id}_{name}.md`
 
 ---
@@ -423,6 +437,7 @@ The agent catalogue (this document) defines **what** the pipeline does — the 1
 | `ai-frontend.md` | Index → `skills/frontend/` (12 focused guides) |
 | `gochar.md` | Dated Gochar, transit diagrams, PD expansion, API/MCP guardrails |
 | `ai-backend.md` | Index → `skills/backend/` (14 focused guides) |
+| `scientific-verification.md` | Fixture integrity, differential verification, precision conventions, SSS guardrails |
 
 #### Backend Guides (`skills/backend/`)
 

@@ -10,9 +10,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { computeFullChart, computeCharaDasha } from '@/engine/compute'
+import {
+  CalculationProfileUnavailableError,
+  CalculationProfileValidationError,
+  computeFullChart,
+  computeCharaDasha,
+} from '@/engine/compute'
 import { computeVimshottari } from '@/engine/computeVimshottari'
 import { resolveRequestUser } from '@/lib/auth'
+import { birthInputToUtcDate, normalizeBirthTime } from '@/engine/compute/time'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
@@ -22,7 +28,7 @@ const ComputeInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
   time: z
     .string()
-    .regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Time must be HH:MM or HH:MM:SS format'),
+    .regex(/^\d{2}:\d{2}(:\d{2}(?:\.\d{1,6})?)?$/, 'Time must be HH:MM, HH:MM:SS, or HH:MM:SS.s format'),
   timezone: z
     .number()
     .min(-12)
@@ -43,6 +49,10 @@ const ComputeInputSchema = z.object({
     .enum(['precise', 'jhora'])
     .optional()
     .describe('Sunrise convention for time-based lagnas (default: precise)'),
+  calculationProfile: z
+    .enum(['drik_lahiri_v1', 'surya_siddhanta_makaranda_v1'])
+    .optional()
+    .describe('Calculation profile (default: drik_lahiri_v1)'),
 })
 
 // ─── Route Handler ──────────────────────────────────────────────────
@@ -70,8 +80,7 @@ export async function POST(request: NextRequest) {
 
     const input = parsed.data
 
-    // Normalize time to HH:MM:SS
-    const time = input.time.length === 5 ? `${input.time}:00` : input.time
+    const time = normalizeBirthTime(input.time)
 
     // Compute the full chart
     const chart = computeFullChart({
@@ -82,6 +91,7 @@ export async function POST(request: NextRequest) {
       longitude: input.longitude,
       name: input.name,
       sunriseMode: input.sunriseMode ?? 'precise',
+      calculationProfile: input.calculationProfile,
     })
 
     // Compute Vimshottari Dasha from Moon longitude
@@ -97,12 +107,11 @@ export async function POST(request: NextRequest) {
     // Build the birth instant as a fixed UTC moment (local time minus the
     // birth timezone offset). This mirrors birthInputToJulianDay and makes the
     // dasha tree deterministic regardless of the server's local timezone.
-    const [year, month, day] = input.date.split('-').map(Number)
-    const [hours, minutes, seconds] = time.split(':').map(Number)
-    const birthUtcMillis =
-      Date.UTC(year, month - 1, day, hours, minutes, seconds || 0) -
-      input.timezone * 3600 * 1000
-    const birthDate = new Date(birthUtcMillis)
+    const birthDate = birthInputToUtcDate({
+      date: input.date,
+      time,
+      timezone: input.timezone,
+    })
 
     const dashaTree = computeVimshottari(moonPlanet.longitude, birthDate)
 
@@ -144,6 +153,27 @@ export async function POST(request: NextRequest) {
       charaDasha,
     })
   } catch (error) {
+    if (error instanceof CalculationProfileValidationError) {
+      return NextResponse.json(
+        {
+          error: 'Invalid input',
+          message: error.message,
+          code: error.code,
+          calculationProfile: error.calculationProfile,
+        },
+        { status: 400 }
+      )
+    }
+    if (error instanceof CalculationProfileUnavailableError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          calculationProfile: error.calculationProfile,
+        },
+        { status: 422 }
+      )
+    }
     console.error('Chart computation error:', error)
     return NextResponse.json(
       {
@@ -164,11 +194,12 @@ export async function GET() {
     description: 'Compute a full Vedic chart from birth data',
     input: {
       date: 'string (YYYY-MM-DD)',
-      time: 'string (HH:MM or HH:MM:SS, 24h format)',
+      time: 'string (HH:MM, HH:MM:SS, or HH:MM:SS.s, 24h format)',
       timezone: 'number (offset in hours, e.g., 5.5 for IST)',
       latitude: 'number (-90 to 90)',
       longitude: 'number (-180 to 180)',
       name: 'string (optional)',
+      calculationProfile: "'drik_lahiri_v1' | 'surya_siddhanta_makaranda_v1' (optional; SSS provider pending)",
     },
     output: {
       chart: 'Full computed chart (planets, divisional charts, nakshatras, karakas, ashtakavarga)',

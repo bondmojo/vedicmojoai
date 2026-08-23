@@ -1,5 +1,21 @@
 # Implementation Plan: Sri Surya Siddhanta — Generalized Makaranda Profile
 
+## Task 1–2 Review Remediation (implemented safety/testability only)
+
+The remediation following the task 1–2 review strengthens scaffolding without
+advancing the standalone SSS formula, true-sidereal-solar-year solver, or Prisma
+profile-migration tasks. The oracle fixture now carries all currently transcribed
+natal, point, motion, and MD/AD/PD parent evidence; structural checks execute now,
+while formula/calendar acceptance gates remain explicit pending tests. Runtime
+profile resolution rejects unknown IDs, SSS persistence is temporarily refused
+before legacy Drik dedup, legacy stored unpadded hours are canonically normalized,
+and sunrise instants are separated from provider-owned Sun longitudes.
+
+The current Drik precise-rise helper intentionally retains its existing fallback;
+it does **not** implement the future SSS 72-hour/polar `SunriseUnavailableError`
+contract. That work remains Task 4. Checkboxes marked `[~]` below remain planning
+markers for later work and must not be read as completed scientific features.
+
 ## Preconditions
 
 - The approved requirements and design in this specification are the authority.
@@ -12,36 +28,62 @@
 
 ## Tasks
 
-- [ ] 1. Establish profile contracts and golden fixtures
-  - [~] 1.1 Add `CalculationProfileId`, `CalculationProfile`, a profile resolver,
+- [x] 1. Establish profile contracts and golden fixtures
+  - [x] 1.1 Add `CalculationProfileId`, `CalculationProfile`, a profile resolver,
     and immutable profile settings snapshots in `engine/compute/profiles.ts`.
     Define the current Drik/Lahiri profile and the approved SSS/Makaranda profile.
-  - [~] 1.2 Extend birth-time parsing/JD conversion to preserve fractional seconds;
+  - [x] 1.2 Extend birth-time parsing/JD conversion to preserve fractional seconds;
     retain existing whole-second API compatibility. Update every compute, Gochar,
     timeline, Varshaphal, unified-chart, and MCP birth-input schema and form so
     `HH:MM:SS.s...` is accepted and propagated without `Date.UTC` truncation.
-  - [~] 1.3 Add hand-transcribed India and Mojo fixture data in a test-only module;
+  - [x] 1.3 Add hand-transcribed India and Mojo fixture data in a test-only module;
     do not parse `.jhd` or screenshots in tests. Record the source, first reader,
     and independent reviewer for every value.
-  - [~] 1.4 Add failing golden-test skeletons for profile identity, India/Mojo
-    natal values, and their split Vimshottari tests (seeded calendar mapping plus
-    end-to-end Moon-to-Dasha).
+  - [x] 1.4 Add non-failing, explicit pending golden-test contracts for profile
+    identity, India/Mojo natal values, and split Vimshottari acceptance gates
+    (seeded calendar mapping plus end-to-end Moon-to-Dasha). The runnable
+    fixture-integrity suite separately proves transcribed MD/AD/PD structure.
   - _Requirements: 1.1–1.6, 2.4, 3, 6, 8.1–8.12_
 
-- [ ] 2. Extract the existing Drik/Lahiri provider without behavior change
-  - [~] 2.1 Define `AstronomyProvider` and move Swiss ephemeris sidereal planet,
+- [x] 2. Extract the existing Drik/Lahiri provider without behavior change
+  - [x] 2.1 Define `AstronomyProvider` and move Swiss ephemeris sidereal planet,
     ascendant, and longitude-at-time operations out of `planets.ts`, `transits.ts`,
-    and `gochar.ts` into `astronomy/drikLahiri.ts`. Make the precise-sunrise
-    backwards-search origin and 72-hour bound an asserted provider invariant.
-  - [~] 2.2 Thread the selected provider through `computeFullChart`, natal Gochar
+    and `gochar.ts` into `astronomy/drikLahiri.ts`. Regression tests prove the
+    real legacy prior-sunrise search behavior. The strict 72-hour backwards bound
+    and typed polar `SunriseUnavailableError` are intentionally deferred to Task 4
+    rather than claimed by the current Drik fallback helper.
+  - [x] 2.2 Thread the selected provider through `computeFullChart`, natal Gochar
     context, current transits, and Gochar range scans. Make profile input explicit
     on all supported birth-input route and MCP entry points.
-  - [~] 2.3 Preserve all current Drik/Lahiri unit and integration outputs exactly;
+  - [x] 2.3 Preserve all current Drik/Lahiri unit and integration outputs exactly;
     add regression tests before merging this extraction, including a pre-06:00
     local birth under legacy `sunriseMode: 'jhora'`.
   - _Requirements: 1.3–1.4, 4.3, 5.1_
 
 - [ ] 3. Implement the standalone SSS/Makaranda natal provider
+
+  **Implementation guardrails (apply `.kiro/skills/scientific-verification.md`):**
+
+  - **Fixtures are read-only.** No edit to `__fixtures__/suryaSiddhantaMakaranda.ts`
+    or `docs/reference/` is in scope for this task. A fixture diff is an automatic
+    review failure. If a value disagrees, report the component and magnitude.
+  - **No expected value from your own output.** Every golden assertion traces to a
+    transcribed JHora number. Do not "run → paste → widen tolerance."
+  - **Enforce standalone structurally.** Add a test asserting SSS module transitive
+    imports contain no `swisseph-v2`, no `astronomy/drikLahiri`, no `planets.ts`.
+    Add a divergence test proving SSS and Drik disagree on the same birth data.
+  - **Longitude wrap: use `wrapLongitudeExact` semantics.** Do not import
+    `normalizeLongitude` — it returns `0` for `359.99999999999994`. Property-test
+    the chosen form with fast-check for bit-exact passthrough in `[0, 360)`.
+  - **Build on `time.ts`.** Use `PreciseUtcInstant` and the existing Gregorian JD.
+    Do not write a parallel parser. Enforce the 1800–2399 range with boundary tests
+    on both inclusive edges and both first-outside values.
+  - **Make intermediates assertable.** Return mean place, corrections, ayanamsa as
+    structured fields, not just the final longitude. Fixture tests pin components.
+  - **Report deltas, don't tune.** If goldens don't match, produce: component name,
+    expected, actual, delta in arcseconds. Do not adjust coefficients without citing
+    the authoritative source for the new value.
+
   - [~] 3.1 Implement pure-TypeScript normalized civil-time/JD and Makaranda
     day-count primitives with property tests for wraparound, supported-range
     boundaries, and fractional seconds. Enforce the 1800-01-01–2399-12-31 range

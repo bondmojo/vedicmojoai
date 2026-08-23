@@ -357,9 +357,12 @@ engine/
 ├── llm.ts                # Vercel AI SDK wrapper — provider/model swappable
 ├── chartSummary.ts       # ChartInputV1 + DashaTree → compact ~2KB summary string
 ├── renderer.ts           # synthesis JSON → HTML report file
-├── compute/              # deterministic Swiss Ephemeris engine (no LLM)
+├── compute/              # profile-aware deterministic astronomy + derived engine (no LLM)
 │   ├── index.ts           # computeFullChart() — orchestrates all modules below
-│   ├── planets.ts         # planet longitudes, signs, houses
+│   ├── profiles.ts        # immutable Drik/Lahiri and approved SSS profile contracts
+│   ├── astronomy/         # provider interface + extracted Drik/Lahiri Swiss provider
+│   ├── sunrise.ts          # external sunrise instant seam; provider owns Sun longitude
+│   ├── planets.ts         # compatibility façade for legacy Drik helper imports
 │   ├── nakshatras.ts      # nakshatra, pada, sub-lord
 │   ├── dignity.ts         # MOOLATRIKONA_RANGES (degree-aware D1 rule), getVargaDignityLabel (optional degreeInSign param), getVargaDignityReason() — consumed by divisional.ts, yogas.ts, scoring.ts, UI KeyDignitiesPanel
 │   ├── divisional.ts      # divisional charts incl. D2, D3, D12 (new) + D4/D7/D9/D10/D30

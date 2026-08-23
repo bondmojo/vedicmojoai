@@ -387,7 +387,7 @@ export default function ComputePage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Time of Birth *</label>
-                  <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required step="1" />
+                  <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required step="0.000001" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Timezone *</label>

@@ -2,8 +2,8 @@
  * engine/compute/transits.ts — Current Gochar (transit) + Sade Sati timeline.
  */
 
-import swisseph from 'swisseph-v2'
-import path from 'path'
+import { drikLahiriProvider, normalizeLongitude } from './astronomy/drikLahiri'
+import type { AstronomyBody, AstronomyProvider } from './astronomy'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -123,71 +123,44 @@ const SIGNS = [
   'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces',
 ]
 
-const PLANET_IDS: { name: string; id: number }[] = [
-  { name: 'Sun',     id: 0  },
-  { name: 'Moon',    id: 1  },
-  { name: 'Mars',    id: 4  },
-  { name: 'Mercury', id: 2  },
-  { name: 'Jupiter', id: 5  },
-  { name: 'Venus',   id: 3  },
-  { name: 'Saturn',  id: 6  },
-  { name: 'Rahu',    id: 11 },
+const PLANET_BODIES: { name: Exclude<AstronomyBody, 'Ketu'> }[] = [
+  { name: 'Sun' },
+  { name: 'Moon' },
+  { name: 'Mars' },
+  { name: 'Mercury' },
+  { name: 'Jupiter' },
+  { name: 'Venus' },
+  { name: 'Saturn' },
+  { name: 'Rahu' },
 ]
 
-// ─── Ephemeris ───────────────────────────────────────────────────────
-
-let ephePathSet = false
-function ensureEph(): void {
-  if (ephePathSet) return
-  try {
-    const pkg = require.resolve('swisseph-v2/package.json')
-    swisseph.swe_set_ephe_path(path.join(path.dirname(pkg), 'ephe'))
-  } catch { /* fallback */ }
-  ephePathSet = true
-}
-
-function normLong(lon: number): number { return ((lon % 360) + 360) % 360 }
-
-function toJD(date: Date): number {
-  return swisseph.swe_julday(
-    date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(),
-    date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600,
-    swisseph.SE_GREG_CAL
-  )
+function toJD(date: Date, provider: AstronomyProvider = drikLahiriProvider): number {
+  // Preserve the legacy current-transit precision: this module historically
+  // passed whole UTC seconds to swe_julday. Gochar range intentionally uses
+  // millisecond precision through its separate adapter.
+  const wholeSecond = new Date(Math.floor(date.getTime() / 1000) * 1000)
+  return provider.dateToJulianDay(wholeSecond)
 }
 
 /** Convert a Julian Day (UT) back into a JS Date. */
-function jdToDate(jd: number): Date {
-  const r = swisseph.swe_revjul(jd, swisseph.SE_GREG_CAL) as any
-  const hourFloat = r.hour ?? 0
-  const hour = Math.floor(hourFloat)
-  const minFloat = (hourFloat - hour) * 60
-  const min = Math.floor(minFloat)
-  const sec = Math.round((minFloat - min) * 60)
-  return new Date(Date.UTC(r.year, r.month - 1, r.day, hour, min, sec))
+function jdToDate(jd: number, provider: AstronomyProvider = drikLahiriProvider): Date {
+  return provider.julianDayToDate(jd, 'second')
 }
 
-function getSiderealLongitude(jd: number, bodyId: number): number {
-  ensureEph()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-  const flags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL | swisseph.SEFLG_SPEED
-  const r = swisseph.swe_calc_ut(jd, bodyId, flags) as any
-  return normLong(r.longitude ?? 0)
+function getSiderealLongitude(jd: number, body: AstronomyBody, provider: AstronomyProvider): number {
+  return provider.longitudeAt(jd, body).longitude
 }
 
 function getSignNumber(lon: number): number { return Math.floor(lon / 30) + 1 }
 
 /** Sidereal sign (1–12) of a Swiss Ephemeris body at a given JD. */
-function bodySignAt(jd: number, bodyId: number): number {
-  return getSignNumber(getSiderealLongitude(jd, bodyId))
+function bodySignAt(jd: number, body: AstronomyBody, provider: AstronomyProvider): number {
+  return getSignNumber(getSiderealLongitude(jd, body, provider))
 }
 
 /** Sidereal ascendant sign (1–12) at a given JD for a location. */
-function ascSignAt(jd: number, latitude: number, longitude: number): number {
-  ensureEph()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-  const h = swisseph.swe_houses_ex(jd, swisseph.SEFLG_SIDEREAL, latitude, longitude, 'W') as any
-  return getSignNumber(normLong(h.ascendant ?? 0))
+function ascSignAt(jd: number, latitude: number, longitude: number, provider: AstronomyProvider): number {
+  return getSignNumber(provider.computeAscendant(jd, latitude, longitude).longitude)
 }
 
 /**
@@ -280,9 +253,8 @@ function computeSadeSatiPeriods(
   natalMoonSignNumber: number,
   birthYear: number,
   asOfDate: Date,
+  provider: AstronomyProvider,
 ): SadeSatiPeriod[] {
-  ensureEph()
-
   const moonMinus1 = ((natalMoonSignNumber - 2 + 12) % 12) + 1
   const moonPlus1  = (natalMoonSignNumber % 12) + 1
   const phaseOf = (sign: number): 'rising' | 'peak' | 'setting' | null => {
@@ -295,11 +267,11 @@ function computeSadeSatiPeriods(
   // Scan window: start 33 years before birth to cover a full Saturn cycle
   // (~29.5 years) with margin, since a Sade Sati visible in early childhood
   // can have begun up to ~32 years before the birth year.
-  const startJd = toJD(new Date(Date.UTC(birthYear - 33, 0, 1)))
-  const endJd   = toJD(new Date(Date.UTC(new Date().getUTCFullYear() + 35, 0, 1)))
+  const startJd = toJD(new Date(Date.UTC(birthYear - 33, 0, 1)), provider)
+  const endJd   = toJD(new Date(Date.UTC(new Date().getUTCFullYear() + 35, 0, 1)), provider)
 
   // Build contiguous Saturn-in-sign segments across the window.
-  const satSign = (jd: number) => bodySignAt(jd, 6)
+  const satSign = (jd: number) => bodySignAt(jd, 'Saturn', provider)
   const segments: { key: number; start: number; end: number }[] = []
   const STEP = 10 // days
 
@@ -333,8 +305,8 @@ function computeSadeSatiPeriods(
 
   const nowMs = asOfDate.getTime()
   return merged.map((seg) => {
-    const startD = jdToDate(seg.start)
-    const endD = jdToDate(seg.end)
+    const startD = jdToDate(seg.start, provider)
+    const endD = jdToDate(seg.end, provider)
     return {
       phase: phaseOf(seg.key)!,
       phaseSign: SIGNS[seg.key - 1],
@@ -403,10 +375,11 @@ function roundHalfAwayFromZeroInt(v: number): number {
 function scanDegreeSadeSatiSegments(
   natalMoonLongitude: number,
   startJd: number,
-  endJd: number
+  endJd: number,
+  provider: AstronomyProvider,
 ): { key: number; start: number; end: number }[] {
   const insideAt = (jd: number): boolean =>
-    shorterArc(getSiderealLongitude(jd, 6), natalMoonLongitude) <= 45
+    shorterArc(getSiderealLongitude(jd, 'Saturn', provider), natalMoonLongitude) <= 45
   const stateAt = (jd: number): number => (insideAt(jd) ? 1 : 0)
   const STEP = 10 // days
 
@@ -445,7 +418,8 @@ function computeDegreeSadeSatiInternal(
   natalMoonLongitude: number,
   birthYear: number,
   asOfDate: Date,
-  testHorizon?: { start: Date; end: Date }
+  testHorizon?: { start: Date; end: Date },
+  provider: AstronomyProvider = drikLahiriProvider
 ): DegreeSadeSatiInfo {
   const scanFromYear = birthYear - 33
   const scanToYear = new Date().getUTCFullYear() + 35
@@ -462,23 +436,21 @@ function computeDegreeSadeSatiInternal(
     }
   }
 
-  ensureEph()
-
   const startJd = testHorizon
-    ? toJD(testHorizon.start)
-    : toJD(new Date(Date.UTC(scanFromYear, 0, 1)))
+    ? toJD(testHorizon.start, provider)
+    : toJD(new Date(Date.UTC(scanFromYear, 0, 1)), provider)
   const endJd = testHorizon
-    ? toJD(testHorizon.end)
-    : toJD(new Date(Date.UTC(scanToYear, 0, 1)))
+    ? toJD(testHorizon.end, provider)
+    : toJD(new Date(Date.UTC(scanToYear, 0, 1)), provider)
 
-  const merged = scanDegreeSadeSatiSegments(natalMoonLongitude, startJd, endJd)
+  const merged = scanDegreeSadeSatiSegments(natalMoonLongitude, startJd, endJd, provider)
 
   const nowMs = asOfDate.getTime()
   const label = `Saturn ±45° from natal Moon (${natalMoonLongitude.toFixed(2)}°) - 12th, 1st, 2nd houses`
 
   const allPeriods: DegreeSadeSatiPeriod[] = merged.map((seg, idx) => {
-    const startD = jdToDate(seg.start)
-    const endD = jdToDate(seg.end)
+    const startD = jdToDate(seg.start, provider)
+    const endD = jdToDate(seg.end, provider)
     const startMs = startD.getTime()
     const endMs = endD.getTime()
     const isCurrent = nowMs >= startMs && nowMs < endMs
@@ -504,7 +476,7 @@ function computeDegreeSadeSatiInternal(
     return period
   })
 
-  const separationDeg = shorterArc(getSiderealLongitude(toJD(asOfDate), 6), natalMoonLongitude)
+  const separationDeg = shorterArc(getSiderealLongitude(toJD(asOfDate, provider), 'Saturn', provider), natalMoonLongitude)
   const active = separationDeg <= 45
 
   return {
@@ -533,9 +505,10 @@ function computeDegreeSadeSatiInternal(
 export function computeDegreeSadeSati(
   natalMoonLongitude: number,
   birthYear: number,
-  asOfDate: Date
+  asOfDate: Date,
+  provider: AstronomyProvider = drikLahiriProvider
 ): DegreeSadeSatiInfo {
-  return computeDegreeSadeSatiInternal(natalMoonLongitude, birthYear, asOfDate)
+  return computeDegreeSadeSatiInternal(natalMoonLongitude, birthYear, asOfDate, undefined, provider)
 }
 
 /**
@@ -550,9 +523,10 @@ export function computeDegreeSadeSatiWithTestHorizon(
   natalMoonLongitude: number,
   birthYear: number,
   asOfDate: Date,
-  testHorizon: { start: Date; end: Date }
+  testHorizon: { start: Date; end: Date },
+  provider: AstronomyProvider = drikLahiriProvider
 ): DegreeSadeSatiInfo {
-  return computeDegreeSadeSatiInternal(natalMoonLongitude, birthYear, asOfDate, testHorizon)
+  return computeDegreeSadeSatiInternal(natalMoonLongitude, birthYear, asOfDate, testHorizon, provider)
 }
 
 // ─── Moon Transit Listing ────────────────────────────────────────────
@@ -564,12 +538,13 @@ export function computeDegreeSadeSatiWithTestHorizon(
  */
 function computeMoonTransits(
   natalMoonSignNumber: number,
-  asOfDate: Date
+  asOfDate: Date,
+  provider: AstronomyProvider,
 ): MoonTransitPeriod[] {
   const transits: MoonTransitPeriod[] = []
-  const moonSign = (jd: number) => bodySignAt(jd, 1)
+  const moonSign = (jd: number) => bodySignAt(jd, 'Moon', provider)
 
-  const nowJd = toJD(asOfDate)
+  const nowJd = toJD(asOfDate, provider)
   const nowMs = asOfDate.getTime()
 
   // Start of the sign the Moon currently occupies.
@@ -580,8 +555,8 @@ function computeMoonTransits(
     // Read the sign directly at entryJd — no epsilon offset needed.
     const sign = moonSign(entryJd)
     const exitJd = nextStateChange(entryJd, 0.25, moonSign)
-    const entryD = jdToDate(entryJd)
-    const exitD = jdToDate(exitJd)
+    const entryD = jdToDate(entryJd, provider)
+    const exitD = jdToDate(exitJd, provider)
 
     transits.push({
       signNumber: sign,
@@ -610,12 +585,13 @@ function computeAscendantTransits(
   natalLagnaSignNumber: number,
   asOfDate: Date,
   latitude: number,
-  longitude: number
+  longitude: number,
+  provider: AstronomyProvider,
 ): AscendantTransitPeriod[] {
   const transits: AscendantTransitPeriod[] = []
-  const ascSign = (jd: number) => ascSignAt(jd, latitude, longitude)
+  const ascSign = (jd: number) => ascSignAt(jd, latitude, longitude, provider)
 
-  const nowJd = toJD(asOfDate)
+  const nowJd = toJD(asOfDate, provider)
   const nowMs = asOfDate.getTime()
 
   // Coarse step ~10 minutes — smaller than the fastest-rising sign.
@@ -630,8 +606,8 @@ function computeAscendantTransits(
     // 1-minute epsilon could cross into the adjacent sign.
     const sign = ascSign(entryJd)
     const exitJd = nextStateChange(entryJd, COARSE, ascSign)
-    const entryD = jdToDate(entryJd)
-    const exitD = jdToDate(exitJd)
+    const entryD = jdToDate(entryJd, provider)
+    const exitD = jdToDate(exitJd, provider)
 
     transits.push({
       signNumber: sign,
@@ -657,19 +633,17 @@ export function computeTransits(
   asOfDate: Date = new Date(),
   latitude: number = 28.6,
   longitude: number = 77.2,
-  natalMoonLongitude?: number
+  natalMoonLongitude?: number,
+  provider: AstronomyProvider = drikLahiriProvider
 ): TransitAnalysis {
-  ensureEph()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-  const flags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL | swisseph.SEFLG_SPEED
-  const jd = toJD(asOfDate)
+  const jd = toJD(asOfDate, provider)
 
   const transits: TransitPlanet[] = []
 
-  for (const { name, id } of PLANET_IDS) {
-    const result = swisseph.swe_calc_ut(jd, id, flags) as any
-    let lon = normLong(result.longitude ?? 0)
-    const speed = result.longitudeSpeed ?? 0
+  for (const { name } of PLANET_BODIES) {
+    const sample = provider.longitudeAt(jd, name)
+    const lon = sample.longitude
+    const speed = sample.longitudeSpeed
 
     const addPlanet = (pname: string, plon: number, pspeed: number) => {
       const sn = getSignNumber(plon)
@@ -683,7 +657,7 @@ export function computeTransits(
 
     addPlanet(name, lon, speed)
     if (name === 'Rahu') {
-      addPlanet('Ketu', normLong(lon + 180), speed)
+      addPlanet('Ketu', normalizeLongitude(lon + 180), speed)
     }
   }
 
@@ -699,7 +673,7 @@ export function computeTransits(
   else if (satSign === moonPlus1) phase = 'setting'
   const active = phase !== null
 
-  const allPeriods = computeSadeSatiPeriods(natalMoonSignNumber, birthYear, asOfDate)
+  const allPeriods = computeSadeSatiPeriods(natalMoonSignNumber, birthYear, asOfDate, provider)
 
   const sadeSati: SadeSatiInfo = {
     active, phase, saturnSignNumber: satSign, natalMoonSignNumber,
@@ -712,11 +686,11 @@ export function computeTransits(
   const satFromMoon = ((satSign - natalMoonSignNumber + 12) % 12) + 1
   const moonT = transits.find(t => t.planet === 'Moon')!
 
-  const moonTransits = computeMoonTransits(natalMoonSignNumber, asOfDate)
-  const ascTransits  = computeAscendantTransits(natalLagnaSignNumber, asOfDate, latitude, longitude)
+  const moonTransits = computeMoonTransits(natalMoonSignNumber, asOfDate, provider)
+  const ascTransits  = computeAscendantTransits(natalLagnaSignNumber, asOfDate, latitude, longitude, provider)
 
   const sadeSatiByDegree = Number.isFinite(natalMoonLongitude)
-    ? computeDegreeSadeSati(natalMoonLongitude as number, birthYear, asOfDate)
+    ? computeDegreeSadeSati(natalMoonLongitude as number, birthYear, asOfDate, provider)
     : undefined
 
   return {

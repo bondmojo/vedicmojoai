@@ -564,7 +564,7 @@ astronomical chart computation from birth data.
 ```
 PRACTITIONER
      │
-     │ Birth data (date, time, timezone, latitude, longitude, sunriseMode)
+     │ Birth data (date, time, timezone, latitude, longitude, sunriseMode, calculationProfile)
      │ POST /api/compute
      ▼
 ┌───────────────────────────────┐
@@ -573,7 +573,11 @@ PRACTITIONER
 │  (engine/compute/index.ts)    │
 │                               │
 │  computeFullChart()           │
-│  • Swiss Ephemeris calls      │
+│  • Resolve immutable profile  │
+│  • Select astronomy provider  │
+│    (currently Drik/Lahiri; SSS │
+│    stateless compute fails 422 │
+│    until provider exists)      │
 │  • Planetary positions (D1)   │
 │  • Divisional charts          │
 │    (D1–D60: D1,D2,D3,D4,D5,   │
@@ -609,9 +613,10 @@ PRACTITIONER
 ### Data flows within Compute engine (P8.1):
 
 ```
-BirthInput
+BirthInput + calculationProfile
     │
-    ├─► Swiss Ephemeris (swisseph-v2) → Julian Day, Ayanamsa
+    ├─► resolve profile → AstronomyProvider
+    │     └─► Drik/Lahiri: Swiss Ephemeris (swisseph-v2) → Julian Day, Ayanamsa
     │
     ├─► computeAscendant()           → Lagna longitude, sign
     │

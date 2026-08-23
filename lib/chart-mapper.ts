@@ -11,6 +11,7 @@
 import crypto from 'crypto'
 import { Prisma } from '@prisma/client'
 import type { ComputedChart, BirthInput, DivisionalChart as ComputeDivisionalChart } from '@/engine/compute/types'
+import { birthInputToUtcDate, normalizeBirthTime } from '@/engine/compute/time'
 import { computeNakshatraForLongitude } from '@/engine/compute/nakshatras'
 import type { ChartInputV1, DashaTree, MahaDasha, AntarDasha, PratyanDasha, Gender } from '@/lib/types'
 
@@ -76,24 +77,31 @@ export function mapComputedToUnified(
   dashaTree: SerializedDashaTree,
   name: string
 ): UnifiedChartCreateInput {
+  // Mapper callers include legacy promotion paths, so canonicalize an older
+  // unpadded local hour before both persistence and identity hashing.
+  const normalizedInput: BirthInput = {
+    ...chart.input,
+    time: normalizeBirthTime(chart.input.time),
+  }
+
   // Build birth datetime from input
-  const birthDatetime = buildBirthDatetime(chart.input)
+  const birthDatetime = buildBirthDatetime(normalizedInput)
 
   // Compute hash from birth input for deduplication
   const chartHash = computeChartHash({
     source: 'compute',
-    date: chart.input.date,
-    time: chart.input.time,
-    timezone: chart.input.timezone,
-    latitude: chart.input.latitude,
-    longitude: chart.input.longitude,
-    sunriseMode: chart.input.sunriseMode ?? 'precise',
+    date: normalizedInput.date,
+    time: normalizedInput.time,
+    timezone: normalizedInput.timezone,
+    latitude: normalizedInput.latitude,
+    longitude: normalizedInput.longitude,
+    sunriseMode: normalizedInput.sunriseMode ?? 'precise',
   })
 
   return {
     name,
     source: 'compute',
-    birthInput: chart.input as unknown as Prisma.InputJsonValue,
+    birthInput: normalizedInput as unknown as Prisma.InputJsonValue,
     lagna: chart.lagna,
     lagnaLongitude: chart.lagnaLongitude,
     moonLongitude: chart.planets.find((p) => p.planet === 'Moon')!.longitude,
@@ -420,17 +428,7 @@ export function serializeDashaTree(tree: DashaTree): SerializedDashaTree {
 
 /** Builds a UTC Date from BirthInput fields. */
 function buildBirthDatetime(input: BirthInput): Date {
-  const [year, month, day] = input.date.split('-').map(Number)
-  const timeParts = input.time.split(':').map(Number)
-  const hours = timeParts[0]
-  const minutes = timeParts[1]
-  const seconds = timeParts[2] ?? 0
-
-  const utcMillis =
-    Date.UTC(year, month - 1, day, hours, minutes, seconds) -
-    input.timezone * 3600 * 1000
-
-  return new Date(utcMillis)
+  return birthInputToUtcDate(input)
 }
 
 /** Computes a SHA-256 hash for chart deduplication. */

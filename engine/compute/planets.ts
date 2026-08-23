@@ -1,346 +1,47 @@
 /**
- * engine/compute/planets.ts — Core planetary longitude computation using Swiss Ephemeris.
+ * Compatibility façade for the historic Drik/Lahiri helpers.
  *
- * Computes sidereal planetary positions using Lahiri ayanamsa for all 9 Vedic planets
- * (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) plus the Ascendant.
+ * New profile-aware code must use `astronomy/` directly. This module remains so
+ * existing derived modules (notably Varshaphal) retain their public imports
+ * while the Swiss-Ephemeris implementation lives in one provider module.
  */
 
-import path from 'path'
-import swisseph from 'swisseph-v2'
+import {
+  computeDrikSunrise,
+  drikBirthInputToJulianDay,
+  drikJulianDayToLocalCivil,
+  drikLahiriProvider,
+  findDrikSolarReturnJulianDay,
+  SIGNS,
+  siderealDrikSunLongitude,
+} from './astronomy/drikLahiri'
 import type { BirthInput, PlanetPosition } from './types'
 
-// ─── Ephemeris Path Setup ───────────────────────────────────────────
-
-/**
- * Points Swiss Ephemeris at the bundled .se1 data files so that
- * swe_calc_ut uses the true Swiss Ephemeris (SEFLG_SWIEPH) rather than
- * silently degrading to the Moshier fallback. The swisseph-v2 package
- * ships sepl_18/semo_18/seas_18.se1 (covering 1800–2399) in its ephe dir.
- *
- * Resolved once at module load. If resolution fails (unusual packaging),
- * calls will fall back to Moshier — still ~arcsecond accurate.
- */
-let ephePathSet = false
-function ensureEphemerisPath(): void {
-  if (ephePathSet) return
-  try {
-    const pkgJson = require.resolve('swisseph-v2/package.json')
-    const ephePath = path.join(path.dirname(pkgJson), 'ephe')
-    swisseph.swe_set_ephe_path(ephePath)
-  } catch {
-    // Leave unset — library falls back to Moshier model.
-  }
-  ephePathSet = true
-}
-
-// ─── Constants ──────────────────────────────────────────────────────
-
-const SIGNS = [
-  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
-]
-
-/** Planet IDs used by Swiss Ephemeris */
-const PLANET_IDS: { name: string; id: number }[] = [
-  { name: 'Sun', id: swisseph.SE_SUN },
-  { name: 'Moon', id: swisseph.SE_MOON },
-  { name: 'Mars', id: swisseph.SE_MARS },
-  { name: 'Mercury', id: swisseph.SE_MERCURY },
-  { name: 'Jupiter', id: swisseph.SE_JUPITER },
-  { name: 'Venus', id: swisseph.SE_VENUS },
-  { name: 'Saturn', id: swisseph.SE_SATURN },
-  { name: 'Rahu', id: swisseph.SE_TRUE_NODE }, // True node = Rahu
-]
-
-// ─── Core Functions ─────────────────────────────────────────────────
-
-/**
- * Converts birth input into Julian Day (Universal Time).
- */
 export function birthInputToJulianDay(input: BirthInput): number {
-  const [year, month, day] = input.date.split('-').map(Number)
-  const [hours, minutes, seconds] = input.time.split(':').map(Number)
-
-  // Convert local time to UT
-  const decimalHours = hours + minutes / 60 + (seconds || 0) / 3600
-  const ut = decimalHours - input.timezone
-
-  // Handle day rollover
-  let adjDay = day
-  let adjMonth = month
-  let adjYear = year
-  let adjHour = ut
-
-  if (ut < 0) {
-    adjHour = ut + 24
-    adjDay -= 1
-    if (adjDay < 1) {
-      adjMonth -= 1
-      if (adjMonth < 1) {
-        adjMonth = 12
-        adjYear -= 1
-      }
-      adjDay = new Date(adjYear, adjMonth, 0).getDate()
-    }
-  } else if (ut >= 24) {
-    adjHour = ut - 24
-    adjDay += 1
-    const daysInMonth = new Date(adjYear, adjMonth, 0).getDate()
-    if (adjDay > daysInMonth) {
-      adjDay = 1
-      adjMonth += 1
-      if (adjMonth > 12) {
-        adjMonth = 1
-        adjYear += 1
-      }
-    }
-  }
-
-  return swisseph.swe_julday(adjYear, adjMonth, adjDay, adjHour, swisseph.SE_GREG_CAL)
+  return drikBirthInputToJulianDay(input)
 }
 
-/**
- * Computes the sidereal ascendant (lagna) degree using whole-sign houses.
- */
 export function computeAscendant(
   julianDay: number,
   latitude: number,
   longitude: number
 ): { longitude: number; sign: string; signNumber: number; degreeInSign: number } {
-  ensureEphemerisPath()
-  // Set sidereal mode to Lahiri
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-
-  const result = swisseph.swe_houses_ex(
-    julianDay,
-    swisseph.SEFLG_SIDEREAL,
-    latitude,
-    longitude,
-    'W' // Whole sign houses
-  )
-
-  if ('error' in result) {
-    throw new Error(`Ascendant computation failed: ${result.error}`)
-  }
-
-  const ascLongitude = result.ascendant
-  const signNumber = Math.floor(ascLongitude / 30) + 1
-  const degreeInSign = ascLongitude % 30
-
-  return {
-    longitude: ascLongitude,
-    sign: SIGNS[signNumber - 1],
-    signNumber,
-    degreeInSign,
-  }
+  return drikLahiriProvider.computeAscendant(julianDay, latitude, longitude)
 }
 
-/**
- * Computes sidereal positions for all 9 Vedic planets.
- * Uses Lahiri ayanamsa and returns positions with retrograde status.
- */
-export function computePlanetPositions(
-  julianDay: number,
-  lagnaSignNumber: number
-): PlanetPosition[] {
-  ensureEphemerisPath()
-  // Set Lahiri ayanamsa
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-
-  const flags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL | swisseph.SEFLG_SPEED
-
-  const positions: PlanetPosition[] = []
-
-  for (const { name, id } of PLANET_IDS) {
-    const result = swisseph.swe_calc_ut(julianDay, id, flags)
-
-    if ('error' in result) {
-      throw new Error(`Planet calculation failed for ${name}: ${(result as { error: string }).error}`)
-    }
-
-    const res = result as {
-      longitude: number
-      latitude: number
-      longitudeSpeed: number
-    }
-
-    let longitude = res.longitude
-    // Normalize to 0–360
-    if (longitude < 0) longitude += 360
-    if (longitude >= 360) longitude -= 360
-
-    const signNumber = Math.floor(longitude / 30) + 1
-    const degreeInSign = longitude % 30
-    const sign = SIGNS[signNumber - 1]
-    const speed = res.longitudeSpeed
-    const retrograde = speed < 0
-    const house = ((signNumber - lagnaSignNumber + 12) % 12) + 1
-
-    positions.push({
-      planet: name,
-      longitude,
-      latitude: res.latitude,
-      speed,
-      retrograde,
-      sign,
-      signNumber,
-      degreeInSign,
-      house,
-    })
-  }
-
-  // Compute Ketu (always 180° from Rahu)
-  const rahu = positions.find((p) => p.planet === 'Rahu')!
-  let ketuLongitude = (rahu.longitude + 180) % 360
-  const ketuSignNumber = Math.floor(ketuLongitude / 30) + 1
-  const ketuDegreeInSign = ketuLongitude % 30
-  const ketuHouse = ((ketuSignNumber - lagnaSignNumber + 12) % 12) + 1
-
-  positions.push({
-    planet: 'Ketu',
-    longitude: ketuLongitude,
-    latitude: -rahu.latitude,
-    speed: rahu.speed, // Same speed magnitude
-    retrograde: true, // Ketu is always retrograde
-    sign: SIGNS[ketuSignNumber - 1],
-    signNumber: ketuSignNumber,
-    degreeInSign: ketuDegreeInSign,
-    house: ketuHouse,
-  })
-
-  return positions
+export function computePlanetPositions(julianDay: number, lagnaSignNumber: number): PlanetPosition[] {
+  return drikLahiriProvider.computePlanets(julianDay, lagnaSignNumber)
 }
 
-/**
- * Computes the sunrise reference point used by the time-based special lagnas
- * (Bhava/Hora/Ghati Lagna, Varnada, Kunda, Pranapada).
- *
- * Two modes are supported:
- *   "precise" — real astronomical sunrise via Swiss Ephemeris swe_rise_trans.
- *               Correct for actual sky conditions; may not match JHora.
- *   "jhora"   — fixed 6:00 AM local time, matching Jagannatha Hora's built-in
- *               convention. Use this when cross-checking against JHora output.
- *
- * Returns the sunrise as a Julian Day (UT) and the Sun's sidereal longitude
- * at that moment.
- */
-export function computeSunrise(
-  julianDay: number,
-  latitude: number,
-  longitude: number,
-  timezoneHours: number = 0,
-  mode: 'precise' | 'jhora' = 'precise'
-): { sunriseJulianDay: number; sunLongitudeAtSunrise: number; sunriseFallback: boolean } {
-  ensureEphemerisPath()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
+export const computeSunrise = computeDrikSunrise
 
-  let sunriseJD: number
-  let sunriseFallback = false
+export const siderealSunLongitude = siderealDrikSunLongitude
 
-  const sixAmJD = (): number => {
-    const birthLocal = swisseph.swe_revjul(
-      julianDay + timezoneHours / 24,
-      swisseph.SE_GREG_CAL
-    ) as { year: number; month: number; day: number }
-    const sixAmUT = 6 - timezoneHours
-    return swisseph.swe_julday(
-      birthLocal.year,
-      birthLocal.month,
-      birthLocal.day,
-      sixAmUT,
-      swisseph.SE_GREG_CAL
-    )
-  }
-
-  if (mode === 'jhora') {
-    sunriseJD = sixAmJD()
-  } else {
-    // Precise: real astronomical sunrise via Swiss Ephemeris.
-    const rsmi = (swisseph as { SE_CALC_RISE: number }).SE_CALC_RISE
-    sunriseJD = -1 // sentinel
-    try {
-      const r = swisseph.swe_rise_trans(
-        julianDay - 1,
-        swisseph.SE_SUN,
-        '',
-        swisseph.SEFLG_SWIEPH,
-        rsmi,
-        longitude,
-        latitude,
-        0,
-        0,
-        0
-      ) as { transitTime?: number }
-      if (r && typeof r.transitTime === 'number') {
-        sunriseJD = r.transitTime
-      }
-    } catch {
-      // fall through to fallback below
-    }
-    if (sunriseJD < 0) {
-      // swe_rise_trans failed or returned no transitTime — fall back to 6 AM
-      // and mark the fallback so callers can reflect it in the output.
-      sunriseJD = sixAmJD()
-      sunriseFallback = true
-    }
-  }
-
-  const sunRes = swisseph.swe_calc_ut(
-    sunriseJD,
-    swisseph.SE_SUN,
-    swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL
-  ) as { longitude?: number }
-  let sunLon = sunRes.longitude ?? 0
-  sunLon = ((sunLon % 360) + 360) % 360
-
-  return { sunriseJulianDay: sunriseJD, sunLongitudeAtSunrise: sunLon, sunriseFallback }
-}
+export const findSolarReturnJulianDay = findDrikSolarReturnJulianDay
 
 /**
- * Sidereal (Lahiri) longitude of the Sun at an arbitrary Julian Day (UT),
- * normalised to [0, 360). Used by the Varshaphal solar-return search.
- */
-export function siderealSunLongitude(julianDay: number): number {
-  ensureEphemerisPath()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-  const res = swisseph.swe_calc_ut(
-    julianDay,
-    swisseph.SE_SUN,
-    swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SIDEREAL
-  ) as { longitude?: number }
-  return ((( res.longitude ?? 0) % 360) + 360) % 360
-}
-
-/**
- * Finds the exact Julian Day (UT) at which the transiting sidereal Sun returns
- * to a given natal longitude (the Varsha Pravesh / solar-return instant).
- *
- * Uses Newton iteration seeded near the target: the Sun's mean motion is
- * ~0.9856°/day, so each step `jd += diff/0.9856` converges within a few
- * iterations. `seedJulianDay` should be within ~half a year of the true
- * return (the birthday in the target year works well) so the search does not
- * lock onto an adjacent year's return.
- */
-export function findSolarReturnJulianDay(
-  natalSunLongitude: number,
-  seedJulianDay: number
-): number {
-  const SUN_MEAN_MOTION = 0.9856076686 // degrees/day
-  let jd = seedJulianDay
-  for (let i = 0; i < 40; i++) {
-    const lon = siderealSunLongitude(jd)
-    // Signed shortest angular gap natal − current, folded to [-180, 180].
-    const diff = (((natalSunLongitude - lon) % 360) + 540) % 360 - 180
-    if (Math.abs(diff) < 1e-8) break
-    jd += diff / SUN_MEAN_MOTION
-  }
-  return jd
-}
-
-/**
- * Converts a Julian Day (UT) into a local civil date/time for a given timezone
- * offset (hours). Returns YYYY-MM-DD / HH:MM:SS strings plus numeric parts,
- * suitable for feeding back into {@link birthInputToJulianDay} / BirthInput.
+ * Converts an arbitrary UT Julian day to civil local time. The legacy public
+ * contract intentionally rounds to nearest second and emits HH:MM:SS.
  */
 export function julianDayToLocalCivil(
   julianDay: number,
@@ -356,59 +57,19 @@ export function julianDayToLocalCivil(
   time: string
   weekday: number
 } {
-  ensureEphemerisPath()
-  const local = swisseph.swe_revjul(
-    julianDay + timezoneHours / 24,
-    swisseph.SE_GREG_CAL
-  ) as { year: number; month: number; day: number; hour: number }
-
-  // Split the decimal hour into H:M:S, rounding to the nearest second and
-  // carrying overflow up through minute/hour/day.
-  let year = local.year
-  let month = local.month
-  let day = local.day
-  let totalSeconds = Math.round(local.hour * 3600)
-  if (totalSeconds >= 86400) {
-    totalSeconds -= 86400
-    const next = new Date(Date.UTC(year, month - 1, day + 1))
-    year = next.getUTCFullYear()
-    month = next.getUTCMonth() + 1
-    day = next.getUTCDate()
-  }
-  const hour = Math.floor(totalSeconds / 3600)
-  const minute = Math.floor((totalSeconds % 3600) / 60)
-  const second = totalSeconds % 60
-
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const date = `${year}-${pad(month)}-${pad(day)}`
-  const time = `${pad(hour)}:${pad(minute)}:${pad(second)}`
-  // Weekday (0=Sunday) from a UTC-safe date construction.
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
-
-  return { year, month, day, hour, minute, second, date, time, weekday }
+  return drikJulianDayToLocalCivil(julianDay, timezoneHours)
 }
 
-/**
- * Gets the ayanamsa value for a given Julian Day.
- */
 export function getAyanamsa(julianDay: number): number {
-  ensureEphemerisPath()
-  swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0)
-  return swisseph.swe_get_ayanamsa_ut(julianDay)
+  return drikLahiriProvider.getAyanamsa(julianDay)
 }
 
-/**
- * Returns the sign name for a given sign number (1-indexed).
- */
 export function getSignName(signNumber: number): string {
   return SIGNS[((signNumber - 1) % 12 + 12) % 12]
 }
 
-/**
- * Returns the sign number (1-indexed) for a sidereal longitude.
- */
 export function longitudeToSign(longitude: number): number {
-  return Math.floor(((longitude % 360) + 360) % 360 / 30) + 1
+  return Math.floor((((longitude % 360) + 360) % 360) / 30) + 1
 }
 
 export { SIGNS }

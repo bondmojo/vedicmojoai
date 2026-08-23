@@ -264,6 +264,21 @@ Geometry**) live in `engine/compute/`:
 > renders both readings in `app/components/SadeSatiPanel.tsx`. See
 > `docs/computation_transits_sadesati.md`.
 
+> **Calculation-profile boundary:** `engine/compute/profiles.ts` owns immutable
+> profile definitions. Runtime resolution rejects unknown profile IDs with a typed
+> validation error, and `astronomy/drikLahiri.ts` contains the extracted Swiss
+> Drik/Lahiri provider. `computeFullChart` resolves the provider once before
+> threading it through natal positions, current transits, and Gochar; its external
+> sunrise instant comes from `engine/compute/sunrise.ts`, while the active provider
+> supplies the Sun longitude at that instant. The approved
+> `surya_siddhanta_makaranda_v1` profile is registered but intentionally fails
+> closed until its standalone formula provider and true-sidereal Dasha calendar
+> are delivered; it never falls back to a Lahiri chart. Until Task 6 adds
+> profile-aware persistence/hash provenance, `from-compute` returns 422
+> `CALCULATION_PROFILE_PERSISTENCE_UNAVAILABLE` for every SSS create attempt so
+> legacy Drik dedup cannot accept it. The strict SSS 72-hour/polar-sunrise error
+> contract remains Task 4 work; the current Drik 06:00 fallback is unchanged.
+
 > **Marriage Matchmaking engine:** `engine/compute/matchmaking.ts` +
 > `matchmakingTables.ts` — pure, never-throwing Ashtakoota + Mangal Dosha
 > scoring, completely separate from the wave pipeline and Duration Analysis.
@@ -293,7 +308,7 @@ app/            Next.js App Router (pages + /api routes)
   .well-known/    RFC 8414/9728 OAuth discovery metadata routes
   api/            Route handlers (auth, account, charts, compute, gochar, unified-charts, matchmaking, runs, reports, health, mcp, oauth)
 engine/         Pipeline + deterministic compute
-  compute/        Swiss Ephemeris modules (pure functions, no DB)
+  compute/        profile-aware deterministic astronomy + derived modules (pure functions, no DB)
   waves/          wave1–wave4 utilities
   orchestrator.ts planner.ts llm.ts pre_analysis.ts computeVimshottari.ts renderer.ts
 lib/            db.ts, validation.ts, errors.ts, types.ts, chart-mapper.ts,

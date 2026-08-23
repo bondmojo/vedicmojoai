@@ -14,6 +14,10 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { createUnifiedChartFromBirthData } from '@/lib/unified-chart-create'
 import { resolveRequestUser } from '@/lib/auth'
+import {
+  CalculationProfilePersistenceUnavailableError,
+  CalculationProfileUnavailableError,
+} from '@/engine/compute/profiles'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
@@ -25,7 +29,7 @@ const ComputeInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
   time: z
     .string()
-    .regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Time must be HH:MM or HH:MM:SS format'),
+    .regex(/^\d{2}:\d{2}(:\d{2}(?:\.\d{1,6})?)?$/, 'Time must be HH:MM, HH:MM:SS, or HH:MM:SS.s format'),
   timezone: z
     .number()
     .min(-12)
@@ -43,6 +47,7 @@ const ComputeInputSchema = z.object({
     .enum(['precise', 'jhora'])
     .optional()
     .default('precise'),
+  calculationProfile: z.enum(['drik_lahiri_v1', 'surya_siddhanta_makaranda_v1']).optional(),
 })
 
 // ─── Route Handler ──────────────────────────────────────────────────
@@ -112,6 +117,15 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    if (
+      error instanceof CalculationProfileUnavailableError ||
+      error instanceof CalculationProfilePersistenceUnavailableError
+    ) {
+      return NextResponse.json(
+        { error: error.message, code: error.code, calculationProfile: error.calculationProfile },
+        { status: 422 }
+      )
+    }
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2025'
