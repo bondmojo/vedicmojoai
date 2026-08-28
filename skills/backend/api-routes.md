@@ -22,6 +22,7 @@
 | `/api/compute` | POST | Run deterministic compute engine (UI: home page `/`) |
 | `/api/compute/varshaphal` | POST | Tajika Varshaphal (annual solar-return chart) for a `varshaYear` — returns Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
 | `/api/gochar` | POST | Authenticated, read-only Lahiri sidereal Gochar range — accepts exactly one saved chart or unsaved birth-data source and returns UTC whole-sign occupancy intervals; Moon is opt-in |
+| `/api/places` | GET | Authenticated, read-only offline Indian-settlement search over the shared `Place` table (`?q=&limit=&includeHamlets=`). Short-circuits a normalized query under 3 chars with `reason: 'query_too_short'` and **no** DB call; otherwise runs 6 ranked tiers as separate ordered Prisma queries — phrase exact/prefix/substring (unnarrowed), then name-token exact/prefix/substring with `state`/`district`/`county` narrowing — sharing one over-fetch budget, then dedupes and serializes `Decimal` coordinates to numbers. Never geocodes, never writes |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) |
 | `/api/unified-charts/from-compute` | POST | Generate Chart (Path A) — compute + persist `source="compute"` |
 | `/api/unified-charts/from-paste` | POST | Generate Chart (Path B) — validate + persist `source="paste"` |

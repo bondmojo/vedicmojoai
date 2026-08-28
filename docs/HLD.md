@@ -1,12 +1,25 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.9
-**Last updated:** 2026-08-11
+**Version:** 1.10
+**Last updated:** 2026-08-27
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.10
+
+- Added the **Place Location Picker** (`.kiro/specs/place-location-picker/`):
+  one-off OpenStreetMap-derived Indian-settlement ingestion into shared `Place`
+  reference data, authenticated offline `GET /api/places` search, and a reusable
+  `PlacePicker` in both birth-data forms. Selected place metadata is optional
+  `UnifiedChart.birthInput` display context; coordinates remain the sole compute
+  contract and chart-hash input. Search ranks six tiers — the whole query as a
+  phrase ahead of a name token plus administrative narrowing — and both forms
+  share one birth-location contract, `lib/place-form.ts`, which owns the
+  persisted place shape and the submit-time location validation. See §3.1, §3.2,
+  and §8.2.
 
 ## What changed in v1.9
 
@@ -266,7 +279,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 │   PostgreSQL (via Prisma)          File System                  │
 │   - Chart (legacy, paste-path)     - reports/{slug}.html        │
 │   - UnifiedChart                   - prompts/agents/*.md        │
-│   - PipelineRun                    (prompt files read-only)     │
+│   - Place (shared OSM reference)   (prompt files read-only)     │
+│   - PipelineRun                                                   │
 │   - WaveOutput                                                  │
 │   - Wave1Cache                                                  │
 │   - RunMessage                                                  │
@@ -291,7 +305,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 | Page | Route | Purpose |
 |---|---|---|
-| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Transits → Gochar shows natal D1, a JHora-style Transit Moment Chart from the moving Ascendant at the snapshot moment/place, and Gochar charts from birth Lagna and natal Moon; it also provides a Moon-opt-in UTC date-range form. Vimshottari PD rows expose the same range in a single expandable **View Gochar** panel using their exact UTC bounds. Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
+| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. Birth location is resolved through the shared `PlacePicker` (offline Indian-settlement search) or retained manual coordinates; the selected place fills visible coordinates and can be replaced by manual entry. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Transits → Gochar shows natal D1, a JHora-style Transit Moment Chart from the moving Ascendant at the snapshot moment/place, and Gochar charts from birth Lagna and natal Moon; it also provides a Moon-opt-in UTC date-range form. Vimshottari PD rows expose the same range in a single expandable **View Gochar** panel using their exact UTC bounds. Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
@@ -315,6 +329,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 |---|---|---|
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
 | `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
+| `/api/places` | GET | Authenticated, read-only offline Indian-settlement search over shared `Place` reference data. Validates query parameters, skips queries whose whole normalized text is under three characters without a DB query, then ranks six tiers — the full phrase (exact → prefix → substring, unnarrowed) ahead of the leading name token with administrative-token narrowing (exact → prefix → substring) — with deterministic kind/state ordering, deduplicates OSM duplicates, and excludes hamlets by default (opt-in). Token tiers are skipped when there is nothing to narrow with. Returns display metadata plus numeric coordinates; it never geocodes or mutates data. |
 | `/api/gochar` | POST | Authenticated, deterministic, read-only Lahiri Gochar range. Resolves natal Moon/Lagna signs from a saved chart's scalar longitudes or unsaved birth data, then returns UTC whole-sign occupancy intervals; Moon is opt-in. The home Transits Gochar section and Vimshottari PD expansion send the birth-data snapshot captured with the chart on screen, so later form edits cannot create a wrong-chart request. PD requests preserve the dasha tree's exact ISO UTC bounds. |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
 | `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` (shared creator: `lib/unified-chart-create.ts`) |
@@ -1048,6 +1063,114 @@ PRACTITIONER
 
 Both paths deduplicate on `chartHash` and return `409` with the existing record on
 a duplicate.
+
+### Place resolution (offline input-resolution layer)
+
+`Place` is shared, unowned reference data (see `docs/ERD.md`); it is neither
+user content nor a chart foreign key. It is populated once per environment from an
+OpenStreetMap-derived India dataset and read only at chart-entry time:
+
+```
+OSM NDJSON files outside the repository
+(PLACES_DATA_DIR or `--dir`)
+        │  one-off `npm run db:load-places`
+        ▼
+scripts/load-places.ts
+  • streams each city/town/village/hamlet NDJSON file line by line
+  • normalizes names; maps source [longitude, latitude] to named coordinates
+  • batches 5,000 rows through Prisma createMany(skipDuplicates)
+        ▼
+PostgreSQL Place table (shared reference data)
+        │  authenticated GET /api/places
+        ▼
+PlacePicker (client combobox)
+        │  selected coordinates + optional display metadata
+        ├── `/` Chart Compute form
+        └── `/unified-charts` Generate Chart ComputeForm
+```
+
+The source data remains outside version control and the deployment bundle: no route
+reads NDJSON at runtime, and `next.config.mjs` deliberately does not trace it. The
+loader takes `--dir` (or `PLACES_DATA_DIR`), optional `--kinds`, and explicit
+`--truncate` for corrections. It reports load/skip counts, validates OSM identity
+and coordinate ranges, and remains idempotent through the `Place` natural key plus
+`skipDuplicates`; a normal re-run does not rewrite existing rows. `--truncate` empties
+the table with `TRUNCATE` rather than a quarter-million-row delete, and a successful
+load ends with `ANALYZE` so the planner does not spend the first minutes after ingestion
+costing searches against statistics for an empty table. Those two statements are the
+only raw SQL outside `prisma/migrations/` — both maintenance DDL, both fixed strings
+with no interpolation (see `.kiro/skills/database-prisma.md`).
+
+`GET /api/places?q=&limit=&includeHamlets=` first resolves the requesting user, so
+unauthenticated callers receive `401`. It validates input, returns immediately —
+without querying Postgres — when the *whole* normalized query is shorter than three
+characters, and executes only Prisma queries against the locally ingested table, each
+scoped to the India country code.
+
+A query is read two ways at once, because nothing in its text says which is meant:
+`"rampur bushahr"` is one town's full name, `"rampur shimla"` is a town plus its
+district. Parsing (`parsePlaceQuery` in `lib/places-normalize.ts`, beside the
+normalizer that produced the stored names) yields a phrase — the whole query
+normalized — plus a leading name token and the remaining administrative narrowing
+tokens, which stay raw because the state/district/tehsil columns hold display text.
+The name token grows by absorbing following tokens until it reaches three characters,
+so a dotted name such as "St. Thomas Mount" searches instead of being rejected for its
+two-character first word.
+
+Retrieval is six ranked tiers, one ordered query each: the phrase against the stored
+normalized name (exact → prefix → substring, unnarrowed), then the name token with
+every narrowing token required to match state, district, or tehsil (exact → prefix →
+substring). Phrase matches rank above token matches, since a row whose own name is
+everything the practitioner typed satisfies every reading of the query; that is also
+what makes multi-word settlement names reachable, which a token-plus-narrowing reading
+alone could not do. The token tiers are skipped entirely when there is nothing to
+narrow with, so a single-word query still costs at most three reads. Within a tier,
+ordering is by settlement kind then administrative name; results are deduplicated
+across same-settlement OSM records and returned with numeric coordinates and a display
+label. Hamlets are normally ingested but filtered at search time; the response reports
+that exclusion and whether result over-fetching found additional matches. No runtime
+geocoder or outbound lookup is involved.
+
+`app/components/PlacePicker.tsx` is a presentation-only client component built with
+`Popover` and `Command` (`shouldFilter={false}` preserves the server ranking). It
+waits 250 ms after input, cancels stale fetches with `AbortController`, shows ranked
+two-line rows (name; tehsil/district/state) and a textual kind badge, and saves the
+include-hamlets preference in local storage. The hamlet toggle skips that debounce —
+it is a click on a query already finished being typed, so there is nothing left to
+coalesce — while still routing through the same single request path. A dropdown footer
+carries an always-visible OpenStreetMap/ODbL attribution line, rendered last so it never
+displaces the truncation hint or the toggle; when the server rejects a query as too
+short even though it looks long enough locally (punctuation does not survive
+normalization), the dropdown says so in terms of the characters that actually count
+rather than repeating the type-three-letters hint.
+
+The two birth-data forms own selection state: a selected Indian place fills visible
+latitude/longitude and sets the timezone to IST (`5.5`); their read-only coordinate
+display can always switch to the retained manual-coordinate disclosure. Empty,
+unavailable, or unseeded searches expose the same manual-entry escape hatch, so
+India-only coverage and reference-data failures never block calculation.
+
+Both forms share one birth-location contract, `lib/place-form.ts` — the persisted
+place shape and its guard, the selection-to-persisted reduction, the coordinate bounds,
+and the submit-time location validator. It is deliberately free of React and Prisma so
+it stays unit-testable in the existing node test environment. Two rules live there:
+the persisted place is exactly the seven display fields (the save route validates
+`place` strictly, so forwarding a selection's coordinates would reject the entire
+save), and the either-a-place-or-both-coordinates constraint is enforced in JavaScript
+rather than through `required` attributes — those inputs sit inside a closed-by-default
+disclosure, where a native constraint failure aborts submission without firing the
+submit handler and the Compute button simply appears inert. The validator's message is
+rendered as an announced alert and opens the disclosure it refers to.
+
+The picker is an input-resolution boundary, not an engine change. `/api/compute` and
+`/api/compute/varshaphal` continue to accept coordinates only. When either form's
+unified-chart save path is used, `POST /api/unified-charts/from-compute` optionally
+validates place display metadata and `mapComputedToUnified()` stores it as
+`UnifiedChart.birthInput.place`; the mapper passes no place field into
+`engine/compute`'s `BirthInput`. The chart hash remains strictly based on source,
+date/time, timezone, coordinates, and sunrise mode, so selecting a place and manually
+entering identical coordinates deduplicate identically. Previously saved charts without
+place metadata stay coordinate-only, and paste-sourced charts are unchanged.
 
 ### AI Analysis (POST /api/unified-charts/[id]/analyze)
 

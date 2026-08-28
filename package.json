@@ -18,6 +18,7 @@
     "db:migrate-saved": "npx tsx scripts/migrate-saved-to-unified.ts",
     "db:backfill-owner": "npx tsx prisma/backfill-owner.ts",
     "db:backfill-gender": "npx tsx prisma/backfill-gender.ts",
+    "db:load-places": "npx tsx scripts/load-places.ts",
     "db:studio": "prisma studio",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down"

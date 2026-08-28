@@ -25,6 +25,87 @@ inclusion: auto
 | `mcp_api_token` | Per-user MCP credential | `user_id` (FK), `token_hash` (unique, SHA-256), `label`, `last_used_at`, `revoked_at` |
 | `compatibility_match` | Marriage Matchmaking result (`.kiro/specs/marriage-matchmaking/`) | `user_id` (FK), `bride_chart_id`/`groom_chart_id` (FK → `unified_chart`, roles structural), `guna_score` (`Decimal(4,1)`), `verdict` (denormalized), `result` (JSONB, full snapshot), `tables_version` |
 
+## Place (shared reference data)
+
+`place` stores the Indian OSM settlement dataset used by `GET /api/places`. It is
+shared **reference data**, not practitioner content:
+
+- It has no `userId`, no `User` relation, and no relation to `UnifiedChart`.
+  `UnifiedChart.birthInput.place` is optional display metadata in JSON, never a
+  foreign key; the saved chart retains its copied coordinates.
+- Do not add `Place` to `DELETE /api/unified-charts/[id]`'s explicit cascade.
+  No chart owns a place, and re-ingesting source data must neither delete a
+  chart's place row nor orphan a saved chart.
+- `@@unique([osmType, osmId])` is the stable OSM natural key. The out-of-band
+  `scripts/load-places.ts` loader writes batches with
+  `prisma.place.createMany({ skipDuplicates: true })`, making repeat ingestion
+  idempotent. The application reads this table but does not write it.
+
+### The loader's raw-SQL exemption (do not "fix" this)
+
+`scripts/load-places.ts` contains the only raw SQL outside `prisma/migrations/`:
+`TRUNCATE TABLE "place"` for `--truncate`, and `ANALYZE "place"` after a
+successful load. The no-raw-SQL rule below is about **queries** — anything that
+reads or writes rows, where raw SQL costs type safety and invites interpolated
+input. Neither of these is a query:
+
+- `TRUNCATE` is a DDL-level bulk delete. `deleteMany({})` is equivalent only in
+  intent: it deletes row by row and leaves a dead tuple per row for autovacuum,
+  immediately before the loader inserts 272,499 fresh rows into that bloated
+  heap. Prisma exposes no truncate API. `place` has no inbound foreign keys, so
+  no `CASCADE` is used — a future FK should make this fail loudly rather than
+  cascade through user data.
+- `ANALYZE` is maintenance DDL: it touches no rows and returns nothing.
+  `createMany` does not update `pg_statistic`, so until autovacuum's analyze
+  worker catches up the planner costs searches against statistics for an empty
+  table — exactly the case where it declines the prefix index and scans instead.
+
+Both are frozen string constants with **no interpolation of any kind** — no
+parameters, nothing derived from `argv` or the dataset — so the injection surface
+the rule exists to close is empty. The table name is the literal from
+`@@map("place")`. If either statement ever needs a variable, it needs a different
+design, not a template literal.
+
+### Place migrations and indexes
+
+`Place` has two required, explicitly named indexes on `nameNorm`, plus ordinary
+btree indexes on `state`, `district`, and persisted `kindRank`:
+
+- `place_nameNorm_prefix_idx`: btree with `text_pattern_ops`, serving exact and
+  prefix (`=`, `LIKE 'q%'`) search.
+- `place_nameNorm_trgm_idx`: GIN with `gin_trgm_ops`, serving substring
+  (`LIKE '%q%'`) search.
+
+The target collation is `en_US.utf8`, so a default btree cannot serve prefix
+`LIKE`; the trigram GIN index does not replace the dedicated prefix index in
+planner practice. `gin_trgm_ops` requires PostgreSQL's `pg_trgm` extension.
+Create Place migrations with `npx prisma migrate dev --create-only`, then
+prepend `CREATE EXTENSION IF NOT EXISTS pg_trgm;` before the index statements in
+the migration. This unsupported DDL is the permitted raw-SQL exception: use
+Prisma Client for application queries and hand-written SQL only in migrations.
+
+Keep both indexes declared in `schema.prisma` with their explicit `map:` names;
+two indexes on the same field otherwise conflict. Prisma can regenerate an
+identical drop/recreate pair for the `text_pattern_ops` index in a future
+migration. Remove that redundant pair rather than rebuilding the applied index;
+do not remove the schema declaration, which would cause Prisma to propose
+dropping the index.
+
+`tests/place-schema-indexes.test.ts` is the static guard on all of this — pure
+`readFileSync` over `prisma/schema.prisma` and the `place` migration, no database
+connection, so it runs anywhere. It fails if either `@@index` declaration or its
+`map:` name, `@@unique([osmType, osmId])`, `@@map("place")` (the literal the
+loader's TRUNCATE/ANALYZE hard-code), or the hand-added
+`CREATE EXTENSION IF NOT EXISTS pg_trgm` ahead of both `CREATE INDEX` statements
+goes missing, and if any later migration drops a `nameNorm` index. It exists
+because every one of those is something a routine `prisma migrate dev` quietly
+tries to undo, and nothing else in the toolchain says so: the regenerated
+drop/recreate pair must be deleted by hand, deleting the declaration instead makes
+Prisma drop the live index (search stays correct and gets ~50x slower, with no
+error anywhere), and Prisma cannot regenerate the extension line at all — without
+it the GIN index creation fails outright on a fresh database. Update this guard in
+the same change as any deliberate index change, so the reason is recorded.
+
 ## UnifiedChart (column-per-domain)
 
 `unified_chart` is the current canonical chart table. One JSONB column per domain
@@ -112,7 +193,10 @@ inferred from `unified_chart.gender`.
 
 ## Prisma Usage Rules
 
-- Always use Prisma Client for DB access (no raw SQL)
+- Always use Prisma Client for DB access (no raw SQL). The two exceptions are
+  migration DDL and `scripts/load-places.ts`'s `TRUNCATE`/`ANALYZE` — see
+  "The loader's raw-SQL exemption" above for the conditions that make them
+  acceptable (maintenance DDL, frozen strings, zero interpolation)
 - Singleton pattern in `lib/db.ts` (avoid multiple instances in dev hot-reload)
 - Use `@default(uuid())` for all primary keys
 - Use `@db.Timestamptz` for all datetime fields

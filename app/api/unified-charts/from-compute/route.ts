@@ -17,6 +17,22 @@ import { resolveRequestUser } from '@/lib/auth'
 
 // ─── Input Validation ───────────────────────────────────────────────
 
+/**
+ * Display metadata resolved by PlacePicker. Coordinates deliberately do not
+ * belong here: they remain the canonical top-level compute inputs.
+ */
+const BirthPlaceSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().trim().min(1),
+    kind: z.enum(['city', 'town', 'village', 'hamlet']),
+    state: z.string().trim().min(1),
+    district: z.string().trim().min(1),
+    county: z.string().trim().min(1).nullable(),
+    label: z.string().trim().min(1),
+  })
+  .strict()
+
 const ComputeInputSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   existingChartId: z.string().uuid().optional(),
@@ -39,6 +55,7 @@ const ComputeInputSchema = z.object({
     .number()
     .min(-180)
     .max(180),
+  place: BirthPlaceSchema.optional(),
   sunriseMode: z
     .enum(['precise', 'jhora'])
     .optional()

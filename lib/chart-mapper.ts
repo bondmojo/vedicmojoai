@@ -62,6 +62,20 @@ export type UnifiedChartCreateInput = Omit<
   'id' | 'createdAt' | 'updatedAt' | 'pipelineRuns' | 'durationAnalyses' | 'userId'
 > & { userId?: string }
 
+/**
+ * UI-resolved birth-place metadata persisted with compute-path birth input.
+ * This storage-layer type deliberately stays outside engine/compute/types.ts.
+ */
+export interface BirthPlace {
+  id: string
+  name: string
+  kind: string
+  state: string
+  district: string
+  county: string | null
+  label: string
+}
+
 // ─── Path A: ComputedChart → UnifiedChart ───────────────────────────
 
 /**
@@ -74,7 +88,8 @@ export type UnifiedChartCreateInput = Omit<
 export function mapComputedToUnified(
   chart: ComputedChart,
   dashaTree: SerializedDashaTree,
-  name: string
+  name: string,
+  place?: BirthPlace,
 ): UnifiedChartCreateInput {
   // Build birth datetime from input
   const birthDatetime = buildBirthDatetime(chart.input)
@@ -93,7 +108,13 @@ export function mapComputedToUnified(
   return {
     name,
     source: 'compute',
-    birthInput: chart.input as unknown as Prisma.InputJsonValue,
+    // `place` is spread conditionally so the key is ABSENT (not
+    // present-and-undefined) when no place was resolved. Prisma 5's JSON-protocol
+    // arg serializer drops `undefined` object properties, so both forms happen to
+    // persist the same JSON today — but the in-memory object is what tests and
+    // `birthInput?.place?.label` readers see, and `{ place: undefined }` makes
+    // "no place" indistinguishable from "place key exists" to a naive check.
+    birthInput: { ...chart.input, ...(place ? { place } : {}) } as unknown as Prisma.InputJsonValue,
     lagna: chart.lagna,
     lagnaLongitude: chart.lagnaLongitude,
     moonLongitude: chart.planets.find((p) => p.planet === 'Moon')!.longitude,
@@ -342,7 +363,7 @@ export function buildChartInputV1FromUnified(chart: {
       meta: {
         client_name: chart.name,
         birth_datetime: chart.birthDatetime.toISOString(),
-        birth_place: birthInput?.name ?? undefined,
+        birth_place: birthInput?.place?.label ?? undefined,
         system: 'Vedic (Jyotish) — Lahiri Ayanamsha',
         lagna_sign: chart.lagna as any,
         lagna_degree_decimal: lagnaDegreeInSign,

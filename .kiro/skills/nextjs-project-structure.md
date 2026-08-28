@@ -131,3 +131,19 @@ vedicmojoai/
 - **Runtime-read assets:** keep `prompts/**/*` and `swisseph-v2/**/*` in
   `experimental.outputFileTracingIncludes` for API routes. Vercel's tracer
   cannot infer those filesystem/native-addon reads.
+
+## Place Reference Dataset
+
+- **One-off ingestion:** `scripts/load-places.ts` imports the external OpenStreetMap
+  NDJSON dataset into Postgres; run it once per environment with
+  `npm run db:load-places`.
+- **Dataset location:** `PLACES_DATA_DIR` names the directory containing the four
+  NDJSON files. For an ad hoc source location, override it without changing the
+  environment: `npm run db:load-places -- --dir <path>`.
+- **Deployment boundary:** the roughly 160 MB source dataset is external reference
+  data and is deliberately neither versioned nor loaded at runtime. Production search
+  reads the populated `place` table through Prisma; it never reads NDJSON files.
+  Therefore, do **not** add the dataset or `PLACES_DATA_DIR` to
+  `experimental.outputFileTracingIncludes`: tracing would needlessly place the source
+  data in every Next deployment bundle without serving a runtime read. An unseeded
+  deployment remains usable because the picker offers manual coordinate entry.

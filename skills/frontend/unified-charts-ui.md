@@ -12,6 +12,13 @@ Pages under `app/unified-charts/` drive the current chart lifecycle:
 - Generate Chart submits to `POST /api/unified-charts/from-compute` (birth data) or
   `from-paste` (`ChartInputV1` JSON). A `409` means the chart already exists — surface
   the existing chart, don't error.
+- The birth-data `ComputeForm` collects location through the shared
+  `app/components/PlacePicker.tsx` plus a manual-coordinate disclosure, exactly as the
+  home page does, and forwards the same optional `place` metadata on save — stripped to
+  the seven persisted fields by `persistedPlaceFromSelection()`. Location validation and
+  the persisted shape both come from `lib/place-form.ts`; see
+  `skills/frontend/form-patterns.md` before touching either form, including why those
+  coordinate inputs deliberately carry no `required`.
 - AI Analysis submits to `POST /api/unified-charts/[id]/analyze`, receives `202`
   with `{ runId, waveStrategy, executionPlan }`, then redirects to `/runs/[id]` and
   opens the SSE stream (same progress + report flow as legacy runs).

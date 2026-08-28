@@ -12,6 +12,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import PlacePicker, { type SelectedPlace } from '../components/PlacePicker'
+import { persistedPlaceFromSelection, validateBirthLocation } from '@/lib/place-form'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -121,7 +123,13 @@ export default function UnifiedChartsPage() {
 
 // ─── Compute Form (Path A) ──────────────────────────────────────────
 
-function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
+/**
+ * Exported for `app/unified-charts/page.test.tsx`, which calls it as a plain
+ * function and inspects the returned element tree (the repo has no DOM
+ * environment). Only `default` and Next's reserved names are special in a page
+ * module, so an extra named export changes nothing at runtime.
+ */
+export function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
   const [form, setForm] = useState({
     name: '',
     date: '',
@@ -134,12 +142,56 @@ function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null)
+  const [manualCoordinatesOpen, setManualCoordinatesOpen] = useState(false)
+
+  function handlePlaceSelect(place: SelectedPlace): void {
+    setSelectedPlace(place)
+    setManualCoordinatesOpen(false)
+    setForm({
+      ...form,
+      latitude: String(place.latitude),
+      longitude: String(place.longitude),
+      timezone: '5.5',
+    })
+  }
+
+  function handleManualCoordinateChange(
+    coordinate: 'latitude' | 'longitude',
+    value: string,
+  ): void {
+    setSelectedPlace(null)
+    setForm({ ...form, [coordinate]: value })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setSuccess(null)
+
+    // Same contract as the Chart Computation form (`app/page.tsx`), via the same
+    // shared validator. It runs here rather than as a `required` attribute
+    // because the manual coordinate inputs sit inside a closed-by-default
+    // disclosure, where a failed native constraint aborts submission without
+    // ever firing this handler — leaving the button apparently inert.
+    const location = validateBirthLocation({
+      latitude: form.latitude,
+      longitude: form.longitude,
+      hasSelectedPlace: selectedPlace !== null,
+    })
+    if (!location.ok) {
+      setError(location.message)
+      // Reveal the fields the message names.
+      setManualCoordinatesOpen(true)
+      return
+    }
+
     setSubmitting(true)
+
+    // Stripped to the seven persisted display fields. Forwarding `selectedPlace`
+    // verbatim would carry `latitude`/`longitude` into a `.strict()` Zod object
+    // and 400 the whole save.
+    const place = persistedPlaceFromSelection(selectedPlace)
 
     try {
       const res = await fetch('/api/unified-charts/from-compute', {
@@ -150,9 +202,10 @@ function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
           date: form.date,
           time: form.time,
           timezone: parseFloat(form.timezone),
-          latitude: parseFloat(form.latitude),
-          longitude: parseFloat(form.longitude),
+          latitude: location.latitude,
+          longitude: location.longitude,
           sunriseMode: form.sunriseMode,
+          ...(place ? { place } : {}),
         }),
       })
 
@@ -161,6 +214,8 @@ function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
       if (res.status === 201) {
         setSuccess(`Chart "${data.name}" created (${data.lagna} Lagna)`)
         setForm({ name: '', date: '', time: '', timezone: '5.5', latitude: '', longitude: '', sunriseMode: 'precise' })
+        setSelectedPlace(null)
+        setManualCoordinatesOpen(false)
         onSuccess()
       } else if (res.status === 409) {
         setError(`Duplicate: ${data.message}`)
@@ -233,38 +288,80 @@ function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
           </select>
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Latitude</label>
-          <input
-            type="number"
-            step="0.0001"
-            value={form.latitude}
-            onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-            placeholder="28.6139"
+          <label className="block text-sm text-gray-400 mb-1">Birth Location</label>
+          <PlacePicker
+            value={selectedPlace}
+            onSelect={handlePlaceSelect}
+            onManualEntry={() => setManualCoordinatesOpen(true)}
+            disabled={submitting}
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Longitude</label>
-          <input
-            type="number"
-            step="0.0001"
-            value={form.longitude}
-            onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-            placeholder="77.2090"
-          />
+          <label className="block text-sm text-gray-400 mb-1">Resolved Coordinates</label>
+          <output
+            aria-live="polite"
+            className="block min-h-10 rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 font-mono text-sm text-gray-200"
+          >
+            {form.latitude && form.longitude
+              ? `${form.latitude}, ${form.longitude}`
+              : 'No coordinates selected'}
+          </output>
+          <details
+            className="mt-2"
+            open={manualCoordinatesOpen}
+            onToggle={(event) => setManualCoordinatesOpen(event.currentTarget.open)}
+          >
+            <summary className="cursor-pointer text-sm text-gray-400 hover:text-gray-200">
+              Enter coordinates manually
+            </summary>
+            {/*
+              No `required`, `min` or `max`: these inputs are inside a disclosure
+              that is closed by default, and a native constraint failure on an
+              unfocusable control aborts submission without firing `onSubmit`, so
+              no message ever reached the practitioner. `validateBirthLocation`
+              owns the constraint now; `onInvalid` reveals the field if any
+              residual native check (a browser's number-field `badInput`) still
+              fires.
+            */}
+            <div className="mt-2 space-y-2">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Latitude</label>
+                <input
+                  type="number"
+                  step="0.0000001"
+                  value={form.latitude}
+                  onChange={(e) => handleManualCoordinateChange('latitude', e.target.value)}
+                  onInvalid={() => setManualCoordinatesOpen(true)}
+                  className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 font-mono text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  placeholder="28.6139000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Longitude</label>
+                <input
+                  type="number"
+                  step="0.0000001"
+                  value={form.longitude}
+                  onChange={(e) => handleManualCoordinateChange('longitude', e.target.value)}
+                  onInvalid={() => setManualCoordinatesOpen(true)}
+                  className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 font-mono text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  placeholder="77.2090000"
+                />
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
+      {/* role="alert" so a blocked submission is announced rather than conveyed
+          by red text alone. */}
       {error && (
-        <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-red-400 text-sm">
+        <div role="alert" className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-red-400 text-sm">
           {error}
         </div>
       )}
       {success && (
-        <div className="rounded-lg bg-green-900/30 border border-green-700 p-3 text-green-400 text-sm">
+        <div role="status" className="rounded-lg bg-green-900/30 border border-green-700 p-3 text-green-400 text-sm">
           {success}
         </div>
       )}

@@ -53,6 +53,7 @@ import { createUnifiedChartFromBirthData } from '../lib/unified-chart-create'
 import { POST as fromPaste } from '../app/api/unified-charts/from-paste/route'
 import { resolveRequestUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { mapComputedToUnified } from '@/lib/chart-mapper'
 
 const USER_A = 'user-a'
 const USER_B = 'user-b'
@@ -66,6 +67,16 @@ const BIRTH_INPUT = {
   longitude: 77.6,
   sunriseMode: 'precise' as const,
 }
+
+const PLACE = {
+  id: 'b1dd76ce-4a90-4a81-8f47-38d3913cbd5d',
+  name: 'Alandi',
+  kind: 'village',
+  state: 'Maharashtra',
+  district: 'Pune',
+  county: 'Khed',
+  label: 'Alandi, Khed, Maharashtra',
+} as const
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -108,6 +119,17 @@ describe('createUnifiedChartFromBirthData — per-user chartHash dedup', () => {
 
     expect(result.status).toBe('duplicate')
     expect(result.id).toBe('chart-1')
+  })
+
+  it('forwards optional place metadata to the storage mapper', async () => {
+    ;(prisma.unifiedChart.findUnique as any).mockResolvedValue(null)
+    ;(prisma.unifiedChart.create as any).mockResolvedValue({
+      id: 'chart-1', name: 'Test', lagna: 'Aries', birthDatetime: new Date(), createdAt: new Date(),
+    })
+
+    await createUnifiedChartFromBirthData({ ...BIRTH_INPUT, place: PLACE, userId: USER_A })
+
+    expect(mapComputedToUnified).toHaveBeenCalledWith(expect.anything(), {}, 'Test', PLACE)
   })
 })
 
