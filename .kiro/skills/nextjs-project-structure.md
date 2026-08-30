@@ -26,6 +26,8 @@ vedicmojoai/
 │   │   └── components/           # NorthIndianChart, ChartGrid, DashaTimeline, etc.
 │   ├── unified-charts/           # Generate Chart hub + AI Analysis launcher
 │   │   ├── page.tsx              # List unified charts (compute + paste)
+│   │   ├── ComputeForm.tsx       # Path A birth-data form (own module: page modules
+│   │   │                         #   may only export `default` + reserved names)
 │   │   └── [id]/
 │   │       ├── page.tsx          # Unified chart detail (full domain view)
 │   │       └── analyze/page.tsx  # AI Analysis launcher

@@ -1,6 +1,6 @@
 /**
- * app/unified-charts/page.test.tsx
- * --------------------------------
+ * app/unified-charts/ComputeForm.test.tsx
+ * ---------------------------------------
  * Structural coverage for the `ComputeForm` on `/unified-charts` — the second
  * birth-data call site, which had none.
  *
@@ -21,6 +21,11 @@
  *      broken. The inputs must therefore carry no native constraints, and
  *      `handleSubmit` must produce a visible, announced message instead.
  *
+ * The component under test lives in `app/unified-charts/ComputeForm.tsx`, not in
+ * the page module: Next.js type-checks page exports and allows only `default`
+ * plus its own reserved names, so a named `ComputeForm` export there fails the
+ * production build.
+ *
  * Convention, matching every sibling `app/components/*.test.tsx` and
  * `app/page.test.tsx`: no jsdom, no component-testing library. `ComputeForm` is
  * called as a plain function with a minimal hook dispatcher installed, and the
@@ -39,14 +44,14 @@ import { describe, expect, it, vi } from 'vitest'
 import * as React from 'react'
 import type { ReactElement, ReactNode } from 'react'
 
-// `useRouter` has no meaning outside a real Next.js app-router context. The page
-// module calls it at the top of `UnifiedChartsPage`, which this file never
-// renders, but the import must still resolve.
+// `useRouter` has no meaning outside a real Next.js app-router context.
+// `ComputeForm` does not use it, but keeping the mock costs nothing and guards
+// the import graph.
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-import { ComputeForm } from './page'
+import ComputeForm from './ComputeForm'
 import PlacePicker, { type SelectedPlace } from '../components/PlacePicker'
 import { BIRTH_LOCATION_MESSAGES } from '@/lib/place-form'
 

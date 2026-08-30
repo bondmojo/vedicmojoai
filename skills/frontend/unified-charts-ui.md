@@ -12,6 +12,11 @@ Pages under `app/unified-charts/` drive the current chart lifecycle:
 - Generate Chart submits to `POST /api/unified-charts/from-compute` (birth data) or
   `from-paste` (`ChartInputV1` JSON). A `409` means the chart already exists — surface
   the existing chart, don't error.
+- The birth-data `ComputeForm` lives in its own module
+  (`app/unified-charts/ComputeForm.tsx`), not in `page.tsx`: Next.js type-checks page
+  exports and rejects anything but `default` plus its reserved names, so a page module
+  cannot export a component for tests to import. Put any testable page-local component
+  in a sibling module.
 - The birth-data `ComputeForm` collects location through the shared
   `app/components/PlacePicker.tsx` plus a manual-coordinate disclosure, exactly as the
   home page does, and forwards the same optional `place` metadata on save — stripped to

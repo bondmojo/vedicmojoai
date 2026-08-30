@@ -8,8 +8,8 @@
 
 ## Birth-location fields (`PlacePicker` + `lib/place-form.ts`)
 
-Both birth-data forms — `app/page.tsx` and the `ComputeForm` in
-`app/unified-charts/page.tsx` — collect birth location the same way:
+Both birth-data forms — `app/page.tsx` and `app/unified-charts/ComputeForm.tsx` —
+collect birth location the same way:
 
 - `app/components/PlacePicker.tsx` is the shared combobox over `GET /api/places`
   (`Popover` + `Command`, `shouldFilter={false}` because ranking is server-side).
