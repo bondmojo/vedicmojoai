@@ -107,7 +107,29 @@ npm run db:migrate   # applies schema migrations
 npm run db:seed      # loads default model configuration
 ```
 
-### 6. Start the dev server
+### 6. Optionally load India place-search data (one-off per environment)
+
+The birth-place picker uses an **external** India OpenStreetMap NDJSON dataset; it is not
+included in this repository or deployment bundle. Obtain the four settlement files
+(`place_city`, `place-town`, `place-village`, and `place-hamlet`) separately, place them in
+one directory, then set `PLACES_DATA_DIR` in `.env` and run:
+
+```bash
+npm run db:load-places
+```
+
+Alternatively, keep the directory out of `.env` and supply it for a single invocation:
+
+```bash
+npm run db:load-places -- --dir <path-to-india-osm-ndjson>
+```
+
+The loader streams the files into PostgreSQL and is idempotent, so this is an ingestion
+step rather than a runtime dependency. Run it once for each environment that needs
+place search; without it, the picker falls back to manual coordinate entry and chart
+computation remains available.
+
+### 7. Start the dev server
 
 ```bash
 npm run dev

@@ -2,16 +2,20 @@
  * /unified-charts — Unified chart list + dual-path ingestion UI.
  *
  * Two tabs:
- *   "Compute" — birth data form (Path A)
+ *   "Compute" — birth data form (Path A, `./ComputeForm`)
  *   "Paste"   — ChartInputV1 JSON textarea (Path B)
  *
  * Below the ingestion UI: chart list with "Run AI Analysis" button.
+ *
+ * A page module may only export `default` plus Next's reserved names, so no
+ * component here is exported for tests — `ComputeForm` lives in its own module.
  */
 
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ComputeForm from './ComputeForm'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -116,167 +120,6 @@ export default function UnifiedChartsPage() {
         )}
       </div>
     </main>
-  )
-}
-
-// ─── Compute Form (Path A) ──────────────────────────────────────────
-
-function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
-  const [form, setForm] = useState({
-    name: '',
-    date: '',
-    time: '',
-    timezone: '5.5',
-    latitude: '',
-    longitude: '',
-    sunriseMode: 'precise' as 'precise' | 'jhora',
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
-    setSubmitting(true)
-
-    try {
-      const res = await fetch('/api/unified-charts/from-compute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          date: form.date,
-          time: form.time,
-          timezone: parseFloat(form.timezone),
-          latitude: parseFloat(form.latitude),
-          longitude: parseFloat(form.longitude),
-          sunriseMode: form.sunriseMode,
-        }),
-      })
-
-      const data = await res.json()
-
-      if (res.status === 201) {
-        setSuccess(`Chart "${data.name}" created (${data.lagna} Lagna)`)
-        setForm({ name: '', date: '', time: '', timezone: '5.5', latitude: '', longitude: '', sunriseMode: 'precise' })
-        onSuccess()
-      } else if (res.status === 409) {
-        setError(`Duplicate: ${data.message}`)
-      } else {
-        setError(data.error || 'Failed to compute chart')
-      }
-    } catch {
-      setError('Network error')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <label className="block text-sm text-gray-400 mb-1">Name</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-            placeholder="e.g., Ravi Kumar"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Birth Date</label>
-          <input
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Birth Time (24h)</label>
-          <input
-            type="time"
-            step="1"
-            value={form.time}
-            onChange={(e) => setForm({ ...form, time: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Timezone (hours)</label>
-          <input
-            type="number"
-            step="0.5"
-            value={form.timezone}
-            onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-            placeholder="5.5"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Sunrise Mode</label>
-          <select
-            value={form.sunriseMode}
-            onChange={(e) => setForm({ ...form, sunriseMode: e.target.value as 'precise' | 'jhora' })}
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-          >
-            <option value="precise">Precise (astronomical)</option>
-            <option value="jhora">JHora (6 AM convention)</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Latitude</label>
-          <input
-            type="number"
-            step="0.0001"
-            value={form.latitude}
-            onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-            placeholder="28.6139"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Longitude</label>
-          <input
-            type="number"
-            step="0.0001"
-            value={form.longitude}
-            onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-            required
-            className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-            placeholder="77.2090"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="rounded-lg bg-green-900/30 border border-green-700 p-3 text-green-400 text-sm">
-          {success}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {submitting ? 'Computing...' : 'Compute & Save Chart'}
-      </button>
-    </form>
   )
 }
 

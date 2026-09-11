@@ -1,0 +1,884 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "2.1 Create `scripts/load-places.ts`: `--dir` (default `process.env.PLACES_DATA_DIR`),": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772276
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818792229
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787819156280
+      }
+    ],
+    "2.2 Implement the row filter and mapping: skip on junk name / missing `state` /": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772356
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787819164029
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787819766535
+      }
+    ],
+    "2.3 Batch `createMany({ data, skipDuplicates: true })` every 5,000 rows; print a": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772463
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787819774984
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821098016
+      }
+    ],
+    "2.4 Add `\"db:load-places\": \"npx tsx scripts/load-places.ts\"` to `package.json`;": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772513
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821109647
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821235366
+      }
+    ],
+    "2.5 Run the loader against `~/Documents/Mohit/in` and verify the counts against the": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772564
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821243384
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821451190
+      }
+    ],
+    "2.6 `tests/places-loader.test.ts` — Bengaluru fixture pins": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772610
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821458349
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821796264
+      }
+    ],
+    "3.1 Create `app/api/places/route.ts` with `GET`: `resolveRequestUser` → 401;": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772656
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821803643
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821996463
+      }
+    ],
+    "3.2 Parse `q` into `nameToken` + `narrowTokens` (split `/[,\\s]+/`, normalize the": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772696
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822003483
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822146481
+      }
+    ],
+    "3.3 Build the `narrowing` clause (AND of ORs over `state` / `district` / `county`": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772757
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822153248
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822352730
+      }
+    ],
+    "3.4 Implement the two-stage retrieval: `startsWith` stage (no `mode:": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772828
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822358935
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822657891
+      }
+    ],
+    "3.5 Merge into exact → prefix → substring tiers, dedupe on": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772900
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822667701
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822835898
+      }
+    ],
+    "3.6 Serialize the response: `Decimal.toNumber()` for both coordinates, build": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818772976
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787822842271
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787823066999
+      }
+    ],
+    "3.7 Verify end-to-end against the loaded table: `q=rampur` returns the town/city": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773043
+      },
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787823073895
+      },
+      {
+        "executionId": "c6e11bbe-22d7-4ceb-a521-e21ec3fc381f",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787825803758
+      }
+    ],
+    "3.8 `tests/places-api.test.ts` per the design's testing table, following the": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773132
+      },
+      {
+        "executionId": "c6e11bbe-22d7-4ceb-a521-e21ec3fc381f",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787824629030
+      },
+      {
+        "executionId": "c6e11bbe-22d7-4ceb-a521-e21ec3fc381f",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787825804748
+      }
+    ],
+    "4.1 Create `app/components/PlacePicker.tsx` on `Popover` + `Command` with": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773193
+      },
+      {
+        "executionId": "c6e11bbe-22d7-4ceb-a521-e21ec3fc381f",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787825824497
+      },
+      {
+        "executionId": "1f963a89-5211-4288-8ae2-a1ac980cf006",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787826811833
+      }
+    ],
+    "4.2 Implement the fetch discipline: 250 ms debounce, `AbortController` cancelling": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773243
+      },
+      {
+        "executionId": "1f963a89-5211-4288-8ae2-a1ac980cf006",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787826822157
+      },
+      {
+        "executionId": "1f963a89-5211-4288-8ae2-a1ac980cf006",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787827128264
+      }
+    ],
+    "4.3 Render the result row: name as primary text, `[county, district,": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773289
+      },
+      {
+        "executionId": "1f963a89-5211-4288-8ae2-a1ac980cf006",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787827133456
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787827814617
+      }
+    ],
+    "4.4 Implement every dropdown state from the design table: below-threshold hint,": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773325
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787827820557
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787827979570
+      }
+    ],
+    "4.5 Wire the hamlet toggle: re-issue the current search with": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773372
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787827986311
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828111578
+      }
+    ],
+    "4.6 Accessibility pass: `role=\"combobox\"` on the trigger, keyboard nav via cmdk": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773412
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828116521
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828279706
+      }
+    ],
+    "4.7 `app/components/PlacePicker.test.tsx` in the existing structural no-jsdom style": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773463
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828284733
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828409542
+      }
+    ],
+    "5.1 Extend `ComputeForm` in `app/page.tsx` with `placeId: string | null` and": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773507
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828416020
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828495413
+      }
+    ],
+    "5.2 Replace the Latitude/Longitude grid cells: `PlacePicker` in the first, the": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773607
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828500147
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828629168
+      }
+    ],
+    "5.3 Implement the transition table: selection sets coordinates + `timezone='5.5'`;": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773659
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828635126
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828891760
+      }
+    ],
+    "5.4 Confirm a place selection registers as a birth-data change for the save-gating": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773707
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828916801
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828988201
+      }
+    ],
+    "5.5 Run `npm test` and confirm `app/page.test.tsx` still passes; if the `useState`": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773760
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828993225
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829225599
+      }
+    ],
+    "6.1 Add `BirthPlace` to `lib/chart-mapper.ts`, add the optional 4th `place`": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773796
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829231457
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829344858
+      }
+    ],
+    "6.2 Add optional Zod-validated `place` to `ComputeInputSchema` in": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773840
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829353870
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829502759
+      }
+    ],
+    "6.3 Send `place` from `handleSaveChart` and `handleRunAnalysis` in `app/page.tsx`": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773892
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829507249
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829687996
+      }
+    ],
+    "6.4 Restore the place in `handleLoadChart` from `birthInput.place`; when absent,": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773940
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829693895
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829858567
+      }
+    ],
+    "6.5 Fix `lib/chart-mapper.ts:345`: `birth_place: birthInput?.place?.label ??": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818773989
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829864132
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830060597
+      }
+    ],
+    "6.6 Verify `engine/compute/types.ts`'s `BirthInput` was **not** modified": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774029
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830070165
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830157567
+      }
+    ],
+    "7.1 Adopt `PlacePicker` in the `ComputeForm` component of": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774079
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830163643
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830307885
+      }
+    ],
+    "7.2 Update the re-declared `ComputeForm` interface in": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774169
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830313822
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830549485
+      }
+    ],
+    "7.3 Confirm `POST /api/compute` and `POST /api/compute/varshaphal` are unchanged": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774227
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830555286
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830648453
+      }
+    ],
+    "8.1 Load a chart saved before this feature: it loads, recomputes, and saves with no": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774274
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830654256
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830753829
+      }
+    ],
+    "8.2 Confirm a paste-sourced chart is unaffected (still rejected by `handleLoadChart`": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774325
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830760442
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830848371
+      }
+    ],
+    "8.3 Confirm picker-derived and hand-typed identical coordinates produce the same": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774375
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830854931
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830954580
+      }
+    ],
+    "8.4 With an empty `place` table, confirm the picker shows the empty state with the": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774413
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830960828
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831043893
+      }
+    ],
+    "9.1 `docs/ERD.md` — `Place` model, indexes, no `User` relation, absent from the": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774463
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831050391
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831171379
+      }
+    ],
+    "9.2 `docs/HLD.md` — `GET /api/places`, `PlacePicker`, `scripts/load-places.ts`": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774509
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831177773
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831322325
+      }
+    ],
+    "9.3 `docs/DFD.md` — place resolution → coordinates → compute flow": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774554
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831328360
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831473766
+      }
+    ],
+    "9.4 `.kiro/skills/database-prisma.md` — `pg_trgm` requirement, `Place` as unowned": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774607
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831480380
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831581520
+      }
+    ],
+    "9.5 `.kiro/skills/nextjs-project-structure.md` — `PLACES_DATA_DIR`; dataset": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774660
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831597716
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831675877
+      }
+    ],
+    "9.6 `Claude.md` brief update; `README.md` + `.env.example` document the one-off": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774712
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831681752
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831758592
+      }
+    ],
+    "10.1 `npm run lint` and `npm test` clean": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774757
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831765751
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831908164
+      }
+    ],
+    "10.2 `npx tsc --noEmit` clean (catches the `ComputeForm` shape change across all": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774796
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831919230
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831976854
+      }
+    ],
+    "10.3 Manual pass: search \"alandi\" (3-char threshold, two-line rows), \"rampur\"": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787818774841
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831982575
+      },
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787832420050
+      }
+    ],
+    "2. Ingestion script": [
+      {
+        "executionId": "764aa676-ba9e-481f-950e-a9b657418124",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787821796309
+      }
+    ],
+    "3. Search API": [
+      {
+        "executionId": "c6e11bbe-22d7-4ceb-a521-e21ec3fc381f",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787825804803
+      }
+    ],
+    "4. PlacePicker component": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787828409649
+      }
+    ],
+    "5. Home page integration": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787829225671
+      }
+    ],
+    "6. Persistence": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830157743
+      }
+    ],
+    "7. Second call site and shared shape": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787830648505
+      }
+    ],
+    "8. Backward-compatibility verification": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831044025
+      }
+    ],
+    "9. Documentation (same change, per `Agents.md`)": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787831758652
+      }
+    ],
+    "10. Final checkpoint": [
+      {
+        "executionId": "a24eccae-84aa-4287-ae8b-d2e21a7433ee",
+        "chatSessionId": "sess_653b6a7e-eb6a-441b-9929-441047be09de",
+        "timestamp": 1787832420132
+      }
+    ]
+  }
+}

@@ -80,6 +80,32 @@ tab (`app/components/GrahasTable.tsx`; `KarakaTable.tsx` deleted, `PlanetTable.t
 added a **Yogas** tab after Ashtakavarga rendering the deterministic `chart.yogas`
 catalogue.
 
+**Birth-place picker:** `app/components/PlacePicker.tsx` searches the locally ingested,
+India-only OSM settlement data through `GET /api/places` and fills the visible coordinates
+for chart computation. Search ranks six tiers: the whole normalized query against the
+stored name (exact → prefix → substring, no narrowing), then the leading name token with
+every remaining token required to match state/district/tehsil. The phrase tiers are what
+make multi-word names ("Rampur Bushahr", "St. Thomas Mount") reachable; the token tiers are
+skipped when there is nothing to narrow with. The 3-character floor is measured against the
+whole normalized query, not its first word.
+
+It is an input-resolution layer only: manual coordinate entry remains available for
+non-India or unlisted places. Both birth-data forms (`/` and Unified Charts → Compute from
+Birth Data) use the picker, forward the same optional `place` display metadata on save, and
+share one contract in `lib/place-form.ts` — the seven-field persisted place shape (the save
+route validates it strictly, so a selection's coordinates must be stripped, not forwarded)
+and `validateBirthLocation()`. Location validation is explicit JS rather than `required`
+attributes: the manual coordinate inputs sit inside a closed `<details>`, where a native
+constraint failure aborts submission without firing the submit handler and the Compute
+button just looks broken.
+
+The external NDJSON source is loaded once per environment with `npm run db:load-places`; it
+is not read at runtime or committed to the repository. `--truncate` uses `TRUNCATE TABLE`
+and a successful load ends with `ANALYZE "place"` — the only raw SQL outside
+`prisma/migrations/`, both fixed strings with no interpolation, and
+`tests/place-schema-indexes.test.ts` statically guards the schema/migration index
+declarations that `prisma migrate dev` keeps trying to undo.
+
 The **Transits → Gochar** section keeps the current-position table, renders four
 compact North-Indian charts (natal D1, JHora-style Transit Moment Chart from the
 moving Ascendant, plus current Lahiri Gochar from birth Lagna and natal Moon), and

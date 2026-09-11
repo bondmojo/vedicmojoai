@@ -27,6 +27,8 @@ interface ComputeForm {
   timezone: string
   latitude: string
   longitude: string
+  placeId: string | null
+  placeLabel: string
   sunriseMode: 'precise' | 'jhora'
 }
 

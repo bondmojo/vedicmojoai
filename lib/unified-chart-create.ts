@@ -11,7 +11,11 @@
 import { prisma } from '@/lib/db'
 import { computeFullChart } from '@/engine/compute'
 import { computeVimshottari } from '@/engine/computeVimshottari'
-import { mapComputedToUnified, serializeDashaTree } from '@/lib/chart-mapper'
+import {
+  mapComputedToUnified,
+  serializeDashaTree,
+  type BirthPlace,
+} from '@/lib/chart-mapper'
 
 export interface BirthDataInput {
   name: string
@@ -21,6 +25,8 @@ export interface BirthDataInput {
   latitude: number
   longitude: number
   sunriseMode: 'precise' | 'jhora'
+  /** Optional UI-resolved metadata persisted inside birthInput, not used by the engine. */
+  place?: BirthPlace
   /** When set, re-saving edited birth data updates this chart in place
    *  instead of creating a new row (see handleSaveChart in app/page.tsx). */
   existingChartId?: string
@@ -82,7 +88,7 @@ export async function createUnifiedChartFromBirthData(
   const serializedDasha = serializeDashaTree(dashaTree)
 
   // Map to UnifiedChart create input
-  const mapped = mapComputedToUnified(chart, serializedDasha, input.name)
+  const mapped = mapComputedToUnified(chart, serializedDasha, input.name, input.place)
   const createInput = { ...mapped, userId: input.userId }
 
   // Dedup on chartHash, scoped to this user — the same birth data may

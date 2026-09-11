@@ -510,3 +510,101 @@ model CompatibilityMatch {
   @@index([groomChartId])
   @@map("compatibility_match")
 }
+
+// ─── Place Reference Data ───────────────────────────────────────────
+// Indian settlements derived from an OpenStreetMap / Nominatim export,
+// loaded once by scripts/load-places.ts (`npm run db:load-places`) and read
+// only by GET /api/places, which backs the birth-place picker.
+//
+// Deliberately unlike every other table in this schema:
+//   - NO userId / User relation — a settlement is reference data, not user content
+//   - absent from the DELETE /api/unified-charts/[id] cascade — no chart owns a place
+//   - never written by the running app; only the loader inserts rows
+//
+// A chart references a place only as display metadata inside
+// UnifiedChart.birthInput.place. That is NOT a foreign key and is NOT part of
+// chartHash, so re-ingesting a corrected dataset can neither orphan a saved
+// chart nor change its identity. What the engine consumes is always the
+// latitude/longitude copied onto the chart at save time.
+//
+// See .kiro/specs/place-location-picker/design.md §Data Model.
+
+model Place {
+  id          String   @id @default(uuid())
+
+  // Stable natural key from OSM — this, plus createMany({ skipDuplicates: true }),
+  // is what makes re-running the loader a no-op instead of a duplicate load.
+  osmType     String // "node" | "way" | "relation"
+  // Source ids reach 10_139_722_692, well past Int4 — must be BigInt.
+  osmId       BigInt
+
+  name        String
+  // Lowercased, diacritics stripped, whitespace collapsed by
+  // lib/places-normalize.ts. Ingestion and query both normalize through that
+  // one module so they can never disagree. Pre-normalizing means search needs
+  // no ILIKE, and it folds diacritics — which neither ILIKE nor a trigram
+  // index does on its own.
+  nameNorm    String
+
+  kind        String // "city" | "town" | "village" | "hamlet"
+  // Relevance rank (city=1, town=2, village=3, hamlet=4), persisted so search
+  // ordering stays a plain Prisma orderBy instead of a raw ORDER BY CASE.
+  kindRank    Int
+
+  // Administrative hierarchy, with observed coverage across the 348,845-row
+  // source dataset. `county` is the sub-district unit (tehsil / taluka /
+  // mandal) and is the first line of the picker's secondary text.
+  state       String // address.state          — 100.0%
+  district    String // address.state_district —  99.5% (falls back to county)
+  county      String? // address.county        —  97.5%
+  postcode    String? // address.postcode      —  43.8%
+
+  // 7 decimals matches the precision the compute form already accepts.
+  // NOTE: the source NDJSON stores `location` as [longitude, latitude].
+  latitude    Decimal  @db.Decimal(9, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+
+  countryCode String   @default("in")
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@unique([osmType, osmId])
+  // TWO name indexes, one per access pattern in the ranked search. The database
+  // collation is en_US.utf8, under which a *default* btree cannot serve
+  // LIKE 'q%' at all, so both of these are load-bearing:
+  //
+  //   text_pattern_ops btree → the exact and prefix stages, `= 'q'` and
+  //     `LIKE 'q%'`. Rewrites the LIKE into a range scan
+  //     (nameNorm >= 'q' AND < 'r').
+  //   gin_trgm_ops GIN      → the substring stage, `LIKE '%q%'`, which a btree
+  //     cannot serve at any collation.
+  //
+  // The GIN index *can* also answer a prefix query, but measured on 40k rows
+  // the planner does not choose it: a prefix matching 1 row seq-scanned in
+  // 19 ms, versus 0.35 ms via the btree once that existed. Since prefix is the
+  // common path (someone typing "aland" wanting "Alandi"), the btree stays.
+  //
+  // The 3-character minimum in GET /api/places exists because a trigram is
+  // three characters, so shorter patterns cannot use the GIN index.
+  //
+  // KNOWN PRISMA CHURN (verified with `prisma migrate diff` on 5.22.0):
+  // Prisma does not round-trip the `text_pattern_ops` operator class, so every
+  // future `migrate dev` regenerates an identical
+  //   DROP INDEX "place_nameNorm_prefix_idx"; CREATE INDEX ... text_pattern_ops
+  // pair for the PREFIX index. Delete those two statements from the generated
+  // migration rather than committing them — re-running them is a no-op that
+  // just rebuilds a 273k-row index. The trigram GIN index below does NOT churn
+  // (despite prisma/prisma#17518, which describes the general problem).
+  //
+  // Declaring both here anyway is the safer of the two options: left out of the
+  // schema, Prisma would instead diff them as indexes to DROP, and they would
+  // silently disappear on the next migration.
+  //
+  // Both indexes cover the same column, so they need explicit names — Prisma
+  // would otherwise generate `place_nameNorm_idx` for both and fail validation.
+  @@index([nameNorm(ops: raw("text_pattern_ops"))], map: "place_nameNorm_prefix_idx")
+  @@index([nameNorm(ops: raw("gin_trgm_ops"))], type: Gin, map: "place_nameNorm_trgm_idx")
+  @@index([state])
+  @@index([district])
+  @@index([kindRank])
+  @@map("place")
+}
