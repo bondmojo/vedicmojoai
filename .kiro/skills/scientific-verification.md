@@ -111,3 +111,21 @@ verification failure patterns from Tasks 1–2.
 - If a separate build target (e.g., MCP) cannot import the source module, add
   a test asserting its copy matches the canonical value.
 
+## 11. PVR/JHora SSS oracle comparison
+
+- Normalize research or provider output into `SssOracleCandidate` and compare
+  it with `engine/compute/verification/sssOracleComparison.ts`. Do not add a
+  second ad-hoc longitude or Dasha diff implementation.
+- Label candidates as `research_prototype` or `production_provider`, and record
+  an independently sourced parameter-set ID plus page/equation source IDs.
+  A research comparison is not evidence that the registered SSS provider is
+  implemented.
+- The comparator rejects Drik/Lahiri substitution, uses shortest-circular
+  longitude deltas, and matches Dasha periods by semantic hierarchy and lord
+  rather than fixture IDs containing expected timestamps.
+- `oracle_missing` is not a pass. Numeric ayanamsa and machine-readable varga
+  placements remain unavailable until independently transcribed evidence is
+  added through the fixture-audit process.
+- Run the read-only CLI with
+  `npm run sss:compare-pvr -- --fixture india|mojo [--candidate path.json]`.
+  Runtime routes must never import the CLI or parse JHora artifacts.

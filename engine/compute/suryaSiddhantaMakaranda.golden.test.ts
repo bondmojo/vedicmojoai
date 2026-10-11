@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SURYA_SIDDHANTA_MAKARANDA_FIXTURES } from './__fixtures__/suryaSiddhantaMakaranda'
-
-export const SSS_ORACLE_ACCEPTANCE_TOLERANCES = Object.freeze({
-  natalArcseconds: 1,
-  seededMahadashaSeconds: 1,
-  endToEndMoonToDashaHours: 4,
-  fixedYearDaysDifferentialHours: 60,
-})
+import { SSS_ORACLE_ACCEPTANCE_TOLERANCES } from './verification/sssOracleComparison'
 
 /**
  * Formula-dependent acceptance gates deliberately remain pending until Task 3

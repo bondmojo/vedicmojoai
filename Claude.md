@@ -106,6 +106,17 @@ engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord)
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.
 
+### SSS/Makaranda research status
+
+`surya_siddhanta_makaranda_v1` is registered but deliberately unavailable: the
+production formula provider, SSS ayanamsa/nodes, effective-time/Lagna and
+true-sidereal Dasha strategy have not been independently specified. The local
+PVR/JHora India and Mojo bundle is an output oracle, not implementation source.
+For a bounded historical Makarandasāriṇī research prototype and its comparison
+workflow, read `docs/SSS_MAKARANDA_CLAUDE_CODE_HANDOFF.md` before changing any
+SSS code. It must remain isolated from the Drik provider, app routes, database
+and UI until scientific and practitioner acceptance gates are met.
+
 ### User Management (`.kiro/specs/user-management/`)
 
 A cross-cutting layer, not one of the five practitioner-facing features above:

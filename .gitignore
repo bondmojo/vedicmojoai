@@ -52,3 +52,4 @@ prisma/*.db
 # task 9.2 of .kiro/specs/marriage-matchmaking/tasks.md.
 scripts/oracle/output/*
 !scripts/oracle/output/.gitkeep
+.env*
