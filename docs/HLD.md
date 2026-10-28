@@ -392,6 +392,7 @@ engine/
 │   ├── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
 │   ├── yogas.ts           # NEW — deterministic named-yoga catalogue (Mahapurusha, Raja/DKA, Dhana, Viparita, Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari)
 │   ├── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
+│   ├── tajikaAspects.ts   # NEW — sign-based Tajika aspects (Phase 1); Varshesha's Varsha Lagna aspect check
 │   ├── matchmakingTables.ts # NEW — static Ashtakoota reference tables (nakshatra/rashi attributes, 5 scoring matrices), hand-transcribed + oracle-verified (docs/computation_matchmaking.md)
 │   └── matchmaking.ts     # NEW — pure, never-throwing Ashtakoota (computeAshtakootaMatch) + Mangal Dosha (computeMangalDosha) + composition (computeMatch)
 └── waves/

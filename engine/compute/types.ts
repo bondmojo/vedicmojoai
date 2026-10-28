@@ -597,6 +597,20 @@ export interface BhavaBalaResult {
 
 // ─── Varshaphal (Tajika annual solar-return chart) ───────────────────
 
+/** Tajika aspect kinds by sign distance (see tajikaAspects.ts). */
+export type TajikaAspectKind = 'conjunction' | 'sextile' | 'trine' | 'square' | 'opposition'
+
+/** Sextile/trine are friendly; conjunction/square/opposition are inimical. */
+export type TajikaAspectNature = 'friendly' | 'inimical'
+
+/** A sign-based Tajika aspect (Phase 1 — no deeptamsha orbs yet). */
+export interface TajikaSignAspect {
+  kind: TajikaAspectKind
+  nature: TajikaAspectNature
+  /** Inclusive sign count from the aspecting sign (same sign = 1): 1, 3, 4, 5, 7, 9, 10 or 11. */
+  distance: number
+}
+
 /** The five office-bearer candidates competing to be Varshesha (year lord). */
 export interface VarsheshaCandidate {
   /** Which office this planet holds among the five. */
@@ -611,12 +625,18 @@ export interface VarsheshaCandidate {
   officeLabel: string
   /** Final Panchavargeeya Bala (0–20 scale). */
   panchavargeeyaBala: number
+  /** How many of the five offices this planet holds (tie-break only). */
+  officeCount: number
+  /** This planet's Tajika aspect to the Varsha Lagna (conjunction when in it), or null when it has none. */
+  lagnaAspect: TajikaSignAspect | null
+  /** Whether that aspect counts for selection (its nature is in VARSHESHA_LAGNA_ASPECT_NATURES). */
+  aspectsLagna: boolean
 }
 
 /** Per-planet Panchavargeeya Bala breakdown (Tajika 5-fold strength). */
 export interface PanchavargeeyaBalaEntry {
   planet: string
-  kshetraBala: number   // sign dignity (Vishwa)
+  kshetraBala: number   // sign-lord dignity, no moolatrikona (Vishwa)
   ucchaBala: number     // exaltation proximity (Vishwa)
   haddaBala: number     // Egyptian term / bound (Vishwa)
   drekkanaBala: number  // D3 dignity (Vishwa)
@@ -653,22 +673,35 @@ export interface VarshaphalResult {
   natalSunLongitude: number
   natalLagnaSignNumber: number
   varshaPravesh: VarshaPravesh
-  /** Full chart cast for the solar-return instant at the birthplace. */
+  /**
+   * Full chart cast for the solar-return instant at the birthplace. Its
+   * `transits` (Gochar, Sade Sati, Ashtama/Kantaka Shani) are reckoned from the
+   * NATAL Moon and Lagna as of the Varsha Pravesh (`transits.asOf`), not from
+   * the annual Moon or the time of computation.
+   */
   annualChart: ComputedChart
   muntha: Muntha
   /**
    * Whether the year COMMENCES (Varsha Pravesh) by day — the annual Sun above
-   * the horizon (houses 7–12). Drives the Dinaratri & Trirashi year-lord offices.
+   * the horizon, judged from its longitude against the Ascendant degree (not
+   * whole-sign houses). Drives the Dinaratri & Trirashi year-lord offices.
    */
   dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaBalaEntry[]
   candidates: VarsheshaCandidate[]
-  /** The selected year lord (strongest candidate by Panchavargeeya Bala). */
+  /**
+   * The selected year lord: the strongest candidate (Panchavargeeya Bala) that
+   * aspects the Varsha Lagna; office count breaks ties. When no candidate
+   * aspects the Lagna, the strongest of all five.
+   */
   varshesha: {
     planet: string
     office: VarsheshaCandidate['office']
     officeLabel: string
     panchavargeeyaBala: number
+    lagnaAspect: TajikaSignAspect | null
+    /** Which branch picked the winner. */
+    selectionBasis: 'aspects_lagna' | 'no_candidate_aspects_lagna'
   }
   /** Method notes / caveats surfaced to the UI. */
   method: string

@@ -128,6 +128,12 @@ tool: `POST /api/compute/varshaphal`
 → `engine/compute/varshaphal.ts` computes the Varsha Pravesh (solar return), the
 annual chart (reusing `computeFullChart`, so the annual Shadbala uses the same
 engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord).
+The Varshesha is the strongest of the five office-holders that aspects the Varsha
+Lagna, with office count as the tie-break (strongest of five if none aspects it);
+the aspect comes from the sign-based `engine/compute/tajikaAspects.ts` (Phase 1 —
+deeptamsha orbs are Phase 2; a planet in the Lagna counts as a conjunction). The
+Trirashi lord follows the Tajika Neelakanthi per-sign table, and Kshetra Bala gives
+no moolatrikona credit. See `.kiro/specs/varshesha-lagna-aspect/`.
 
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.

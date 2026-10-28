@@ -25,6 +25,9 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://vedicmojo:vedicmojo_dev@db:5432/vedicmojoai?schema=public
+      # prisma migrate deploy uses directUrl; .env's value points at the host-mapped
+      # localhost port, which is unreachable from inside the container.
+      DIRECT_URL: postgresql://vedicmojo:vedicmojo_dev@db:5432/vedicmojoai?schema=public
       NODE_ENV: production
       # Auth.js's own trustHost defaults to true only when NODE_ENV !== 'production'
       # (or AUTH_URL/VERCEL/CF_PAGES is set) — none of which apply here, so without

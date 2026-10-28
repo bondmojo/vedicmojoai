@@ -7,6 +7,43 @@ Newest release first. Each entry covers one merge to `main`.
 
 ---
 
+## Unreleased
+
+- **Varshesha (year lord) is now strength-first.** The strongest of the five
+  office-holders (Panchavargeeya Bala) that aspects the Varsha Lagna wins; the
+  number of offices held only breaks ties, and the strongest of all five wins when
+  none aspects the Lagna. Previously the planet holding the most offices won. **The
+  year lord shown for an existing chart and year can change** (33 of 51 years for
+  the test birth). New sign-based Tajika aspect module
+  `engine/compute/tajikaAspects.ts` (deeptamsha orbs are Phase 2); each candidate
+  now carries `lagnaAspect`, `aspectsLagna` and `officeCount`, and the result
+  carries `varshesha.selectionBasis`. See `docs/computation_varshaphal.md` and
+  `.kiro/specs/varshesha-lagna-aspect/`.
+- **Fix: Varshaphal day/night near sunrise and sunset.** Whether the year
+  commences by day was read from the Sun's whole-sign house (7–12), which is wrong
+  when the Varsha Pravesh falls close to the horizon. It now compares the Sun's
+  longitude with the Ascendant degree. This changes the Dinaratri and Trirashi
+  lords (and so possibly the year lord and `dayVarsha`) for those charts.
+- **Fix: three Tajika rules in the Varshaphal (astrologer review).**
+  - The Trirashi lord now follows the Tajika Neelakanthi sign table. The old
+    one-pair-per-element table was wrong for Leo through Pisces.
+  - A planet in the Varsha Lagna now aspects it by conjunction (Tajika's open
+    inimical aspect, like the opposition), so a Varsha Lagna lord in its own
+    Lagna can be year lord. `TajikaAspectKind` gains `'conjunction'`.
+  - Kshetra Bala no longer gives moolatrikona full credit; the Moon in Taurus
+    drops from 30 to 7.5.
+
+  **The year lord can change again for an existing chart and year** — 90 of 306
+  annual charts for the test birth date across six birth times.
+- **Fix: Sade Sati in the Varshaphal.** The annual chart's transit block reckoned
+  Sade Sati from the annual chart's Moon, as of the moment of the request, so it
+  changed with the year asked for and the day it was run. It now uses the natal
+  Moon and Lagna, as of the Varsha Pravesh (`annualChart.transits.asOf`). This
+  reaches MCP users through `compute_varshaphal`; the Varshaphal tab does not
+  show transits.
+
+---
+
 ## v1.4 — Compute-first analysis, MCP for Claude Desktop, brand UI
 
 **Date:** 2026-07-26

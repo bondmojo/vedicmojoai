@@ -122,7 +122,7 @@ export function registerTools(server: McpServer, api: ApiClient): void {
     {
       title: 'Compute a Varshaphal (annual Tajika) chart',
       description:
-        'Annual solar-return chart for a given civil year: Varsha Pravesh instant, annual chart, Muntha, Panchavargeeya Bala, and the Varshesha (year lord).',
+        'Annual solar-return chart for a given civil year: Varsha Pravesh instant, annual chart, Muntha, Panchavargeeya Bala, and the Varshesha (year lord) — the strongest office-holder aspecting the Varsha Lagna (sign-based Tajika aspect; a planet in the Lagna counts as a conjunction), with each candidate\'s Lagna aspect. annualChart.transits (Gochar, Sade Sati) is reckoned from the NATAL Moon and Lagna as of the Varsha Pravesh.',
       inputSchema: { ...birthDataSchema.shape, varshaYear: z.number().int().min(1800).max(2399) },
     },
     async (a) => guard(async () => ok(await api.post('/api/compute/varshaphal', a)))

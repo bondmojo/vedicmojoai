@@ -13,6 +13,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { TajikaSignAspect } from '@/engine/compute/types'
 
 const PLANET_COLORS: Record<string, string> = {
   Sun: 'text-orange-400', Moon: 'text-slate-300', Mars: 'text-red-400',
@@ -49,6 +50,9 @@ interface Candidate {
   planet: string
   officeLabel: string
   panchavargeeyaBala: number
+  officeCount: number
+  lagnaAspect: TajikaSignAspect | null
+  aspectsLagna: boolean
 }
 
 interface ShadbalPlanetLite {
@@ -80,11 +84,29 @@ interface VarshaphalData {
   dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaEntry[]
   candidates: Candidate[]
-  varshesha: { planet: string; officeLabel: string; panchavargeeyaBala: number }
+  varshesha: {
+    planet: string
+    officeLabel: string
+    panchavargeeyaBala: number
+    lagnaAspect: TajikaSignAspect | null
+    selectionBasis: 'aspects_lagna' | 'no_candidate_aspects_lagna'
+  }
   method: string
 }
 
 const CURRENT_YEAR = new Date().getUTCFullYear()
+
+function lagnaAspectLabel(aspect: TajikaSignAspect | null, counted: boolean): string {
+  if (!aspect) return 'No aspect to Lagna'
+  const kind = aspect.kind.charAt(0).toUpperCase() + aspect.kind.slice(1)
+  const relation = aspect.kind === 'conjunction' ? 'In Lagna (conjunction)' : `${kind} to Lagna`
+  return `${relation} · ${aspect.nature}${counted ? '' : ' (not counted)'}`
+}
+
+function lagnaAspectColor(aspect: TajikaSignAspect | null, counted: boolean): string {
+  if (!aspect || !counted) return 'text-gray-500'
+  return aspect.nature === 'friendly' ? 'text-green-400' : 'text-yellow-400'
+}
 
 function pvGradeColor(grade: string): string {
   switch (grade) {
@@ -215,6 +237,13 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
               </div>
               <div className="text-xs text-gray-400">{data.varshesha.officeLabel}</div>
               <div className="text-[10px] text-gray-500 mt-1">Panchavargeeya {data.varshesha.panchavargeeyaBala.toFixed(2)}/20</div>
+              {data.varshesha.selectionBasis === 'no_candidate_aspects_lagna' ? (
+                <div className="text-[10px] text-yellow-400 mt-1">No office-holder aspects the Lagna; strongest of five</div>
+              ) : (
+                <div className={`text-[10px] mt-1 ${lagnaAspectColor(data.varshesha.lagnaAspect, true)}`}>
+                  {lagnaAspectLabel(data.varshesha.lagnaAspect, true)}
+                </div>
+              )}
             </div>
           </div>
 
@@ -223,7 +252,8 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
             <h4 className="text-sm font-semibold mb-2">Year-Lord Candidates (Panchadhikari)</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
               {data.candidates.map((c) => {
-                const isWinner = c.planet === data.varshesha.planet && c.officeLabel === data.varshesha.officeLabel
+                // Every office the winning planet holds is highlighted, not just the first.
+                const isWinner = c.planet === data.varshesha.planet
                 return (
                   <div
                     key={c.office}
@@ -232,6 +262,10 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
                     <div className="text-[11px] text-gray-500 leading-tight">{c.officeLabel}</div>
                     <div className={`text-sm font-semibold mt-1 ${PLANET_COLORS[c.planet] ?? 'text-ink'}`}>{c.planet}</div>
                     <div className="text-xs text-gray-400 font-mono">{c.panchavargeeyaBala.toFixed(2)}/20</div>
+                    <div className={`text-[11px] mt-1 ${lagnaAspectColor(c.lagnaAspect, c.aspectsLagna)}`}>
+                      {lagnaAspectLabel(c.lagnaAspect, c.aspectsLagna)}
+                    </div>
+                    {c.officeCount > 1 && <div className="text-[10px] text-gray-500">×{c.officeCount} offices</div>}
                   </div>
                 )
               })}

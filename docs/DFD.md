@@ -772,9 +772,14 @@ PRACTITIONER (Varshaphal tab: birth data + varshaYear)
 │  • computeFullChart(annual)     → annual    │
 │    chart (planets, Varsha Lagna, vargas,    │
 │    Shadbala, …)                             │
+│  • computeTransits(natal Moon + Lagna, at   │
+│    Varsha Pravesh) → replaces the annual    │
+│    chart's transits / Sade Sati             │
 │  • computeMuntha()  (+1 sign/year)          │
 │  • computePanchavargeeyaBala()  (7 planets) │
-│  • computeVarshesha() (5 candidates → lord) │
+│  • computeVarshesha() (5 candidates →       │
+│    Lagna-aspect filter via                  │
+│    getTajikaSignAspect() → strongest)       │
 └──────────────┬──────────────────────────────┘
                │ VarshaphalResult (JSON)
                ▼

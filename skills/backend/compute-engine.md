@@ -22,15 +22,26 @@ Deterministic astronomical calculations (Swiss Ephemeris):
 | `jaimini.ts` | Argala/Virodha Argala, Yogi/Avayogi points, special-lagna aspects, lord relationship map |
 | `bhavaBala.ts` | Bhavadhipati / Bhava Dig / Bhava Drishti bala |
 | `yogas.ts` | **Deterministic named-yoga catalogue** — Pancha Mahapurusha, Raja Yoga (incl. distinctly-keyed `raja.dka` for Dharma-Karmadhipati), Dhana, Viparita (Harsha/Sarala/Vimala), Neechabhanga, lunar (Sunapha/Anapha/Durudhara/Kemadruma), Gaja Kesari, Budha-Aditya, Parivartana, Kartari. `computeYogas(input)` reads ONLY the already-computed `RelationshipGeometry` tables (`relationships.ts`) + `dignity.ts` — never re-derives conjunctions/aspects/exchanges/dignity. Never throws; a detector missing its required table emits nothing. Runs in `computeFullChart` right after `relationships`, attached as `ComputedChart.yogas` / `UnifiedChart.yogas` (null on paste path). See `.kiro/specs/named-yoga-engine/`. |
-| `varshaphal.ts` | **Tajika annual solar-return chart** — Varsha Pravesh (solar return), annual chart (reuses `computeFullChart`), Muntha, Panchavargeeya Bala, Varshesha (year lord). On-demand only — NOT part of `computeFullChart`/`ComputedChart` |
+| `varshaphal.ts` | **Tajika annual solar-return chart** — Varsha Pravesh (solar return), annual chart (reuses `computeFullChart`), Muntha, Panchavargeeya Bala, Varshesha (year lord: strongest office-holder that aspects the Varsha Lagna, office count as tie-break). On-demand only — NOT part of `computeFullChart`/`ComputedChart` |
+| `tajikaAspects.ts` | **Sign-based Tajika aspects (Phase 1)** — `getTajikaSignAspect(fromSign, toSign)`: sextile 3/11 and trine 5/9 friendly; conjunction (same sign), square 4/10 and opposition 7 inimical; 2/6/8/12 no aspect. Pure, never throws. Separate from Parashari Graha Drishti in `relationships.ts`. Deeptamsha orbs + applying/separating are Phase 2 |
 
 **Varshaphal note:** `varshaphal.ts` imports `computeFullChart` from `index.ts`
 (one-directional — `index.ts` never imports `varshaphal.ts`, so no cycle). The
 solar-return instant is found by Newton iteration on the Sun's sidereal longitude
 (`findSolarReturnJulianDay` in `planets.ts`). Panchavargeeya Bala uses documented
 Neelakanthi maxima (Kshetra 30 / Uccha 20 / Hadda 15 / Drekkana 10 / Navamsa 5, ÷4)
-with Egyptian-term (Hadda) and Dorothean-triplicity tables; exact Vishwa scales vary
-by text/software, so values are indicative and the method is surfaced in the output.
+with the Egyptian-term (Hadda) table; Kshetra is judged from the sign lord alone (no
+moolatrikona credit). Exact Vishwa scales vary by text/software, so values are
+indicative and the method is surfaced in the output. The Trirashi lord comes from the
+Tajika Neelakanthi per-sign table (`TRIRASHI_LORDS` / `getTrirashiLord`), not one
+Dorothean pair per element.
+Day/night of the Varsha Pravesh comes from `isSunAboveHorizon` (Sun longitude vs the
+Ascendant degree) — never whole-sign houses, which are wrong near sunrise/sunset.
+Which Lagna aspects count for the Varshesha is `VARSHESHA_LAGNA_ASPECT_NATURES` in
+`varshaphal.ts`; `tajikaAspects.ts` itself stays purely geometric.
+`computeFullChart` treats the return instant as a birth, so `computeVarshaphal`
+replaces the annual chart's `transits` with `computeTransits` run on the **natal**
+Moon and Lagna as of the Varsha Pravesh — never read Sade Sati from the annual Moon.
 Entry point: `POST /api/compute/varshaphal`; UI: the "Varshaphal" tab on `/compute`.
 
 **Divisional dignity/vargottama (2026-07):** every `DivisionalPlacement` (in every

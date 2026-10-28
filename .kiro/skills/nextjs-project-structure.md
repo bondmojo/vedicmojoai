@@ -83,6 +83,8 @@ vedicmojoai/
 │   │   ├── nakshatraRelationships.ts, jaimini.ts, bhavaBala.ts
 │   │   ├── matchmakingTables.ts   # Ashtakoota static reference tables (nakshatra/rashi attrs, 5 matrices)
 │   │   ├── matchmaking.ts        # pure Ashtakoota + Mangal Dosha engine (computeMatch)
+│   │   ├── varshaphal.ts         # Tajika annual chart: Varsha Pravesh, Muntha, Panchavargeeya Bala, Varshesha
+│   │   ├── tajikaAspects.ts      # sign-based Tajika aspects (Phase 1) for the Varshesha Lagna check
 │   │   └── types.ts
 │   └── waves/
 │       ├── wave1.ts
