@@ -81,8 +81,8 @@ export function computeVimshottari(
   // Index and elapsed fraction come from one quotient (locateInNakshatra).
   // Taking the fraction from `lon % span` instead put a Moon at exactly 40°
   // at the very end of Rohini: a ~0 Moon balance and a Mars MD from birth.
-  // The input check rejects longitudes outside [0, 360), so the locator's
-  // normalization changes no accepted value (−0 becomes 0: the same tree).
+  // The input check accepts [0, 360]; the locator's normalization reads 360
+  // as 0° (the start of Ashwini) and −0 as 0, and changes no other accepted value.
   const { nakshatraIndex, fraction: positionInNakshatra } = locateInNakshatra(moonLongitudeDeg)
   const nakshatraLord = DASHA_SEQUENCE[nakshatraIndex % 9].lord
 
