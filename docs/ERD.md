@@ -458,6 +458,11 @@ One new table. Persists an Ashtakoota (Guna Milan, 36-point) + Mangal Dosha
   already saw. `tablesVersion` (from `engine/compute/matchmakingTables.ts`'s
   `MATCHMAKING_TABLES_VERSION`) records which table version produced the
   stored score, mirroring `WEIGHTS_VERSION`'s precedent elsewhere.
+  `result.engineVersion` (from `engine/compute/matchmaking.ts`'s
+  `MATCHMAKING_ENGINE_VERSION`) records which engine logic produced it — a
+  key inside the `result` JSONB, **not a column**. Rows saved before it
+  existed have no such key; `GET /api/matchmaking/[id]` reports them as
+  `engineVersion: null, stale: true` (`.kiro/specs/matchmaking-result-versioning/`).
 - **No automatic cascade on chart delete** — Prisma doesn't cascade by
   default, so `DELETE /api/unified-charts/[id]` explicitly
   `compatibilityMatch.deleteMany`s any row referencing the chart as bride
@@ -467,7 +472,8 @@ One new table. Persists an Ashtakoota (Guna Milan, 36-point) + Mangal Dosha
   to either referenced chart, returns 404 (never 403).
 - **No dedup / uniqueness constraint on `(brideChartId, groomChartId)`** —
   deliberate, not an oversight: a practitioner may legitimately re-score the
-  same pair after `MATCHMAKING_TABLES_VERSION` bumps, or want multiple
+  same pair after `MATCHMAKING_TABLES_VERSION` or
+  `MATCHMAKING_ENGINE_VERSION` bumps, or want multiple
   labeled attempts. A hard uniqueness constraint would block that.
 
 ---

@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
         label: label ?? null,
         gunaScore: result.ashtakoota.gunaScore,
         verdict: result.ashtakoota.verdict,
+        // Carries `engineVersion` (stamped by computeMatch) — the engine
+        // stamp has no column of its own; it lives in this JSONB only.
         result: result as unknown as object,
         tablesVersion: MATCHMAKING_TABLES_VERSION,
       },
@@ -74,6 +76,7 @@ export async function POST(request: NextRequest) {
         gunaScore: Number(created.gunaScore),
         result: created.result,
         tablesVersion: created.tablesVersion,
+        engineVersion: result.engineVersion,
         createdAt: created.createdAt,
       },
       { status: 201 }

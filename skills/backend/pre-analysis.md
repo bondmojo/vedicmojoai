@@ -8,6 +8,12 @@
 - Self-verification: sum of all MD durations must equal 120 years ± 1 day
 - Failure → `DashaIntegrityError` thrown before any LLM runs
 - Output: full `DashaTree` with Maha/Antar/Pratyantar periods
+- **Birth nakshatra index and elapsed fraction come from `locateInNakshatra()`**
+  (`engine/compute/nakshatras.ts`; one quotient: `index = floor(q)`,
+  `fraction = q − index`). Never pair `floor(lon / span)` with `lon % span`:
+  `NAKSHATRA_SPAN_DEG` rounds up, so at an exact boundary (40°, 80°, …) the two
+  disagree and the balance comes out ~0. A boundary Moon gets the full MD of the
+  new nakshatra's lord. Tests: `tests/vimshottari-nakshatra-boundary.test.ts`.
 
 ## Pre-Analysis Rules
 

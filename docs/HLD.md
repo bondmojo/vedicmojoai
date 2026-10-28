@@ -401,6 +401,29 @@ engine/
     └── wave4.ts           # sequential: 4X → 4A → 4B → 4C
 ```
 
+**Nakshatra boundaries (`compute/nakshatras.ts`):** the exported
+`locateInNakshatra()` is the engine's only nakshatra arithmetic.
+`computeVimshottari` (birth nakshatra and balance), matchmaking's
+`computeBoundaryRisk` (via `distanceToNakshatraBoundary()`) and the Sree Lagna
+take their position from it. The nakshatra index and the fraction of it traversed
+both come from one quotient, `q = lon / NAKSHATRA_SPAN_DEG` (`index = floor(q)`,
+`fraction = q − index`, exact and always in [0, 1)). Pada and sub-lord are decided
+by one exact comparison against their cut points, which are whole numbers of dasha
+years from 0° Ashwini (9 per degree): `9 × lon ≥ years`, computed with TwoSum.
+So the two always agree where they share a cut, at pada 3 of Mars- and Mercury-led
+nakshatras. `normalizeLongitude()` leaves an in-range longitude untouched. A
+longitude exactly on a boundary (e.g. 40°, reachable from the 4-decimal
+`moonLongitude`/`lagnaLongitude`) is pada 1 of the new nakshatra with its own lord
+as sub-lord. A boundary a 4-decimal value can hit exactly is always a whole degree;
+the tests check every 4-decimal longitude within 0.005° of each whole degree and
+each nakshatra boundary against an exact integer oracle, and every double within
+64 ulps of every cut against a BigInt oracle. Taking the position from `lon % span`
+instead read 40° as Rohini pada 4, because `NAKSHATRA_SPAN_DEG` rounds up. The
+`normLong` helpers in `upagrahas.ts`, `gochar.ts`, `specialLagnas.ts` and
+`transits.ts` still use the lossy `((lon % 360) + 360) % 360`: they do no
+nakshatra arithmetic, and switching them would change emitted longitudes in their
+last bits (`.kiro/specs/nakshatra-shared-locator/design.md`).
+
 **Duration Analysis engine** (separate from the wave pipeline):
 
 ```
@@ -444,7 +467,7 @@ Both are stored in `Wave1Cache` and injected into agent contexts via `chart_summ
 Pure TypeScript function. No LLM, no external dependencies.
 
 ```
-Input:  moonLongitudeDeg: number   (0–360, sidereal)
+Input:  moonLongitudeDeg: number   ([0, 360], sidereal; 360 reads as 0°)
         birthDatetime: Date
 
 Output: DashaTree {
@@ -465,9 +488,20 @@ AntarDasha {
   start: Date
   end: Date
   duration_days: number
-  pratyantardashas?: PratyanDasha[] // populated for current + next MD only
+  pratyantardashas?: PratyanDasha[] // populated for all 9 MDs (Step 5)
 }
 ```
+
+**Birth nakshatra and balance:** `computeVimshottari` takes the nakshatra index
+and the fraction the Moon has traversed from `locateInNakshatra()`
+(`compute/nakshatras.ts`), both from one quotient, and
+`balance_years = (1 − fraction) × lord years`. A Moon exactly on a boundary
+(e.g. 40°, reachable from the 4-decimal `UnifiedChart.moonLongitude`) starts the
+new nakshatra: a full MD of its lord. Taking the fraction from `lon % span`
+instead gave ~0 there, because `NAKSHATRA_SPAN_DEG` rounds up. The input check
+accepts [0, 360] and rejects anything else, NaN included (`DashaIntegrityError`).
+360 is accepted because `Decimal(8,4)` rounds a Moon in [359.99995°, 360°) up to
+360.0000; the locator reads it as 0°, the start of Ashwini.
 
 Year constant: `YEAR_DAYS = 365.2425` defined once in `constants.ts`.
 
@@ -1325,13 +1359,14 @@ PRACTITIONER
 │    mangalDoshaCompatibility, boundaryRisk,       │
 │    limitations                                  │
 └──────────────────┬──────────────────────────────┘
-                   │ MatchResult, stamped with tablesVersion
+                   │ MatchResult, stamped with tablesVersion + engineVersion
                    ▼
               CompatibilityMatch row (POST only — /preview computes and
               returns the same MatchResult without persisting)
                    │
                    ▼
-        PRACTITIONER (`/matchmaking/[id]` renders the persisted result verbatim)
+        PRACTITIONER (`/matchmaking/[id]` renders the persisted result verbatim,
+                      flagged stale when either stamp is missing or not current)
 ```
 
 - **Role-awareness is structural.** `brideChartId`/`groomChartId` (distinct

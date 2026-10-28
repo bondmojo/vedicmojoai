@@ -290,6 +290,26 @@ Geometry**) live in `engine/compute/`:
 > renders both readings in `app/components/SadeSatiPanel.tsx`. See
 > `docs/computation_transits_sadesati.md`.
 
+> **Nakshatra boundaries:** `engine/compute/nakshatras.ts`'s `locateInNakshatra()`
+> derives the nakshatra index and the fraction traversed from one quotient
+> (`q = lon / span`, `index = floor(q)`, `fraction = q − index`). Pada and sub-lord
+> share one exact test against whole-year cut points (`9 × lon ≥ years`, via
+> TwoSum), so they agree at the pada-3 cut of Mars- and Mercury-led nakshatras.
+> Never pair `floor(lon / span)` with `lon % span`: `360 / 27` rounds up, so at an
+> exact boundary (reachable from the 4-decimal `moonLongitude`/`lagnaLongitude`,
+> e.g. 40.0000) the two disagree, which read 40° as Rohini pada 4 and gave a ~0
+> Moon dasha balance. Matchmaking takes the Moon's rashi from this pada, so a Moon
+> stored at 30°, 60°, 80°, … now scores in its true sign. `locateInNakshatra()`,
+> `normalizeLongitude()` and `distanceToNakshatraBoundary()` are exported and are
+> the engine's only nakshatra arithmetic: `computeVimshottari` (birth nakshatra and
+> balance), matchmaking's `computeBoundaryRisk` and the Sree Lagna use them. Tables
+> come from `engine/constants.ts`. The lossy `normLong` copies in `upagrahas.ts`,
+> `gochar.ts`, `specialLagnas.ts` and `transits.ts` are deliberately left: they do
+> no nakshatra arithmetic, and switching them changes emitted longitudes in their
+> last bits. Tests: `tests/nakshatra-pada-boundary.test.ts`,
+> `tests/nakshatra-shared-locator.test.ts`, `tests/vimshottari-nakshatra-boundary.test.ts`.
+> Spec: `.kiro/specs/nakshatra-shared-locator/`.
+
 > **Marriage Matchmaking engine:** `engine/compute/matchmaking.ts` +
 > `matchmakingTables.ts` — pure, never-throwing Ashtakoota + Mangal Dosha
 > scoring, completely separate from the wave pipeline and Duration Analysis.
@@ -300,8 +320,16 @@ Geometry**) live in `engine/compute/`:
 > hand-transcribed from classical sources then verified against a local,
 > never-vendored PyJHora oracle sweep (`scripts/oracle/`, AGPL-isolated —
 > see `docs/computation_matchmaking.md`'s KNOWN DIVERGENCE table for what was
-> and wasn't adopted from that sweep). `MATCHMAKING_TABLES_VERSION` is
-> stamped onto every persisted `CompatibilityMatch.result`.
+> and wasn't adopted from that sweep). Two stamps go onto every persisted
+> `CompatibilityMatch.result`: `MATCHMAKING_TABLES_VERSION` for table contents
+> only, and `MATCHMAKING_ENGINE_VERSION` (`matchmakingVersion.ts`) for the logic —
+> derivation (including the `nakshatras.ts` helpers it calls), scorers,
+> cancellations, verdict, boundary risk and Mangal Dosha. Bump the one that
+> matches what changed. `engineVersion` lives only in the `result` JSONB (no
+> column) and is absent on rows saved before it existed; read it through
+> `describeMatchVersion`, which is how `GET /api/matchmaking/[id]` returns
+> `engineVersion` (null on old rows) and `stale`. See
+> `.kiro/specs/matchmaking-result-versioning/`.
 
 ---
 

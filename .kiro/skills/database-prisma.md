@@ -157,7 +157,9 @@ inferred from `unified_chart.gender`.
   created_at DESC` query.
 - **No unique constraint on `(bride_chart_id, groom_chart_id)`** — deliberate:
   a practitioner may legitimately re-score the same pair after
-  `MATCHMAKING_TABLES_VERSION` bumps.
+  `MATCHMAKING_TABLES_VERSION` or `MATCHMAKING_ENGINE_VERSION` bumps. The
+  engine stamp has no column: it lives in `result.engineVersion` and is absent
+  on rows saved before it existed.
 - **Cascade**: no automatic FK cascade in Prisma, so
   `DELETE /api/unified-charts/[id]` explicitly
   `compatibility_match.deleteMany`s rows referencing the chart as bride *or*

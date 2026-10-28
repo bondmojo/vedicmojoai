@@ -7,6 +7,62 @@ Newest release first. Each entry covers one merge to `main`.
 
 ---
 
+## Unreleased
+
+- **Fix: a longitude exactly on a nakshatra or pada boundary got the wrong pada and
+  sub-lord.** 40° read as Rohini pada 4 with the Sun sub-lord; it is now Rohini pada 1
+  with the Moon sub-lord, and the same holds at every nakshatra start. The same
+  floating-point rounding put pada starts in the previous pada (30° as Krittika
+  pada 1, so Aries) and missed exact sub-lord cut points (33°, 37°, 101°, …). Swiss
+  Ephemeris longitudes almost never land on these, but the stored 4-decimal
+  `moonLongitude` and `lagnaLongitude` can.
+
+  Visible effects: Marriage Matchmaking now scores a Moon stored at 30, 60, 80, 90,
+  150, 180, 200, 210, 270, 300, 320 or 330.0000° in its true sign. Before, the
+  rashi-based kootas (Varna, Vashya, Graha Maitri, Bhakoot) used the neighbouring
+  sign. The lagna pada a compute chart sends to AI Analysis also changes when no
+  stored Ascendant entry exists and `lagnaLongitude` sits on a boundary. Away from
+  boundaries nothing changes: no differences in nakshatra, pada or sub-lord across
+  20 million random longitudes. Stored `UnifiedChart.nakshatras` and
+  `CompatibilityMatch` rows are not rewritten.
+
+- **Fix: a Moon exactly on a nakshatra boundary got the wrong birth Mahadasha, and
+  nakshatra arithmetic is now shared.** At 40° the dasha engine read the nakshatra
+  as Rohini but put the Moon at its very end, so the Moon MD balance came out ~0 and
+  the Mars MD started at birth. It now reads 40° as the start of Rohini: a full
+  10-year Moon MD. The same applied at the other boundaries. AI Analysis recomputes
+  the tree from the stored 4-decimal `moonLongitude`, which can sit exactly on one.
+  `computeVimshottari`, matchmaking's boundary-risk flag and the Sree Lagna now all
+  take the Moon's position from `locateInNakshatra()`.
+
+  Visible effects: a Moon stored at 39, 79, 119, 159, 199, 239, 279, 319 or
+  359.0000° (exactly 1° from a boundary) is now flagged at nakshatra-boundary risk
+  in Marriage Matchmaking. Pada and sub-lord now come from one exact test, so a
+  longitude right at the start of pada 3 in a Mars- or Mercury-led nakshatra can
+  no longer show an impossible pair (e.g. Revati pada 2 with the Mars sub-lord).
+  Away from boundaries no nakshatra, pada, sub-lord, mahadasha lord, Sree Lagna
+  sign or risk flag changes. `balance_years` changes only in its last bits. For the
+  4-decimal longitudes AI Analysis recomputes from, about 1% of trees move a period
+  boundary by up to 9 ms (about 0.05%, by 1–2 ms, for full-precision longitudes).
+
+- **Fix: a Moon stored as 360.0000 made AI Analysis fail.** `Decimal(8,4)` rounds a
+  Moon in [359.99995°, 360°) up to 360.0000, which `computeVimshottari` rejected,
+  so the analyze route returned a 500. 360 now reads as 0°, the start of Ashwini.
+  A NaN Moon is now rejected with `DashaIntegrityError` instead of a `TypeError`.
+
+- **Saved matches now record which engine version computed them.** Every new
+  Marriage Matchmaking result carries `engineVersion`
+  (`matchmaking-engine-v1-pada-boundary-fix`) beside `tablesVersion` inside the
+  saved `result`. The koota tables did not change, so `tablesVersion` stays
+  `matchmaking-tables-v1.1-nadi-bhanga-fix`. Matches saved earlier have no
+  `engineVersion`: the saved-match page shows them as "engine unversioned" with a
+  note to run the pair again and save it. No rows are rewritten and no migration is
+  needed. Only a match with a Moon stored at one of the twelve boundary longitudes
+  above can actually score differently; each saved result records both Moons in
+  `result.ashtakoota.boundaryRisk[].moonLongitude`.
+
+---
+
 ## v1.4 — Compute-first analysis, MCP for Claude Desktop, brand UI
 
 **Date:** 2026-07-26

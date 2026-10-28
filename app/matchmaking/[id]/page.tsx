@@ -68,6 +68,8 @@ interface MatchResult {
     compatibility: 'matched' | 'mismatched' | 'cancelled' | 'unavailable'
   }
   tablesVersion: string
+  /** Absent on matches saved before the engine stamp existed. */
+  engineVersion?: string
 }
 
 interface MatchDetail {
@@ -75,6 +77,10 @@ interface MatchDetail {
   label: string | null
   result: MatchResult
   tablesVersion: string
+  /** `null` on matches saved before the engine stamp existed. */
+  engineVersion: string | null
+  /** True when the running engine/tables would stamp this snapshot differently. */
+  stale: boolean
   createdAt: string
   brideChartName: string | null
   brideChartSource: 'compute' | 'paste' | null
@@ -181,8 +187,24 @@ export default function MatchDetailPage() {
         <div className="flex items-center gap-3 text-sm text-gray-400 mb-8">
           {match.label && <span>{match.label}</span>}
           <span>Computed {formatDate(match.createdAt)}</span>
-          <span className="text-xs text-gray-600">tables {match.tablesVersion}</span>
+          <span className="text-xs text-gray-600">
+            tables {match.tablesVersion} · engine {match.engineVersion ?? 'unversioned'}
+          </span>
         </div>
+
+        {match.stale && (
+          <div
+            role="note"
+            className="rounded-lg border border-amber-700 bg-amber-900/20 p-4 mb-6 text-sm text-amber-400"
+          >
+            Computed with an older matchmaking engine or table version. This saved result is shown
+            exactly as it was computed. Run this pair again from{' '}
+            <Link href="/matchmaking" className="underline hover:text-amber-300">
+              Matchmaking
+            </Link>{' '}
+            and save it to get current scoring.
+          </div>
+        )}
 
         {/* Guna Score */}
         <section className="rounded-lg border border-gray-700 bg-gray-800/50 p-5 mb-6">

@@ -25,6 +25,20 @@ but can never silently create a saved record.
 
 Spec: `.kiro/specs/marriage-matchmaking/`.
 
+**Moon longitude → nakshatra, pada, rashi:** `longitudeToNakshatraPadaRashi` reads the stored
+4-decimal `UnifiedChart.moonLongitude` through `nakshatras.ts`'s `getNakshatraIndex`/`getPada`, and the
+rashi follows from (nakshatra, pada). A Moon exactly on a pada boundary belongs to the pada that starts
+there, so a Moon at 80.0000° is Punarvasu pada 1 in Gemini. Before the nakshatra-boundary fix, a
+floating-point mismatch put it in pada 4 (Cancer), and the same happened at 30°, 60°, 90°, 150°, 180°,
+200°, 210°, 270°, 300°, 320° and 330°. Rashi-based kootas (Varna, Vashya, Graha Maitri, Bhakoot) could
+differ for those twelve longitudes only. A boundary a 4-decimal value can hit exactly is always a whole
+degree; `tests/nakshatra-pada-boundary.test.ts` checks every 4-decimal longitude within 0.005° of each
+whole degree and each nakshatra boundary against an exact integer oracle, and
+`tests/matchmaking-result-versioning.test.ts` drives 80.0000° and 30.0000° through the routes' own
+input builder down to the koota evidence. Results computed after the fix carry
+`engineVersion: 'matchmaking-engine-v1-pada-boundary-fix'`; saved matches from before it carry no
+`engineVersion` at all (see "Result versioning" below).
+
 **NFR-8, stated explicitly (Requirement 11.3):** the Ashtakoota framework's 36-point figure and the
 `<18 / 18-24 / 24-32 / >=32` score-band guidance (`below_average` / `average` / `good` / `excellent`) are
 **later almanac ("Panchang") and commercial-software convention** — they are not found in classical
@@ -144,6 +158,44 @@ boy=groom / girl=bride role calibration (87.5% vs. 37.5% agreement on the unambi
 
 This oracle sweep is treated as **the best available second opinion**, not as unquestionable ground
 truth — see the KNOWN DIVERGENCE table below for a case where its output was deliberately not adopted.
+
+---
+
+## Result versioning
+
+A saved match is a snapshot: `GET /api/matchmaking/[id]` returns the persisted `result` verbatim and
+never recomputes it. Two stamps on every `MatchResult` record what produced it.
+
+| Stamp | Constant | Covers | Stored |
+|---|---|---|---|
+| `tablesVersion` | `MATCHMAKING_TABLES_VERSION` (`matchmakingTables.ts`) | The static tables: nakshatra/rashi attributes, scoring matrices, Bhakoot/Nadi rules, koota maxima | In `result` and in the `CompatibilityMatch.tablesVersion` column |
+| `engineVersion` | `MATCHMAKING_ENGINE_VERSION` (`matchmakingVersion.ts`) | Everything else that can change a score: the longitude → nakshatra/pada/rashi derivation (including the `nakshatras.ts` helpers it calls), the koota scorers, the cancellation detectors, `deriveVerdict`, boundary risk, Mangal Dosha, and how `computeMatch` composes the result | In `result` only — there is no column |
+
+Bump `tablesVersion` when a table changes and `engineVersion` when the logic changes; a change that
+does both bumps both. Rewording evidence notes or `limitations` text needs neither.
+`v1.1-nadi-bhanga-fix` predates this split: it was a logic fix stamped on the tables version because
+no engine stamp existed yet, and it stays as it is so rows carrying it remain identifiable.
+
+| `engineVersion` | Meaning |
+|---|---|
+| *(absent)* | Saved before the stamp existed, which is also before the nakshatra-boundary fix |
+| `matchmaking-engine-v1-pada-boundary-fix` | A Moon exactly on a pada boundary is scored in the pada that starts there, and boundary risk is measured from the located nakshatra's exact edges (`distanceToNakshatraBoundary`), so a Moon exactly 1° from a boundary is at risk |
+
+**Reading a saved match.** `describeMatchVersion` (`matchmakingVersion.ts`, re-exported from `matchmaking.ts`; the `[id]` route imports it directly so reading a saved match never loads the Swiss Ephemeris addon) reads both stamps from any JSON: a
+missing, non-string, or empty stamp is `null`. `GET /api/matchmaking/[id]` returns `engineVersion`
+(`null` on an older row) and `stale`, which is true when either stamp is `null` or differs from what
+the running build stamps. `/matchmaking/[id]` shows both versions and, when `stale`, a caution to run
+the pair again and save it. Stale means a fresh computation *might* differ, not that the saved score is
+wrong. `POST /api/matchmaking`, `/preview` and the MCP `compute_match` tool return `engineVersion` too.
+The list (`GET /api/matchmaking`) does not read `result`, so it shows no version.
+
+**Which older matches the boundary fix can change.** No row is rewritten. Every saved match with no
+`engineVersion` reads as stale, but the fix changes a score only when the bride's or groom's Moon was
+stored at exactly 30, 60, 80, 90, 150, 180, 200, 210, 270, 300, 320 or 330.0000°. Each saved result
+records both stored Moons as `result.ashtakoota.boundaryRisk[].moonLongitude`, so those rows can be
+picked out and re-run. Any other older match whose `tablesVersion` is current recomputes to the same
+koota scores. Separately, a Moon stored at exactly 39, 79, 119, 159, 199, 239, 279, 319 or 359.0000° (1°
+from a nakshatra boundary) now reports `atRisk: true` in `boundaryRisk`; the scores are unchanged.
 
 ---
 
