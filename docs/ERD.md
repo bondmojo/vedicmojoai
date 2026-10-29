@@ -1,12 +1,26 @@
 # Entity-Relationship Diagram (ERD) — VedicMojoAI
 
-**Version:** 1.7
-**Last updated:** 2026-08-27
+**Version:** 1.8
+**Last updated:** 2026-10-28
 **Status:** Draft
 
 > **Maintenance rule:** Whenever the data model changes (new table, column, index,
 > relation, or ingestion path), update this ERD **and** the AI Skills, HLD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.8
+
+- **Birth Mahadasha sub-periods** (`.kiro/specs/vimshottari-birth-mahadasha/`):
+  no schema change, but the contents of `UnifiedChart.dashaTree` change. The first
+  (birth) MD's `antardashas` are now the full-length MD's ADs/PDs clipped at birth,
+  so the birth MD can hold fewer than 9 ADs, its first AD is the one running at
+  birth (not always the MD lord's), and a clipped period's `duration_days` is its
+  clipped length. `balance_years`, MD-level fields and MDs 2–9 are unchanged.
+  Existing rows are corrected by `npm run db:backfill-birth-md`
+  (`scripts/backfill-birth-mahadasha.ts`): idempotent, rewrites only
+  `mahadashas[0].antardashas`, rebuilt from the stored birth MD (not from the
+  4-decimal `moonLongitude`). `Wave1Cache.dashaTree` and `SavedChart.dashaTree`
+  are not backfilled — neither is read for dasha periods.
 
 ## What changed in v1.7
 
@@ -318,6 +332,12 @@ table, column, index, relation, or migration.
 - `relationships`, `shadbala`, `jaimini`, `bhavaBala` are produced by the
   deterministic engine modules and stand in for the LLM Wave 1 agents (1C/1D)
   on the compute path.
+- `dashaTree` (compute path only; `null` on paste) is the serialized Vimshottari
+  tree: 9 MDs with all ADs and PDs. The first (birth) MD starts at birth and
+  lasts the balance; its ADs/PDs are the full-length MD's, clipped at birth, so it
+  may hold fewer than 9 (v1.8). Maintenance backfills: `npm run db:backfill-pd`
+  (PDs missing from pre-full-PD charts) and `npm run db:backfill-birth-md`
+  (birth-MD layout from before v1.8). Both are idempotent and order-independent.
 - `yogas` (`engine/compute/yogas.ts`, added by the `named-yoga-engine` spec) is a
   chart-wide, evidence-carrying named-yoga catalogue computed deterministically from
   `relationships` + `dignity.ts` — Pancha Mahapurusha, Raja (incl. a distinctly-keyed

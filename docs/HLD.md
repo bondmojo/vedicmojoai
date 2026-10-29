@@ -1,12 +1,23 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.10
-**Last updated:** 2026-08-27
+**Version:** 1.11
+**Last updated:** 2026-10-28
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.11
+
+- **Fix: birth Mahadasha sub-periods**
+  (`.kiro/specs/vimshottari-birth-mahadasha/`). `computeVimshottari` now lays the
+  first MD's antardashas and pratyantardashas out over the full-length MD, which
+  began before birth, and clips them at birth (Parashara, JHora). Previously all
+  nine ADs were squeezed into the balance, starting with the MD lord. MD dates,
+  `balance_years` and MDs 2–9 are unchanged; integrity check 2 now also checks AD
+  contiguity. New backfill `npm run db:backfill-birth-md` for stored trees. See
+  §3.5.
 
 ## What changed in v1.10
 
@@ -193,6 +204,7 @@ The system now organizes around three practitioner-facing features.
   calls use lenient JSON parsing with one retry.
 - Backfill: `npm run db:backfill-pd` fills missing Pratyantardashas into charts
   computed before full-PD storage (`scripts/backfill-pratyantardashas.ts`).
+  `npm run db:backfill-birth-md` corrects the birth MD's ADs/PDs (§3.5).
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in a single `UnifiedChart` store: `from-compute` (birth data) and
@@ -366,7 +378,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 engine/
 ├── constants.ts          # YEAR_DAYS=365.2425, nakshatra map, dasha years, domain→agent map
 ├── pre_analysis.ts       # 11 deterministic rules → alerts[]
-├── computeVimshottari.ts # Moon longitude → full DashaTree (MD/AD/PD + dates)
+├── computeVimshottari.ts # Moon longitude → full DashaTree (MD/AD/PD + dates; birth MD clipped from full length)
 ├── planner.ts            # query types[] → ordered agent execution plan
 ├── orchestrator.ts       # fan-out execution, DB writes, SSE emission
 ├── llm.ts                # Vercel AI SDK wrapper — provider/model swappable
@@ -479,10 +491,10 @@ Output: DashaTree {
 
 MahaDasha {
   lord: Planet
-  start: Date
+  start: Date                      // birth, for the first (birth) MD
   end: Date
-  duration_days: number
-  antardashas: AnterDasha[]        // 9 sub-periods
+  duration_days: number            // the balance, for the birth MD
+  antardashas: AntarDasha[]        // 9 sub-periods (1–9 for the birth MD)
 }
 
 AntarDasha {
@@ -490,7 +502,7 @@ AntarDasha {
   start: Date
   end: Date
   duration_days: number
-  pratyantardashas?: PratyanDasha[] // populated for all 9 MDs (Step 5)
+  pratyantardashas: PratyanDasha[] // all 9 MDs (full PD storage)
 }
 ```
 
@@ -505,10 +517,23 @@ accepts [0, 360] and rejects anything else, NaN included (`DashaIntegrityError`)
 360 is accepted because `Decimal(8,4)` rounds a Moon in [359.99995°, 360°) up to
 360.0000; the locator reads it as 0°, the start of Ashwini.
 
+**Birth MD sub-periods** (`.kiro/specs/vimshottari-birth-mahadasha/`): the birth
+MD is the tail of a full-length MD that began before birth, at
+`birth − (full − balance)`. `computeBirthMahadashaAntardashas()` lays its ADs and
+PDs out over the full MD and clips them to [birth, birth + balance], dropping
+those that ended before birth (Parashara, JHora). So the AD/PD running at birth
+follows from the Moon's elapsed fraction of its nakshatra, and the birth MD can
+have fewer than 9 ADs. `balance_years`, MD dates and MDs 2–9 are unchanged.
+Stored trees are corrected with `npm run db:backfill-birth-md`
+(`scripts/backfill-birth-mahadasha.ts`, idempotent, rebuilds only
+`mahadashas[0].antardashas` from the stored birth MD).
+
 Year constant: `YEAR_DAYS = 365.2425` defined once in `constants.ts`.
 
-Self-verification: sum of all MD duration_days must equal `120 × 365.2425 ± 1`.
-If check fails → `DashaIntegrityError` thrown before any LLM agent runs.
+Self-verification: MDs are contiguous; each MD's ADs run contiguously from the MD
+start and sum to its `duration_days` (the balance, for the birth MD); and the MDs
+sum to `balance + (120 − birth-lord years)` years, ± 1 day.
+If a check fails → `DashaIntegrityError` thrown before any LLM agent runs.
 
 ### 3.6 Planner (`planner.ts`)
 

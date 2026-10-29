@@ -21,6 +21,8 @@ import { locateInNakshatra } from './compute/nakshatras'
 
 // ─── Helper Functions ───────────────────────────────────────────────
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
 /**
  * Adds a fractional number of days to a date.
  * Returns a new Date object — never mutates the input.
@@ -115,7 +117,12 @@ export function computeVimshottari(
     const end = addDays(start, durationDays)
 
     // ─── Step 4: Compute Antardashas for this Mahadasha ─────────
-    const antardashas = computeAntardashas(lord, start, durationDays)
+    // The birth MD is the tail of a full-length MD that began before birth, so
+    // its sub-periods are laid out over the full length and clipped at birth.
+    const antardashas =
+      i === 0
+        ? computeBirthMahadashaAntardashas(lord, start, durationDays)
+        : computeAntardashas(lord, start, durationDays)
 
     mahadashas.push({
       lord,
@@ -131,7 +138,8 @@ export function computeVimshottari(
   // ─── Step 5: Compute Pratyantardashas for ALL 9 MDs ───────────
   // PDs are pure arithmetic (cheap) and stored in full (~73KB serialized)
   // so that Duration Analysis can slice any date range without recomputing.
-  for (const md of mahadashas) {
+  // The birth MD's PDs were already laid out (and clipped) in Step 4.
+  for (const md of mahadashas.slice(1)) {
     for (const ad of md.antardashas) {
       ad.pratyantardashas = computePratyantardashas(
         md.lord,
@@ -155,8 +163,20 @@ export function computeVimshottari(
     }
   }
 
-  // Check 2: Each MD's antardashas sum to the MD's duration
+  // Check 2: Each MD's antardashas run contiguously from the MD start and sum
+  // to the MD's duration. For the birth MD that is the balance: its clipped ADs
+  // start at birth, not at the (pre-birth) start of the full-length MD.
   for (const md of mahadashas) {
+    let cursor = md.start.getTime()
+    for (const ad of md.antardashas) {
+      if (Math.abs(ad.start.getTime() - cursor) > 1000) {
+        throw new DashaIntegrityError(
+          `AD contiguity failed for ${md.lord}-${ad.lord}: starts ${ad.start.toISOString()}, expected ${new Date(cursor).toISOString()}`
+        )
+      }
+      cursor = ad.end.getTime()
+    }
+
     const adSum = md.antardashas.reduce((sum, ad) => sum + ad.duration_days, 0)
     if (Math.abs(adSum - md.duration_days) > toleranceDays) {
       throw new DashaIntegrityError(
@@ -184,6 +204,68 @@ export function computeVimshottari(
 }
 
 // ─── Antardasha Computation ─────────────────────────────────────────
+
+/**
+ * Computes the antardashas (with their pratyantardashas) of the birth MD.
+ *
+ * The birth MD is the tail of a full-length MD that began before birth, at
+ * `birth − elapsed`, where elapsed = full MD length − balance. Its ADs and PDs
+ * keep their full proportions and are clipped to [birth, birth + balance];
+ * any that end at or before birth are dropped. The AD and PD running at birth
+ * therefore follow from the Moon's elapsed fraction of its nakshatra
+ * (Parashara, JHora), and the clipped ADs sum to the balance.
+ *
+ * Exported for scripts/backfill-birth-mahadasha.ts, which rebuilds the birth
+ * MD of charts stored before this layout.
+ */
+export function computeBirthMahadashaAntardashas(
+  mdLord: Planet,
+  birth: Date,
+  balanceDays: number
+): AntarDasha[] {
+  const fullDays = DASHA_YEARS[mdLord] * YEAR_DAYS
+  const fullStart = addDays(birth, balanceDays - fullDays)
+  const end = addDays(birth, balanceDays)
+
+  const antardashas = computeAntardashas(mdLord, fullStart, fullDays)
+  for (const ad of antardashas) {
+    ad.pratyantardashas = computePratyantardashas(mdLord, ad.lord, ad.start, ad.duration_days)
+  }
+
+  return clipPeriods(antardashas, birth, end).map((ad) => ({
+    ...ad,
+    pratyantardashas: clipPeriods(ad.pratyantardashas, birth, end),
+  }))
+}
+
+/**
+ * Clips periods to [from, to). Periods entirely outside are dropped; a clipped
+ * period's duration_days is its clipped length. Never mutates the input.
+ */
+function clipPeriods<T extends { start: Date; end: Date; duration_days: number }>(
+  periods: T[],
+  from: Date,
+  to: Date
+): T[] {
+  const clipped: T[] = []
+  for (const period of periods) {
+    const start = Math.max(period.start.getTime(), from.getTime())
+    const end = Math.min(period.end.getTime(), to.getTime())
+    if (end <= start) continue
+
+    if (start === period.start.getTime() && end === period.end.getTime()) {
+      clipped.push(period)
+    } else {
+      clipped.push({
+        ...period,
+        start: new Date(start),
+        end: new Date(end),
+        duration_days: (end - start) / MS_PER_DAY,
+      })
+    }
+  }
+  return clipped
+}
 
 /**
  * Computes the 9 antardashas within a mahadasha.

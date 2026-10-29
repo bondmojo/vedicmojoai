@@ -135,6 +135,15 @@ is still null — idempotent, validates/normalizes through `chart-mapper.ts`'s
 exported `toGender` (never writes an unrecognized value), mirrors
 `prisma/backfill-owner.ts`'s one-off-migration shape.
 
+**Dasha-tree backfills** (`dasha_tree` JSONB, compute path only):
+`npm run db:backfill-pd` (`scripts/backfill-pratyantardashas.ts`) fills PDs
+missing from charts stored before full-PD storage; `npm run db:backfill-birth-md`
+(`scripts/backfill-birth-mahadasha.ts`, `-- --dry-run` to preview) rebuilds the
+birth MD's ADs/PDs from the stored birth MD (never from the 4-decimal
+`moon_longitude`) — `.kiro/specs/vimshottari-birth-mahadasha/`. Both are
+idempotent and order-independent, and compare JSONB values field by field
+(JSONB does not keep key order).
+
 ## CompatibilityMatch (Marriage Matchmaking)
 
 `compatibility_match` persists an Ashtakoota (Guna Milan) + Mangal Dosha

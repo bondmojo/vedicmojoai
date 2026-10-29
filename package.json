@@ -15,6 +15,7 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:backfill-pd": "npx tsx scripts/backfill-pratyantardashas.ts",
+    "db:backfill-birth-md": "npx tsx scripts/backfill-birth-mahadasha.ts",
     "db:migrate-saved": "npx tsx scripts/migrate-saved-to-unified.ts",
     "db:backfill-owner": "npx tsx prisma/backfill-owner.ts",
     "db:backfill-gender": "npx tsx prisma/backfill-gender.ts",
