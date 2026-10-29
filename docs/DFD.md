@@ -780,6 +780,10 @@ PRACTITIONER (Varshaphal tab: birth data + varshaYear)
 │  • computeVarshesha() (5 candidates →       │
 │    Lagna-aspect filter via                  │
 │    getTajikaSignAspect() → strongest)       │
+│  • next Varsha Pravesh → year window;       │
+│    computeVimshottari(natal Moon) →         │
+│    sliceNatalVimshottari(); and             │
+│    computeMuddaDasha() → dashas             │
 └──────────────┬──────────────────────────────┘
                │ VarshaphalResult (JSON)
                ▼

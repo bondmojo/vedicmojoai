@@ -18,6 +18,8 @@
  *      classical planets.
  *   5. Identifies the five Varshesha (year-lord) office-bearers and picks the
  *      strongest one (Panchavargeeya Bala) that aspects the Varsha Lagna.
+ *   6. Adds the year's dashas (varshaphalDashas.ts): the natal Vimshottari
+ *      MD/AD/PD periods overlapping the year, and the Tajika Mudda dasha.
  *
  * METHOD NOTES / CAVEATS (documented, consistent with shadbala.ts's culture):
  *   - Panchavargeeya Bala uses the Neelakanthi/Charak component maxima
@@ -70,6 +72,8 @@ import {
 } from './planets'
 import { computeFullChart } from './index'
 import { computeTransits } from './transits'
+import { computeVimshottari } from '../computeVimshottari'
+import { computeMuddaDasha, sliceNatalVimshottari } from './varshaphalDashas'
 import { SIGN_LORDS, arcDist, normLon } from './relationships'
 import { getTajikaSignAspect, TAJIKA_ASPECT_BY_DISTANCE } from './tajikaAspects'
 
@@ -495,6 +499,26 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
     annualChart.planets
   )
 
+  // ── Dashas for the year: this Varsha Pravesh to the next ──
+  const nextReturnJulianDay = findSolarReturnJulianDay(natalSunLongitude, returnJulianDay + 365.25636)
+  const yearStart = new Date(utcISO)
+  const yearEnd = new Date(julianDayToUtcISO(nextReturnJulianDay))
+  // The UTC birth instant built as POST /api/compute builds it, so the natal
+  // tree here matches the chart's Dasha tab exactly.
+  const [, birthMonth, birthDay] = birth.date.split('-').map(Number)
+  const [birthHour, birthMinute, birthSecond] = birth.time.split(':').map(Number)
+  const birthInstant = new Date(
+    Date.UTC(birthYear, birthMonth - 1, birthDay, birthHour, birthMinute, birthSecond || 0) -
+      birth.timezone * 3600 * 1000
+  )
+  const natalMoonLongitude = natalMoon?.longitude ?? Number.NaN
+  const dashas: VarshaphalResult['dashas'] = {
+    natalVimshottari: natalMoon
+      ? sliceNatalVimshottari(computeVimshottari(natalMoonLongitude, birthInstant), yearStart, yearEnd)
+      : { atVarshaPravesh: null, antardashas: [], pratyantardashas: [] },
+    mudda: computeMuddaDasha(natalMoonLongitude, age, yearStart, yearEnd),
+  }
+
   return {
     varshaYear,
     age,
@@ -514,6 +538,7 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
     panchavargeeyaBala,
     candidates,
     varshesha,
+    dashas,
     method:
       'Solar return (sidereal Lahiri). Muntha +1 sign/year from natal lagna. ' +
       'Panchavargeeya Bala per Neelakanthi maxima (Kshetra 30 / Uccha 20 / Hadda 15 / ' +
@@ -524,7 +549,11 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
       'Bala) that aspects the Varsha Lagna, ties broken by number of offices; ' +
       'strongest of all five if none aspects it. Lagna aspect by sign, counted: ' +
       `${countedLagnaAspectKinds()}; deeptamsha orbs pending. Annual-chart transits ` +
-      'and Sade Sati use the natal Moon and Lagna, as of the Varsha Pravesh.',
+      'and Sade Sati use the natal Moon and Lagna, as of the Varsha Pravesh. Dashas: ' +
+      'natal Vimshottari MD/AD/PD overlapping the year (true dates); Mudda dasha = ' +
+      'Vimshottari compressed into this Varsha Pravesh → the next, starting lord from ' +
+      'Janma nakshatra + completed years, first period = natal balance with the rest ' +
+      'closing the year (balance and year length unverified vs JHora).',
     computedAt: new Date().toISOString(),
   }
 }

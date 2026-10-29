@@ -15,6 +15,7 @@ import {
   VARSHESHA_LAGNA_ASPECT_NATURES,
 } from '../engine/compute/varshaphal'
 import { computeFullChart } from '../engine/compute/index'
+import { computeVimshottari } from '../engine/computeVimshottari'
 import { birthInputToJulianDay, siderealSunLongitude } from '../engine/compute/planets'
 import { SIGN_LORDS } from '../engine/compute/relationships'
 import type { Muntha, PanchavargeeyaBalaEntry, PlanetPosition } from '../engine/compute/types'
@@ -225,6 +226,47 @@ describe('computeVarshaphal Sade Sati', () => {
       expect(t.houseFromMoon).toBe(((t.signNumber - natalMoon.signNumber + 12) % 12) + 1)
       expect(t.houseFromLagna).toBe(((t.signNumber - natalLagna + 12) % 12) + 1)
     }
+  })
+})
+
+// ─── Dashas for the year ────────────────────────────────────────────
+
+describe('computeVarshaphal dashas', () => {
+  const v2026 = computeVarshaphal({ ...BIRTH, varshaYear: 2026 })
+  const v2027 = computeVarshaphal({ ...BIRTH, varshaYear: 2027 })
+  const ORDER = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
+
+  it('runs the Mudda year from this Varsha Pravesh to the next', () => {
+    const m = v2026.dashas.mudda
+    expect(m.yearStart).toBe(new Date(v2026.varshaPravesh.utcISO).toISOString())
+    // The next return, found from this one, lands within a second of next year's own search.
+    expect(Math.abs(Date.parse(m.yearEnd) - Date.parse(v2027.varshaPravesh.utcISO))).toBeLessThan(1000)
+    expect(m.yearDays).toBeGreaterThan(365.2)
+    expect(m.yearDays).toBeLessThan(365.3)
+  })
+
+  it('advances the Mudda starting lord one Vimshottari step a year', () => {
+    const a = ORDER.indexOf(v2026.dashas.mudda.startLord)
+    const b = ORDER.indexOf(v2027.dashas.mudda.startLord)
+    expect(b).toBe((a + 1) % 9)
+  })
+
+  it('reads the natal periods from the same tree the Dasha tab uses', () => {
+    // POST /api/compute: natal Moon longitude + UTC birth instant (local − timezone).
+    const moon = computeFullChart(BIRTH).planets.find((p) => p.planet === 'Moon')!
+    const tree = computeVimshottari(moon.longitude, new Date(Date.UTC(1990, 3, 27, 12, 0, 0) - 5.5 * 3_600_000))
+    const at = Date.parse(v2026.varshaPravesh.utcISO)
+    const runs = <T extends { start: Date; end: Date }>(ps: T[]) =>
+      ps.find((p) => p.start.getTime() <= at && at < p.end.getTime())!
+    const md = runs(tree.mahadashas)
+    const ad = runs(md.antardashas)
+    const pd = runs(ad.pratyantardashas)
+    expect(v2026.dashas.natalVimshottari.atVarshaPravesh).toEqual({
+      mahadasha: md.lord,
+      antardasha: ad.lord,
+      pratyantardasha: pd.lord,
+    })
+    expect(v2026.dashas.natalVimshottari.antardashas.some((a) => a.start === ad.start.toISOString())).toBe(true)
   })
 })
 

@@ -9,6 +9,13 @@ Newest release first. Each entry covers one merge to `main`.
 
 ## Unreleased
 
+- **Varshaphal dashas.** The Varshaphal result, tab and MCP `compute_varshaphal`
+  now include the year's dashas: the natal Vimshottari Mahadasha / Antardasha /
+  Pratyantardasha running through the year (true dates, the chain at the Varsha
+  Pravesh highlighted), and the Tajika Mudda dasha — Vimshottari compressed into the
+  year, with antardashas. New pure module `engine/compute/varshaphalDashas.ts`;
+  new field `VarshaphalResult.dashas`. The Mudda first-period balance and year
+  length are documented as unverified. Spec: `.kiro/specs/varshaphal-dashas/`.
 - **Varshesha (year lord) is now strength-first.** The strongest of the five
   office-holders (Panchavargeeya Bala) that aspects the Varsha Lagna wins; the
   number of offices held only breaks ties, and the strongest of all five wins when

@@ -133,7 +133,9 @@ Lagna, with office count as the tie-break (strongest of five if none aspects it)
 the aspect comes from the sign-based `engine/compute/tajikaAspects.ts` (Phase 1 —
 deeptamsha orbs are Phase 2; a planet in the Lagna counts as a conjunction). The
 Trirashi lord follows the Tajika Neelakanthi per-sign table, and Kshetra Bala gives
-no moolatrikona credit. See `.kiro/specs/varshesha-lagna-aspect/`.
+no moolatrikona credit. The result also carries the year's dashas
+(`engine/compute/varshaphalDashas.ts`): the natal Vimshottari MD/AD/PD running
+through the year and the Tajika Mudda dasha (see `.kiro/specs/varshaphal-dashas/`). See `.kiro/specs/varshesha-lagna-aspect/`.
 
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.

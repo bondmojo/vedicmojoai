@@ -328,7 +328,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | Route | Method | Purpose |
 |---|---|---|
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
-| `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
+| `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha, natal Vimshottari through the year + Mudda dasha |
 | `/api/places` | GET | Authenticated, read-only offline Indian-settlement search over shared `Place` reference data. Validates query parameters, skips queries whose whole normalized text is under three characters without a DB query, then ranks six tiers — the full phrase (exact → prefix → substring, unnarrowed) ahead of the leading name token with administrative-token narrowing (exact → prefix → substring) — with deterministic kind/state ordering, deduplicates OSM duplicates, and excludes hamlets by default (opt-in). Token tiers are skipped when there is nothing to narrow with. Returns display metadata plus numeric coordinates; it never geocodes or mutates data. |
 | `/api/gochar` | POST | Authenticated, deterministic, read-only Lahiri Gochar range. Resolves natal Moon/Lagna signs from a saved chart's scalar longitudes or unsaved birth data, then returns UTC whole-sign occupancy intervals; Moon is opt-in. The home Transits Gochar section and Vimshottari PD expansion send the birth-data snapshot captured with the chart on screen, so later form edits cannot create a wrong-chart request. PD requests preserve the dasha tree's exact ISO UTC bounds. |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
@@ -393,6 +393,7 @@ engine/
 │   ├── yogas.ts           # NEW — deterministic named-yoga catalogue (Mahapurusha, Raja/DKA, Dhana, Viparita, Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari)
 │   ├── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
 │   ├── tajikaAspects.ts   # NEW — sign-based Tajika aspects (Phase 1); Varshesha's Varsha Lagna aspect check
+│   ├── varshaphalDashas.ts # NEW — Varsha-year dashas: natal Vimshottari MD/AD/PD slice + Tajika Mudda dasha
 │   ├── matchmakingTables.ts # NEW — static Ashtakoota reference tables (nakshatra/rashi attributes, 5 scoring matrices), hand-transcribed + oracle-verified (docs/computation_matchmaking.md)
 │   └── matchmaking.ts     # NEW — pure, never-throwing Ashtakoota (computeAshtakootaMatch) + Mangal Dosha (computeMangalDosha) + composition (computeMatch)
 └── waves/

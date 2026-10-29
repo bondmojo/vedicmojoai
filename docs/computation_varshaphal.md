@@ -32,7 +32,7 @@ and a Varshesha (year-lord) pick.
 | Tajika aspects | sign-distance aspects with deeptamsha orbs, applying/separating | ⚠️ Phase 1: sign distance only (`tajikaAspects.ts`); orbs + applying/separating = Phase 2 |
 | Tajika yogas | Ithasala, Ishrafa, Nakta, Yamaya, Kamboola, Manau, Radda, Khallasara… | ❌ |
 | Sahams | Punya + ~50 sensitive points, day/night reversal | ❌ |
-| Dashas | Mudda (annual Vimshottari), Patyayini; Yogini/Chara optional | ❌ |
+| Dashas | Mudda (annual Vimshottari), Patyayini; Yogini/Chara optional | ✅ natal Vimshottari through the year + Mudda (with antardashas), `varshaphalDashas.ts`; ⚠️ Mudda balance/year length unverified; ❌ Patyayini |
 | Tri-pataki chakra | Moon-based year transit device | ❌ |
 
 > ❓ **Validation requests (need a JHora screen not yet available):**
@@ -206,6 +206,21 @@ classical "luminaries have no motional strength" rule).
     the period list is the same whichever year is asked for. A Sade Sati that
     begins or ends during the year shows in the period dates, not in `active`.
 
+8e. ✅ **Dashas for the year** (`engine/compute/varshaphalDashas.ts`, spec
+    `.kiro/specs/varshaphal-dashas/`), returned as `VarshaphalResult.dashas`:
+    - `natalVimshottari` — the natal MD/AD/PD chain at the Varsha Pravesh plus every
+      antardasha and pratyantardasha overlapping the year (this Varsha Pravesh to
+      the next), with true period dates. The tree is built exactly as
+      `POST /api/compute` builds it (natal Moon longitude, UTC birth instant).
+    - `mudda` — Tajika Mudda dasha: Vimshottari compressed into the year, each lord
+      taking its Vimshottari years ÷ 120 of it, with Vimshottari antardashas.
+      Starting lord by the classical rule (Janma nakshatra number + completed
+      years − 2) mod 9 → 1 Sun … 8 Ketu, 0 Venus — the natal lord at age 0, one
+      step on per year. The first period runs for the natal balance fraction and
+      the rest of that lord's period closes the year (`portion: balance /
+      remainder`). The year is this return to the next (~365.26 days); the
+      classical 3-days-per-year table (360 days) supplies the proportions.
+
     Items 8 (conjunction), 8b and 8c came from an astrologer review on
     2026-10-28. Together they change the year lord in 90 of 306 annual charts
     (6 birth times × 1990–2040 for the test birth date), and in 14 of 51 years
@@ -217,7 +232,7 @@ classical "luminaries have no motional strength" rule).
 10. **Phase 2 aspects:** deeptamsha orbs (Sun 15°, Moon 12°, Mars 8°, Mercury
     7°, Jupiter 9°, Venus 7°, Saturn 9°) and applying/separating motion, on top
     of the Phase 1 sign-based aspects in `tajikaAspects.ts`.
-11. Then yogas (Ithasala/Ishrafa/…) → Sahams → Mudda & Patyayini dashas →
+11. Then yogas (Ithasala/Ishrafa/…) → Sahams → Patyayini dasha (Mudda done, 8e) →
     Tri-pataki. To be specced in `docs/computation_tajika_aspects_dashas.md`.
 
 ---
@@ -237,7 +252,11 @@ classical "luminaries have no motional strength" rule).
   - for Panchavargeeya Bala: whether Tajika uses its own friendship table (the
     engine uses Parashari natural friendship), whether the Drekkana is the
     Parashari one (1st/5th/9th, as implemented) or the Perso-Arabic decan, and
-    the friend/neutral/enemy fractions (½, ¼, ⅛).
+    the friend/neutral/enemy fractions (½, ¼, ⅛);
+  - Mudda dasha: the first-period balance (natal balance, remainder closing the
+    year) and the year length (return to return, where the classical table
+    assumes 360 days). A JHora Mudda screen for one known chart would settle both.
+    Patyayini dasha is still not implemented.
 - A **numeric per-planet diff**: run our engine on one canonical birth record
   (date + time + lat/long + timezone) and diff against §4.1. Blocked on a single
   consistent birth record — the sample JSONs (`djma.json`, `vedic_chart_FINAL.json`)

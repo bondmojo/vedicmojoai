@@ -666,6 +666,64 @@ export interface VarshaPravesh {
   weekdayLord: string
 }
 
+/** A natal Vimshottari antardasha overlapping the Varsha year (true bounds, ISO UTC). */
+export interface VarshaNatalAntardasha {
+  mahadasha: string
+  antardasha: string
+  start: string
+  end: string
+}
+
+/** A natal Vimshottari pratyantardasha overlapping the Varsha year (true bounds, ISO UTC). */
+export interface VarshaNatalPratyantardasha extends VarshaNatalAntardasha {
+  pratyantardasha: string
+}
+
+/** The natal Vimshottari periods running through the Varsha year. */
+export interface VarshaNatalDasha {
+  /** MD/AD/PD running at the Varsha Pravesh, or null outside the 120-year tree. */
+  atVarshaPravesh: { mahadasha: string; antardasha: string; pratyantardasha: string } | null
+  antardashas: VarshaNatalAntardasha[]
+  pratyantardashas: VarshaNatalPratyantardasha[]
+}
+
+/** A Mudda antardasha, clipped to the Varsha year (ISO UTC). */
+export interface MuddaAntardasha {
+  lord: string
+  start: string
+  end: string
+  days: number
+}
+
+/** A Mudda dasha period, clipped to the Varsha year (ISO UTC). */
+export interface MuddaDashaPeriod {
+  lord: string
+  start: string
+  end: string
+  days: number
+  /**
+   * `balance` opens the year with the part of the starting lord's period left
+   * (as at birth); `remainder` closes it with the part already used.
+   */
+  portion: 'full' | 'balance' | 'remainder'
+  antardashas: MuddaAntardasha[]
+}
+
+/** Tajika Mudda dasha: Vimshottari compressed into one Varsha year. */
+export interface MuddaDasha {
+  janmaNakshatra: string
+  /** Natal Moon's nakshatra counted from Ashwini = 1. */
+  janmaNakshatraNumber: number
+  startLord: string
+  /** Part (0–1) of the starting lord's period left at the Varsha Pravesh. */
+  balanceFraction: number
+  yearStart: string
+  /** The next Varsha Pravesh. */
+  yearEnd: string
+  yearDays: number
+  periods: MuddaDashaPeriod[]
+}
+
 export interface VarshaphalResult {
   varshaYear: number
   /** Completed years of age at the solar return (= varshaYear − birthYear). */
@@ -702,6 +760,11 @@ export interface VarshaphalResult {
     lagnaAspect: TajikaSignAspect | null
     /** Which branch picked the winner. */
     selectionBasis: 'aspects_lagna' | 'no_candidate_aspects_lagna'
+  }
+  /** Natal Vimshottari periods through the Varsha year, and the Tajika Mudda dasha. */
+  dashas: {
+    natalVimshottari: VarshaNatalDasha
+    mudda: MuddaDasha
   }
   /** Method notes / caveats surfaced to the UI. */
   method: string
