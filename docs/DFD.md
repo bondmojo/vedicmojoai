@@ -358,8 +358,8 @@ Data Stores:
   D13: McpApiToken     — per-user MCP credentials (tokenHash, label, lastUsedAt, revokedAt)
   D14: OAuthClient / OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken
                        — MCP OAuth 2.1 authorization server (P11-OAuth); all secrets hashed at rest
-  D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB,
-                       tablesVersion, brideChartId/groomChartId → D7)
+  D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB
+                       carrying engineVersion, tablesVersion, brideChartId/groomChartId → D7)
   FS: reports/       — legacy/local HTML/Markdown report files on disk (best-effort)
 ```
 
@@ -1209,6 +1209,8 @@ PRACTITIONER
 │    limitations             │
 │  stamped: tablesVersion    │
 │  (MATCHMAKING_TABLES_      │
+│   VERSION) + engineVersion │
+│  (MATCHMAKING_ENGINE_      │
 │   VERSION)                 │
 └──────────────┬─────────────┘
                │ MatchResult JSON

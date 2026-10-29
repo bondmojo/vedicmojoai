@@ -996,6 +996,35 @@ export interface MatchResult {
     groom: MangalDoshaNative
     compatibility: 'matched' | 'mismatched' | 'cancelled' | 'unavailable'
   }
-  /** Bump when a koota table changes — see matchmakingTables.MATCHMAKING_TABLES_VERSION. */
+  /**
+   * Which static koota tables produced this result — bumped only when a table
+   * in matchmakingTables.ts changes. See MATCHMAKING_TABLES_VERSION.
+   */
   tablesVersion: string
+  /**
+   * Which engine logic produced this result — derivation, scorers,
+   * cancellations, verdict, boundary risk, Mangal Dosha. See
+   * matchmakingVersion.MATCHMAKING_ENGINE_VERSION. Always set on a freshly computed
+   * result; ABSENT on `CompatibilityMatch.result` rows saved before it
+   * existed, so read persisted JSON through `describeMatchVersion`, never by
+   * trusting this type.
+   */
+  engineVersion: string
+}
+
+/**
+ * Version stamps read off a persisted or freshly computed `MatchResult` by
+ * `describeMatchVersion` (engine/compute/matchmakingVersion.ts).
+ */
+export interface MatchVersionInfo {
+  /** `null` when missing, not a string, or empty. */
+  tablesVersion: string | null
+  /** `null` on every result saved before the engine version existed. */
+  engineVersion: string | null
+  /**
+   * True when either stamp is `null` or differs from what the running build
+   * stamps — a fresh computation of the same pair might differ. Not a claim
+   * that the saved score is wrong.
+   */
+  stale: boolean
 }

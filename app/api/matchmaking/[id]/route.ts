@@ -1,7 +1,10 @@
 /**
  * GET    /api/matchmaking/[id] — Load a single saved match. Returns the
  *   PERSISTED `result` JSON verbatim — NEVER recomputed (OD-5: the stored
- *   snapshot is the record of what the practitioner saw).
+ *   snapshot is the record of what the practitioner saw). Alongside it,
+ *   `engineVersion` (null on rows saved before the engine stamp existed) and
+ *   `stale` say whether the running engine/tables would stamp the snapshot
+ *   differently — see .kiro/specs/matchmaking-result-versioning/.
  * DELETE /api/matchmaking/[id] — Delete a saved match. `CompatibilityMatch`
  *   has no dependents, so a plain delete is enough (no cascade needed).
  *
@@ -11,6 +14,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { resolveRequestUser } from '@/lib/auth'
+// matchmakingVersion, not matchmaking: reading a saved match must not load the
+// Swiss Ephemeris addon that the scoring engine imports.
+import { describeMatchVersion } from '@/engine/compute/matchmakingVersion'
 
 export async function GET(
   request: NextRequest,
@@ -48,12 +54,25 @@ export async function GET(
     const brideChart = match.brideChart as { name: string; source: string } | null
     const groomChart = match.groomChart as { name: string; source: string } | null
 
+    // The engine stamp lives only inside the persisted `result` JSON, and rows
+    // saved before it existed have none — so read it defensively (any JSON
+    // value can come back here) and let describeMatchVersion report `null` +
+    // `stale` rather than assuming the current MatchResult shape.
+    const persisted = match.result
+    const engineStamp =
+      persisted !== null && typeof persisted === 'object' && !Array.isArray(persisted)
+        ? (persisted as { engineVersion?: unknown }).engineVersion
+        : undefined
+    const version = describeMatchVersion({ tablesVersion: match.tablesVersion, engineVersion: engineStamp })
+
     return NextResponse.json({
       id: match.id,
       label: match.label,
       // Verbatim — never recomputed from current chart data.
       result: match.result,
       tablesVersion: match.tablesVersion,
+      engineVersion: version.engineVersion,
+      stale: version.stale,
       createdAt: match.createdAt,
       brideChartName: brideChart?.name ?? null,
       brideChartSource: brideChart?.source ?? null,

@@ -18,6 +18,7 @@
  */
 
 import type { PlanetPosition } from './types'
+import { locateInNakshatra } from './nakshatras'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -128,14 +129,16 @@ function computeBhavaLagna(
  *   SL = Lagna longitude + fraction × 360°
  *
  * Example: if the Moon has covered 25% of its nakshatra, add 90° to the Lagna.
+ *
+ * The fraction comes from the shared locator. `normLong(moon) % span` read a
+ * Moon exactly on a boundary (40°) as the very end of the previous nakshatra:
+ * fraction ≈ 1 instead of 0.
  */
 function computeSreeLagna(
   lagnaLongitude: number,
   moonLongitude: number
 ): number {
-  const NAKSHATRA_SPAN = 360 / 27 // 13°20'
-  const traversedInNakshatra = normLong(moonLongitude) % NAKSHATRA_SPAN
-  const fraction = traversedInNakshatra / NAKSHATRA_SPAN // 0–1
+  const { fraction } = locateInNakshatra(moonLongitude) // [0, 1)
   return normLong(lagnaLongitude + fraction * 360)
 }
 

@@ -14,10 +14,10 @@ import type { AntarDasha, DashaTree, MahaDasha, Planet, PratyanDasha } from '@/l
 import {
   DASHA_SEQUENCE,
   DASHA_YEARS,
-  NAKSHATRA_SPAN_DEG,
   TOTAL_DASHA_YEARS,
   YEAR_DAYS,
 } from './constants'
+import { locateInNakshatra } from './compute/nakshatras'
 
 // ─── Helper Functions ───────────────────────────────────────────────
 
@@ -29,13 +29,6 @@ function addDays(date: Date, days: number): Date {
   const result = new Date(date.getTime())
   result.setTime(result.getTime() + days * 24 * 60 * 60 * 1000)
   return result
-}
-
-/**
- * Determines the nakshatra index (0–26) from the Moon's sidereal longitude.
- */
-function getNakshatraIndex(moonLongitudeDeg: number): number {
-  return Math.floor(moonLongitudeDeg / NAKSHATRA_SPAN_DEG)
 }
 
 /**
@@ -72,7 +65,10 @@ export function computeVimshottari(
   birthDatetime: Date
 ): DashaTree {
   // ─── Input validation ─────────────────────────────────────────
-  if (moonLongitudeDeg < 0 || moonLongitudeDeg >= 360) {
+  // 360 is accepted as 0°: a Decimal(8,4) moonLongitude rounds a Moon in
+  // [359.99995°, 360°) up to 360.0000, and locateInNakshatra normalizes it.
+  // The negated form also rejects NaN, which `< 0 || > 360` lets through.
+  if (!(moonLongitudeDeg >= 0 && moonLongitudeDeg <= 360)) {
     throw new DashaIntegrityError(
       `Moon longitude must be 0–360, got ${moonLongitudeDeg}`
     )
@@ -82,7 +78,12 @@ export function computeVimshottari(
   }
 
   // ─── Step 1: Determine birth nakshatra and its lord ───────────
-  const nakshatraIndex = getNakshatraIndex(moonLongitudeDeg)
+  // Index and elapsed fraction come from one quotient (locateInNakshatra).
+  // Taking the fraction from `lon % span` instead put a Moon at exactly 40°
+  // at the very end of Rohini: a ~0 Moon balance and a Mars MD from birth.
+  // The input check accepts [0, 360]; the locator's normalization reads 360
+  // as 0° (the start of Ashwini) and −0 as 0, and changes no other accepted value.
+  const { nakshatraIndex, fraction: positionInNakshatra } = locateInNakshatra(moonLongitudeDeg)
   const nakshatraLord = DASHA_SEQUENCE[nakshatraIndex % 9].lord
 
   // Actually look up in the full nakshatra table for correctness:
@@ -92,8 +93,7 @@ export function computeVimshottari(
   const birthNakshatraYears = DASHA_SEQUENCE[dashaLordIndex].years
 
   // ─── Step 2: Compute balance of first dasha ───────────────────
-  // How far the Moon has traversed through its nakshatra (0–1 fraction)
-  const positionInNakshatra = (moonLongitudeDeg % NAKSHATRA_SPAN_DEG) / NAKSHATRA_SPAN_DEG
+  // positionInNakshatra (Step 1) is how far the Moon has traversed its nakshatra, in [0, 1).
   // Balance = remaining portion × lord's total years
   const balanceYears = (1 - positionInNakshatra) * birthNakshatraYears
 
