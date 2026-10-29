@@ -7,6 +7,34 @@ Newest release first. Each entry covers one merge to `main`.
 
 ---
 
+## Unreleased
+
+- **Fix: Vimshottari sub-periods inside the first (birth) Mahadasha.** The
+  engine squeezed all nine antardashas of the birth MD into the balance left at
+  birth, always starting with the MD lord's own antardasha, and laid the
+  pratyantardashas out the same way. It now follows the standard method
+  (Parashara, Jagannatha Hora): the birth MD is the full-length MD, which began
+  before birth, and its antardashas and pratyantardashas keep their full lengths
+  and are clipped at birth. For a 1990-04-27 12:00 IST Delhi birth the period at
+  birth changes from Moon / Moon / Moon to Moon / Rahu / Saturn.
+
+  **Dasha periods inside the first Mahadasha change for existing charts** — the
+  antardasha at birth changes for about 88% of charts, and the antardasha or
+  pratyantardasha at a given date inside the first MD for about 95% of dates. This
+  reaches the Dasha tab, the Duration Analyser, Duration Analysis, the AI
+  pipeline's chart summary, the MCP `get_dasha_tree` / `get_active_dasha` tools and
+  the Varshaphal natal dashas. Mahadasha dates, the balance at birth, and every
+  date after the first Mahadasha ends are unchanged.
+
+  **Run `npm run db:backfill-birth-md` on each environment after deploying**
+  (add `-- --dry-run` to preview). It rewrites the first Mahadasha's sub-periods in
+  every stored `UnifiedChart.dashaTree` and is safe to re-run. Until it runs, saved
+  charts keep the old periods. Past AI Analysis reports and Duration Analysis runs
+  are not rewritten; re-run them if they cover the first Mahadasha. Spec:
+  `.kiro/specs/vimshottari-birth-mahadasha/`.
+
+---
+
 ## v1.4 — Compute-first analysis, MCP for Claude Desktop, brand UI
 
 **Date:** 2026-07-26

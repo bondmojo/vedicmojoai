@@ -1,7 +1,7 @@
 # VedicMojoAI — Claude Desktop Guide
 
 **Version:** 1.3
-**Last updated:** 2026-08-06
+**Last updated:** 2026-10-28
 
 This file orients Claude Desktop (and any AI assistant) working on VedicMojoAI. It
 mirrors the guidance in `Agents.md` and the Kiro AI Skills (`.kiro/skills/`) so the
@@ -256,6 +256,16 @@ Geometry**) live in `engine/compute/`:
 > Duration-Analysis slicer, and is exposed via the `get_yogas` MCP tool. Stored as
 > `UnifiedChart.yogas` (null on paste path). See `.kiro/specs/named-yoga-engine/`.
 
+> **Birth Mahadasha sub-periods:** `engine/computeVimshottari.ts` lays the first
+> (birth) MD's antardashas and pratyantardashas out over the full-length MD, which
+> began before birth, and clips them at birth (`computeBirthMahadashaAntardashas`,
+> Parashara/JHora). The birth MD still starts at birth and lasts the balance, but
+> can hold fewer than 9 ADs, and its first AD is the one running at birth — find
+> periods by time, never by index or by assuming the MD lord leads. `balance_years`
+> and MDs 2–9 are unchanged. Stored `UnifiedChart.dashaTree` rows from before the
+> fix are corrected by `npm run db:backfill-birth-md`. See
+> `.kiro/specs/vimshottari-birth-mahadasha/`.
+
 > **Chara Dasha (Jaimini rasi dasha):** `engine/compute/charaDasha.ts`
 > (`computeCharaDasha`, KN Rao/Parashara method) is an on-demand sibling of the
 > Vimshottari tree — returned by `POST /api/compute` as `charaDasha`, shown in the
@@ -379,6 +389,8 @@ npm run db:push      # prisma db push
 npm run db:seed      # seed model_config defaults (prisma/seed.ts)
 npm run db:backfill-owner  # assign every unowned UnifiedChart to one User (-- <email>)
 npm run db:backfill-gender # populate UnifiedChart.gender from chartInputV1.meta.gender (idempotent)
+npm run db:backfill-pd     # fill missing pratyantardashas into pre-full-PD dasha trees (idempotent)
+npm run db:backfill-birth-md # rebuild the birth MD's ADs/PDs in stored dasha trees (idempotent; -- --dry-run)
 npm run db:studio    # Prisma Studio
 npm run docker:up    # docker-compose up -d (Postgres + app)
 npm run docker:down  # docker-compose down

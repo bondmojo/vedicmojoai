@@ -5,9 +5,17 @@
 `computeVimshottari(moonLongitudeDeg, birthDatetime)`:
 
 - Uses `YEAR_DAYS = 365.2425` (single source in constants)
-- Self-verification: sum of all MD durations must equal 120 years ± 1 day
+- Self-verification: MDs contiguous; each MD's ADs contiguous from its start and
+  summing to its duration; MD total = balance + (120 − birth-lord years), ± 1 day
 - Failure → `DashaIntegrityError` thrown before any LLM runs
 - Output: full `DashaTree` with Maha/Antar/Pratyantar periods
+- **Birth MD** (first MD): starts at birth and lasts the balance, but its ADs/PDs
+  come from the full-length MD that began before birth, clipped at birth
+  (`computeBirthMahadashaAntardashas`; Parashara/JHora). It can hold fewer than 9
+  ADs and its first AD is the one running at birth, not always the MD lord's —
+  never assume `antardashas[0].lord === md.lord` or 9 sub-periods; find periods
+  by time. Stored trees: `npm run db:backfill-birth-md`.
+  See `.kiro/specs/vimshottari-birth-mahadasha/`.
 
 ## Pre-Analysis Rules
 

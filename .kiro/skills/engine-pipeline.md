@@ -24,8 +24,12 @@ inclusion: auto
 
 - Function: `computeVimshottari(moonLongitudeDeg, birthDatetime)`
 - Year constant: `YEAR_DAYS = 365.2425` (defined ONCE in `constants.ts`)
-- Self-verification: sum of all MD durations = 120 years ± 1 day
+- Self-verification: MDs contiguous; each MD's ADs contiguous and summing to the MD
+  duration; MD total = balance + (120 − birth-lord years), ± 1 day
 - If verification fails → `DashaIntegrityError` thrown before any LLM agent runs
+- Birth MD: ADs/PDs of the full-length MD (begun before birth), clipped at birth —
+  may hold fewer than 9 ADs, first AD = the one running at birth
+  (`.kiro/specs/vimshottari-birth-mahadasha/`; stored trees: `npm run db:backfill-birth-md`)
 
 ## Planner Rules
 

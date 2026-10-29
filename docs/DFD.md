@@ -1249,7 +1249,7 @@ DELETE /api/matchmaking/[id]: plain delete, no dependents ──► D15
 | `Markdown report` | TEXT (primary) + optional file | ~20–100KB | renderer.ts | PipelineRun.reportMarkdown, browser; FS fallback |
 | `conversation_history` | JSON array | ~2KB/turn | RunMessage table | Verification Agent |
 | `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, UnifiedChart domains, /compute UI |
-| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
+| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() — birth MD's ADs/PDs clipped from the full-length MD; stored rows corrected by `db:backfill-birth-md` | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
 | `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
 | `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
 | `TransitAnalysis.sadeSatiByDegree` | JSON (nested) | ~2KB | computeDegreeSadeSati() via computeTransits(…, moon.longitude) | UnifiedChart.transits (Json), SadeSatiPanel UI. Not passed to transitOverlay.ts |
