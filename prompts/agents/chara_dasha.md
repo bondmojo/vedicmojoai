@@ -25,21 +25,29 @@ and transits.
 
 ## How this system computes it (Parasara / PVR method — JHora-matching)
 
-The engine follows the **Parasara / PVR Chara Dasha** — the variant Jagannatha
-Hora produces by default. Verified end-to-end against JHora (all 24 mahadashas
-of both cycles for the reference chart). Rules:
+The engine follows the **Parasara / PVR Chara Dasha** (P.V.R. Narasimha Rao's
+write-up, as Jagannatha Hora produces it). Verified mahadasha-for-mahadasha
+against Jagannatha Hora on a lagna-seeded and a Moon-seeded chart. Rules:
 
-1. **First mahadasha = the Lagna sign.**
+1. **First mahadasha (the seed)** = whichever of the signs holding the **Lagna,
+   Moon and Sun** has the **strongest lord**. Tests in order: lord exalted /
+   moolatrikona / own sign → lord joined by more planets → lord in a trine from
+   the sign → lord in a quadrant from it → lord more advanced in its sign → (same
+   lord) the sign whose oddity differs from the lord's sign. So the dasha often,
+   but NOT always, starts from the Lagna.
 
-2. **Sequence direction** is fixed by the **9th sign from the Lagna**:
+2. **Sequence direction** is fixed by the **9th sign from the seed**:
    - 9th sign is **even-footed** (Sama-pada: Cancer, Leo, Virgo, Capricorn,
      Aquarius, Pisces) → the dasha signs run **reverse** (anti-zodiacal);
    - otherwise → **forward** (zodiacal).
 
 3. **Sign lord** (drives the duration): single-lord signs use the classical
-   owner; the dual-lord signs **Scorpio (Mars/Ketu)** and **Aquarius
-   (Saturn/Rahu)** use the **node** (Ketu / Rahu) UNLESS the node occupies that
-   sign, in which case the planet (Mars / Saturn) is used.
+   owner. The dual-lord signs **Scorpio (Mars/Ketu)** and **Aquarius
+   (Saturn/Rahu)** use the **stronger co-lord**: both in the sign → 12 years;
+   one in the sign → the other; neither → joined by more planets, then more of
+   Jupiter/Mercury/dispositor joining or rasi-aspecting it, then exalted, then
+   sign type (dual > fixed > movable), then more advanced in its sign.
+   `periods[].lordRule` says which test decided.
 
 4. **Duration** of a sign's dasha = *count from the sign to the sign its lord
    occupies, minus 1*:
@@ -55,12 +63,18 @@ of both cycles for the reference chart). Rules:
 
 6. **Antardashas**: each mahadasha is split into **12 equal** sub-periods. The
    order is the same for every mahadasha — the 12-sign mahadasha progression with
-   the lagna moved to the end (2nd maha sign first, cycling in the dasha
-   direction, lagna last). Matches Jagannatha Hora.
+   the seed moved to the end (2nd maha sign first, cycling in the dasha
+   direction, seed last).
 
-The MCP output fields: `method`, `direction`, `ninthSignNumber`, `cycleYears`
-(first cycle), and `periods[]` with `{ sign, signNumber, lord, lordSignNumber,
+The MCP output fields: `method`, `lagnaSignNumber`, `seedSignNumber`,
+`seedReferences` (`lagna` / `moon` / `sun` — every reference in the seed sign),
+`seedRule`, `direction`, `ninthSignNumber`, `cycleYears` (first cycle), and
+`periods[]` with `{ sign, signNumber, lord, lordSignNumber, lordRule?,
 durationYears, cycle, start, end, antardashas[] }`.
+
+When the seed is the Moon or Sun sign, that reference dominates the chart for
+this dasha; reading houses from it (Chandra / Surya lagna) as well as from the
+Lagna is consistent with the method.
 
 ---
 
@@ -106,16 +120,18 @@ sign-lord's Shadbala and the house's Bhava Bala.
 
 ## Validation notes (school choices flagged, per this project's convention)
 
-- **Method**: Parasara / PVR (Jagannatha Hora default), verified against JHora.
-  Other variants (KN Rao with ±1 exalt/debil and single classical lords;
-  Iranganti; Raghava-Bhatta; Sanjay Rath) differ in duration and lord rules.
-- **Antardasha order**: matches Jagannatha Hora (maha progression, lagna moved
-  to the end; equal twelfths).
-- **Dual lords**: node (Ketu/Rahu) unless it occupies the sign → then the planet
-  (Mars/Saturn).
-- **Progression seed**: JHora's strength-based seed (stronger of asc-/sun-/moon-
-  lord) is approximated by the LAGNA seed — exact when the seed resolves to the
-  lagna (as on the reference chart). Flag if a chart's seed differs.
+- **Method**: Parasara / PVR, verified against Jagannatha Hora. Other variants
+  (KN Rao: always from Lagna, ±1 exalt/debil; Iranganti; Raghava-Bhatta; Sanjay
+  Rath) differ in seed, duration and lord rules — another program's list starting
+  from the Lagna is usually that difference, not an error.
+- **Seed exception not applied**: the method treats a lord that is deeply
+  combust, defeated in planetary war, in deep gandanta or deeply debilitated as
+  weak. The engine does not apply this (no thresholds are defined). Flag it when
+  the seed's lord is in one of those states.
+- **Antardasha order**: maha progression with the seed moved to the end, equal
+  twelfths. Verified against Jagannatha Hora on a lagna-seeded chart only.
+- **Year length**: mean Gregorian year (365.2425 d); Jagannatha Hora can show a
+  boundary a day later.
 
 Treat the deterministic periods as authoritative; narrate them — do not
 recompute the durations by hand.

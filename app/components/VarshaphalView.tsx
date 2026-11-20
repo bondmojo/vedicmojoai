@@ -3,8 +3,9 @@
  *
  * Casts an annual chart for a chosen year (the moment the Sun returns to its
  * natal longitude) and shows the Varsha Pravesh instant, Varsha Lagna, Muntha,
- * the year lord (Varshesha) with its five candidates, Panchavargeeya Bala, and
- * the annual planets + annual Shadbala.
+ * the year lord (Varshesha) with its five candidates, Panchavargeeya Bala, the
+ * year's dashas (natal Vimshottari + Tajika Mudda), and the annual planets +
+ * annual Shadbala.
  *
  * Self-contained: it fetches /api/compute/varshaphal using the current birth
  * form so the practitioner can flip between years without recomputing the natal
@@ -13,6 +14,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { MuddaDasha, TajikaSignAspect, VarshaNatalDasha } from '@/engine/compute/types'
 
 const PLANET_COLORS: Record<string, string> = {
   Sun: 'text-orange-400', Moon: 'text-slate-300', Mars: 'text-red-400',
@@ -27,6 +29,8 @@ interface ComputeForm {
   timezone: string
   latitude: string
   longitude: string
+  placeId: string | null
+  placeLabel: string
   sunriseMode: 'precise' | 'jhora'
 }
 
@@ -47,6 +51,9 @@ interface Candidate {
   planet: string
   officeLabel: string
   panchavargeeyaBala: number
+  officeCount: number
+  lagnaAspect: TajikaSignAspect | null
+  aspectsLagna: boolean
 }
 
 interface ShadbalPlanetLite {
@@ -78,11 +85,30 @@ interface VarshaphalData {
   dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaEntry[]
   candidates: Candidate[]
-  varshesha: { planet: string; officeLabel: string; panchavargeeyaBala: number }
+  varshesha: {
+    planet: string
+    officeLabel: string
+    panchavargeeyaBala: number
+    lagnaAspect: TajikaSignAspect | null
+    selectionBasis: 'aspects_lagna' | 'no_candidate_aspects_lagna'
+  }
+  dashas: { natalVimshottari: VarshaNatalDasha; mudda: MuddaDasha }
   method: string
 }
 
 const CURRENT_YEAR = new Date().getUTCFullYear()
+
+function lagnaAspectLabel(aspect: TajikaSignAspect | null, counted: boolean): string {
+  if (!aspect) return 'No aspect to Lagna'
+  const kind = aspect.kind.charAt(0).toUpperCase() + aspect.kind.slice(1)
+  const relation = aspect.kind === 'conjunction' ? 'In Lagna (conjunction)' : `${kind} to Lagna`
+  return `${relation} · ${aspect.nature}${counted ? '' : ' (not counted)'}`
+}
+
+function lagnaAspectColor(aspect: TajikaSignAspect | null, counted: boolean): string {
+  if (!aspect || !counted) return 'text-gray-500'
+  return aspect.nature === 'friendly' ? 'text-green-400' : 'text-yellow-400'
+}
 
 function pvGradeColor(grade: string): string {
   switch (grade) {
@@ -92,6 +118,17 @@ function pvGradeColor(grade: string): string {
     case 'Ordinary': return 'text-yellow-400 bg-yellow-900/30 border-yellow-700'
     default: return 'text-red-400 bg-red-900/30 border-red-700'
   }
+}
+
+/** ISO UTC instant → local date (and time) in the birth timezone, given in offset hours. */
+function birthTz(iso: string, tzHours: number, withTime = false): string {
+  const local = new Date(Date.parse(iso) + tzHours * 3_600_000).toISOString()
+  return withTime ? `${local.slice(0, 10)} ${local.slice(11, 16)}` : local.slice(0, 10)
+}
+
+function runsAt(period: { start: string; end: string }, iso: string): boolean {
+  const t = Date.parse(iso)
+  return Date.parse(period.start) <= t && t < Date.parse(period.end)
 }
 
 function shadGradeColor(grade: string): string {
@@ -105,6 +142,8 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<VarshaphalData | null>(null)
+  // Timezone the shown result was computed with, so later form edits don't shift its dates.
+  const [tzHours, setTzHours] = useState(0)
 
   const canCompute = form.date && form.time && form.latitude && form.longitude
 
@@ -132,6 +171,7 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
         return
       }
       setData(json.varshaphal)
+      setTzHours(parseFloat(form.timezone) || 0)
     } catch {
       setError('Network error')
     } finally {
@@ -213,6 +253,13 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
               </div>
               <div className="text-xs text-gray-400">{data.varshesha.officeLabel}</div>
               <div className="text-[10px] text-gray-500 mt-1">Panchavargeeya {data.varshesha.panchavargeeyaBala.toFixed(2)}/20</div>
+              {data.varshesha.selectionBasis === 'no_candidate_aspects_lagna' ? (
+                <div className="text-[10px] text-yellow-400 mt-1">No office-holder aspects the Lagna; strongest of five</div>
+              ) : (
+                <div className={`text-[10px] mt-1 ${lagnaAspectColor(data.varshesha.lagnaAspect, true)}`}>
+                  {lagnaAspectLabel(data.varshesha.lagnaAspect, true)}
+                </div>
+              )}
             </div>
           </div>
 
@@ -221,7 +268,8 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
             <h4 className="text-sm font-semibold mb-2">Year-Lord Candidates (Panchadhikari)</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
               {data.candidates.map((c) => {
-                const isWinner = c.planet === data.varshesha.planet && c.officeLabel === data.varshesha.officeLabel
+                // Every office the winning planet holds is highlighted, not just the first.
+                const isWinner = c.planet === data.varshesha.planet
                 return (
                   <div
                     key={c.office}
@@ -230,6 +278,10 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
                     <div className="text-[11px] text-gray-500 leading-tight">{c.officeLabel}</div>
                     <div className={`text-sm font-semibold mt-1 ${PLANET_COLORS[c.planet] ?? 'text-ink'}`}>{c.planet}</div>
                     <div className="text-xs text-gray-400 font-mono">{c.panchavargeeyaBala.toFixed(2)}/20</div>
+                    <div className={`text-[11px] mt-1 ${lagnaAspectColor(c.lagnaAspect, c.aspectsLagna)}`}>
+                      {lagnaAspectLabel(c.lagnaAspect, c.aspectsLagna)}
+                    </div>
+                    {c.officeCount > 1 && <div className="text-[10px] text-gray-500">×{c.officeCount} offices</div>}
                   </div>
                 )
               })}
@@ -269,6 +321,121 @@ export default function VarshaphalView({ form }: { form: ComputeForm }) {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Dashas for the year: natal Vimshottari + Tajika Mudda */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="rounded-lg border border-gray-700 bg-gray-800/30 p-4 overflow-x-auto">
+              <h4 className="text-sm font-semibold mb-1">Natal Vimshottari This Year</h4>
+              <div className="text-xs text-gray-400 mb-2">
+                {data.dashas.natalVimshottari.atVarshaPravesh ? (
+                  <>
+                    At Varsha Pravesh:{' '}
+                    {[
+                      data.dashas.natalVimshottari.atVarshaPravesh.mahadasha,
+                      data.dashas.natalVimshottari.atVarshaPravesh.antardasha,
+                      data.dashas.natalVimshottari.atVarshaPravesh.pratyantardasha,
+                    ].map((lord, i) => (
+                      <span key={i}>
+                        {i > 0 && <span className="text-gray-600"> / </span>}
+                        <span className={`font-medium ${PLANET_COLORS[lord] ?? 'text-ink'}`}>{lord}</span>
+                      </span>
+                    ))}
+                  </>
+                ) : (
+                  'The Varsha Pravesh is outside the 120-year dasha span.'
+                )}
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-700">
+                    <th className="text-left py-1.5 pr-3">Mahadasha</th>
+                    <th className="text-left px-2">Antardasha</th>
+                    <th className="text-right px-2">Start</th>
+                    <th className="text-right px-2">End</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dashas.natalVimshottari.antardashas.map((a) => (
+                    <tr
+                      key={a.start}
+                      className={`border-b border-gray-800 ${runsAt(a, data.varshaPravesh.utcISO) ? 'bg-amber-900/20' : ''}`}
+                    >
+                      <td className={`py-1.5 pr-3 font-medium ${PLANET_COLORS[a.mahadasha] ?? 'text-ink'}`}>{a.mahadasha}</td>
+                      <td className={`px-2 font-medium ${PLANET_COLORS[a.antardasha] ?? 'text-ink'}`}>{a.antardasha}</td>
+                      <td className="text-right px-2 text-gray-400 font-mono">{birthTz(a.start, tzHours)}</td>
+                      <td className="text-right px-2 text-gray-400 font-mono">{birthTz(a.end, tzHours)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {data.dashas.natalVimshottari.pratyantardashas.length > 0 && (
+                <details className="mt-2">
+                  <summary className="text-xs text-gray-400 cursor-pointer">
+                    Pratyantardashas ({data.dashas.natalVimshottari.pratyantardashas.length})
+                  </summary>
+                  <table className="w-full text-xs mt-1">
+                    <tbody>
+                      {data.dashas.natalVimshottari.pratyantardashas.map((p) => (
+                        <tr
+                          key={p.start}
+                          className={`border-b border-gray-800 ${runsAt(p, data.varshaPravesh.utcISO) ? 'bg-amber-900/20' : ''}`}
+                        >
+                          <td className="py-1 pr-3 text-gray-300">
+                            {p.mahadasha} / {p.antardasha} /{' '}
+                            <span className={`font-medium ${PLANET_COLORS[p.pratyantardasha] ?? 'text-ink'}`}>{p.pratyantardasha}</span>
+                          </td>
+                          <td className="text-right px-2 text-gray-400 font-mono">{birthTz(p.start, tzHours)}</td>
+                          <td className="text-right px-2 text-gray-400 font-mono">{birthTz(p.end, tzHours)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+              <p className="text-[10px] text-gray-600 mt-2">True period dates (not cut to the year), birth timezone.</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-700 bg-gray-800/30 p-4 overflow-x-auto">
+              <h4 className="text-sm font-semibold mb-1">Mudda Dasha (Tajika)</h4>
+              <div className="text-xs text-gray-400 mb-2">
+                Janma nakshatra {data.dashas.mudda.janmaNakshatra} ({data.dashas.mudda.janmaNakshatraNumber}) · starts with{' '}
+                <span className={`font-medium ${PLANET_COLORS[data.dashas.mudda.startLord] ?? 'text-ink'}`}>
+                  {data.dashas.mudda.startLord}
+                </span>{' '}
+                · {(data.dashas.mudda.balanceFraction * 100).toFixed(1)}% of its period left
+              </div>
+              <div className="space-y-1">
+                {data.dashas.mudda.periods.map((p) => (
+                  <details key={p.start} className="rounded border border-gray-800 bg-gray-900/40">
+                    <summary className="cursor-pointer px-2 py-1 text-xs">
+                      <span className={`inline-block w-16 font-medium ${PLANET_COLORS[p.lord] ?? 'text-ink'}`}>{p.lord}</span>
+                      <span className="font-mono text-gray-300">
+                        {birthTz(p.start, tzHours, true)} → {birthTz(p.end, tzHours, true)}
+                      </span>
+                      <span className="font-mono text-gray-500 ml-2">{p.days.toFixed(1)} d</span>
+                      {p.portion !== 'full' && <span className="text-[10px] text-amber-400 ml-2">{p.portion}</span>}
+                    </summary>
+                    <table className="w-full text-xs px-2 mb-1">
+                      <tbody>
+                        {p.antardashas.map((a) => (
+                          <tr key={a.start} className="border-t border-gray-800">
+                            <td className={`py-1 pl-6 pr-3 ${PLANET_COLORS[a.lord] ?? 'text-ink'}`}>{a.lord}</td>
+                            <td className="text-right px-2 text-gray-400 font-mono">
+                              {birthTz(a.start, tzHours, true)} → {birthTz(a.end, tzHours, true)}
+                            </td>
+                            <td className="text-right px-2 text-gray-500 font-mono">{a.days.toFixed(1)} d</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </details>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-2">
+                Vimshottari compressed into this Varsha Pravesh → the next ({data.dashas.mudda.yearDays.toFixed(2)} days). Birth timezone.
+              </p>
+            </div>
           </div>
 
           {/* Annual planets + annual Shadbala */}

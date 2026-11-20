@@ -77,11 +77,13 @@ export type {
   AshtakootaResult,
   MangalDoshaNative,
   MatchResult,
+  MatchVersionInfo,
 } from './types'
 export { computeCharaDasha } from './charaDasha'
 export { computeYogas } from './yogas'
 export type { YogaInput } from './yogas'
 export { MATCHMAKING_TABLES_VERSION } from './matchmakingTables'
+export { MATCHMAKING_ENGINE_VERSION, describeMatchVersion } from './matchmakingVersion'
 export type {
   GocharRangeInput,
   NatalGocharContext,

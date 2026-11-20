@@ -24,8 +24,22 @@ inclusion: auto
 
 - Function: `computeVimshottari(moonLongitudeDeg, birthDatetime)`
 - Year constant: `YEAR_DAYS = 365.2425` (defined ONCE in `constants.ts`)
-- Self-verification: sum of all MD durations = 120 years ± 1 day
+- Self-verification: MDs contiguous; each MD's ADs contiguous and summing to the MD
+  duration; MD total = balance + (120 − birth-lord years), ± 1 day
 - If verification fails → `DashaIntegrityError` thrown before any LLM agent runs
+- Birth MD: ADs/PDs of the full-length MD (begun before birth), clipped at birth —
+  may hold fewer than 9 ADs, first AD = the one running at birth
+  (`.kiro/specs/vimshottari-birth-mahadasha/`; stored trees: `npm run db:backfill-birth-md`)
+
+## Nakshatra Arithmetic
+
+- **One locator:** `locateInNakshatra()` (exported from `engine/compute/nakshatras.ts`) is the only nakshatra arithmetic. `computeVimshottari`, matchmaking's `computeBoundaryRisk` (via `distanceToNakshatraBoundary()`) and the Sree Lagna use it — never re-derive index, fraction or pada elsewhere
+- Index and fraction come from **one** quotient: `q = lon / NAKSHATRA_SPAN_DEG`, `index = floor(q)`, `fraction = q − index`
+- Never pair `floor(lon / span)` with `lon % span`: `360 / 27` rounds up, so at an exact boundary (40°, 80°, … — reachable from the 4-decimal stored longitudes) the two disagree
+- Pada and sub-lord: one exact test against whole-year cut points (`hasReachedYears`: `9 × lon ≥ years` via TwoSum), never `floor(fraction × 4)` or summed `(years / 120) × span` sub-spans — so they agree at the shared pada-3 cut of Mars- and Mercury-led nakshatras
+- Normalize with `normalizeLongitude()` (`lon % 360`, adding 360 only to a negative remainder) — `((lon % 360) + 360) % 360` moves in-range values. The `normLong` copies left in `upagrahas.ts`, `gochar.ts`, `specialLagnas.ts`, `transits.ts` do no nakshatra arithmetic
+- Tables come from `engine/constants.ts` (`NAKSHATRA_SPAN_DEG`, `DASHA_SEQUENCE`, `TOTAL_DASHA_YEARS`, `NAKSHATRAS`)
+- Tests: `tests/nakshatra-pada-boundary.test.ts` (exact integer oracle), `tests/nakshatra-shared-locator.test.ts` (BigInt oracle near every cut, boundary risk, Sree Lagna), `tests/vimshottari-nakshatra-boundary.test.ts`. Spec: `.kiro/specs/nakshatra-shared-locator/`
 
 ## Calculation Profiles and Astronomy Providers
 

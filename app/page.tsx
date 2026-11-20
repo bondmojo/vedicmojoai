@@ -16,6 +16,7 @@ import DashaTimeline from './components/DashaTimeline'
 import CharaDashaView from './components/CharaDashaView'
 import TransitsView from './components/TransitsView'
 import PindaStrengthView from './components/PindaStrengthView'
+import PlacePicker, { type SelectedPlace } from './components/PlacePicker'
 import VarshaphalView from './components/VarshaphalView'
 import CopyForAIPanel from './components/CopyForAIPanel'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
 import { Card, CardContent } from '@/components/ui/card'
 import PageHeader from './components/PageHeader'
+import {
+  isNonEmptyString,
+  isPersistedBirthPlace,
+  isRecord,
+  isValidBirthCoordinate,
+  LATITUDE_MAX,
+  LATITUDE_MIN,
+  LONGITUDE_MAX,
+  LONGITUDE_MIN,
+  persistedPlaceFromSelection,
+  validateBirthLocation,
+  type PersistedBirthPlace,
+} from '@/lib/place-form'
 import type { BirthInput } from '@/engine/compute/types'
 
 type Tab = 'summary' | 'grahas' | 'charts' | 'ashtakavarga' | 'yogas' | 'dasha' | 'charadasha' | 'transits' | 'pinda' | 'varshaphal'
@@ -78,6 +92,8 @@ interface ComputeForm {
   timezone: string
   latitude: string
   longitude: string
+  placeId: string | null
+  placeLabel: string
   sunriseMode: 'precise' | 'jhora'
 }
 
@@ -94,6 +110,49 @@ function birthInputFromForm(form: ComputeForm): BirthInput {
   }
 }
 
+interface LoadedBirthInput {
+  date?: unknown
+  time?: unknown
+  timezone?: unknown
+  latitude?: unknown
+  longitude?: unknown
+  sunriseMode?: unknown
+  place?: unknown
+}
+
+function selectedPlaceFromBirth(birth: LoadedBirthInput): SelectedPlace | null {
+  if (
+    !isPersistedBirthPlace(birth.place) ||
+    !isValidBirthCoordinate(birth.latitude, LATITUDE_MIN, LATITUDE_MAX) ||
+    !isValidBirthCoordinate(birth.longitude, LONGITUDE_MIN, LONGITUDE_MAX)
+  ) {
+    return null
+  }
+
+  return {
+    ...birth.place,
+    latitude: birth.latitude,
+    longitude: birth.longitude,
+  }
+}
+
+function formCoordinateValue(value: unknown): string {
+  return typeof value === 'number' || typeof value === 'string' ? String(value) : ''
+}
+
+/**
+ * Only persist metadata from a complete, current picker selection. A form restored
+ * with only an id/label is still usable for computation, but does not have enough
+ * trusted metadata to satisfy the strict Path A place schema — hence the
+ * `expectedPlaceId` gate against the form's own record of the current place.
+ */
+function placeToPersist(
+  form: ComputeForm,
+  selectedPlace: SelectedPlace | null,
+): PersistedBirthPlace | undefined {
+  return persistedPlaceFromSelection(selectedPlace, { expectedPlaceId: form.placeId })
+}
+
 export default function ComputePage() {
   const router = useRouter()
   const [form, setForm] = useState<ComputeForm>({
@@ -103,6 +162,8 @@ export default function ComputePage() {
     timezone: '5.5',
     latitude: '',
     longitude: '',
+    placeId: null,
+    placeLabel: '',
     sunriseMode: 'precise' as 'precise' | 'jhora',
   })
   const [loading, setLoading] = useState(false)
@@ -110,6 +171,8 @@ export default function ComputePage() {
   const [result, setResult] = useState<any | null>(null)
   const [resultBirthData, setResultBirthData] = useState<BirthInput | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('summary')
+  const [manualCoordinatesOpen, setManualCoordinatesOpen] = useState(false)
+  const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null)
 
   // Save chart state
   const [saving, setSaving] = useState(false)
@@ -151,8 +214,54 @@ export default function ComputePage() {
     fetchSavedCharts()
   }, [fetchSavedCharts])
 
+  function handlePlaceSelect(place: SelectedPlace): void {
+    setForm({
+      ...form,
+      latitude: String(place.latitude),
+      longitude: String(place.longitude),
+      placeId: place.id,
+      placeLabel: place.label,
+      timezone: '5.5',
+    })
+    setSelectedPlace(place)
+    setManualCoordinatesOpen(false)
+  }
+
+  function handleManualCoordinateChange(
+    coordinate: 'latitude' | 'longitude',
+    value: string,
+  ): void {
+    setForm({
+      ...form,
+      [coordinate]: value,
+      placeId: null,
+      placeLabel: '',
+    })
+    setSelectedPlace(null)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // The location constraint is enforced here, in JS, and never by a `required`
+    // attribute on the manual coordinate inputs: those live inside a
+    // closed-by-default disclosure, and the browser aborts submission on an
+    // unfocusable invalid control *without* firing this handler — which is
+    // precisely how the Compute button came to do nothing at all. Requirement
+    // 5.4 still holds; it is just enforced somewhere that can speak.
+    const location = validateBirthLocation({
+      latitude: form.latitude,
+      longitude: form.longitude,
+      hasSelectedPlace: form.placeId !== null,
+    })
+    if (!location.ok) {
+      setError(location.message)
+      // Reveal the fields the message is about, so they are visible and
+      // focusable rather than folded away behind a collapsed disclosure.
+      setManualCoordinatesOpen(true)
+      return
+    }
+
     setLoading(true)
     setError(null)
     setSaveMessage(null)
@@ -179,6 +288,7 @@ export default function ComputePage() {
     if (!result) return
     setSaving(true)
     setSaveMessage(null)
+    const place = placeToPersist(form, selectedPlace)
 
     try {
       // Save to the canonical UnifiedChart store (same as AI Analysis / Duration Analysis).
@@ -196,6 +306,7 @@ export default function ComputePage() {
           longitude: parseFloat(form.longitude),
           sunriseMode: form.sunriseMode,
           existingChartId: loadedChartId ?? undefined,
+          ...(place ? { place } : {}),
         }),
       })
 
@@ -226,6 +337,7 @@ export default function ComputePage() {
     if (!result) return
     setAnalyzeSaving(true)
     setSaveMessage(null)
+    const place = placeToPersist(form, selectedPlace)
 
     try {
       // Save to UnifiedChart via Path A (compute), then navigate to analyze
@@ -241,6 +353,7 @@ export default function ComputePage() {
           longitude: parseFloat(form.longitude),
           sunriseMode: form.sunriseMode,
           existingChartId: loadedChartId ?? undefined,
+          ...(place ? { place } : {}),
         }),
       })
 
@@ -271,27 +384,33 @@ export default function ComputePage() {
       const data = await res.json()
 
       // Compute-sourced charts store the original BirthInput; paste-sourced
-      // charts have no birth data to load into the compute form.
-      const birth = data.birthInput as
-        | { date?: string; time?: string; timezone?: number; latitude?: number; longitude?: number; sunriseMode?: string }
-        | null
-      if (data.source !== 'compute' || !birth?.date || !birth?.time) {
+      // charts have no birth data to load into the compute form. `birthInput` is JSON,
+      // so recognise its shape before reconstructing UI-only place state from it.
+      const birth: LoadedBirthInput | null = isRecord(data.birthInput) ? data.birthInput : null
+      if (data.source !== 'compute' || !isNonEmptyString(birth?.date) || !isNonEmptyString(birth?.time)) {
         setError('This chart was pasted as JSON — it has no birth data to load. View it on the Unified Charts page.')
         return
       }
 
-      // Populate form with saved birth data
-      const loadedForm = {
-        name: data.name as string,
+      const restoredPlace = selectedPlaceFromBirth(birth)
+
+      // Populate form with saved birth data. Old charts, or charts with invalid
+      // persisted place metadata, retain their coordinates via Manual Coordinates.
+      const loadedForm: ComputeForm = {
+        name: typeof data.name === 'string' ? data.name : '',
         date: birth.date,
         time: birth.time.length === 8 ? birth.time.slice(0, 5) : birth.time,
-        timezone: String(birth.timezone ?? 5.5),
-        latitude: String(birth.latitude ?? ''),
-        longitude: String(birth.longitude ?? ''),
+        timezone: formCoordinateValue(birth.timezone ?? 5.5),
+        latitude: formCoordinateValue(birth.latitude),
+        longitude: formCoordinateValue(birth.longitude),
+        placeId: restoredPlace?.id ?? null,
+        placeLabel: restoredPlace?.label ?? '',
         sunriseMode: (birth.sunriseMode ?? data.sunriseMode ?? 'precise') as 'precise' | 'jhora',
       }
       const loadedBirthData = birthInputFromForm(loadedForm)
       setForm(loadedForm)
+      setSelectedPlace(restoredPlace)
+      setManualCoordinatesOpen(restoredPlace === null)
 
       // Recompute for display — deterministic and fast, avoids storing a
       // second copy of the display shape.
@@ -401,16 +520,61 @@ export default function ComputePage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Latitude * <span className="text-muted-foreground/70">(±90, 7 decimals)</span></label>
-                  <Input type="number" step="0.0000001" min="-90" max="90" value={form.latitude}
-                    onChange={(e) => setForm({ ...form, latitude: e.target.value })} required placeholder="28.6139000"
-                    className="font-mono" />
+                  <label className="block text-sm font-medium text-foreground mb-1">Birth Location</label>
+                  <PlacePicker
+                    value={selectedPlace}
+                    onSelect={handlePlaceSelect}
+                    onManualEntry={() => setManualCoordinatesOpen(true)}
+                    disabled={loading}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Longitude * <span className="text-muted-foreground/70">(±180, 7 decimals)</span></label>
-                  <Input type="number" step="0.0000001" min="-180" max="180" value={form.longitude}
-                    onChange={(e) => setForm({ ...form, longitude: e.target.value })} required placeholder="77.2090000"
-                    className="font-mono" />
+                  <label className="block text-sm font-medium text-foreground mb-1">Resolved Coordinates</label>
+                  <output
+                    aria-live="polite"
+                    className="block min-h-10 rounded-md border border-input bg-muted px-3 py-2 font-mono text-sm text-foreground"
+                  >
+                    {form.latitude && form.longitude
+                      ? `${form.latitude}, ${form.longitude}`
+                      : 'No coordinates selected'}
+                  </output>
+                  <details
+                    className="mt-2"
+                    open={manualCoordinatesOpen}
+                    onToggle={(event) => setManualCoordinatesOpen(event.currentTarget.open)}
+                  >
+                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                      Enter coordinates manually
+                    </summary>
+                    {/*
+                      No `required`, `min` or `max` here on purpose. These inputs sit
+                      inside a disclosure that is closed by default, and a control the
+                      browser cannot focus still counts for constraint validation: it
+                      would fail, abort submission, and never fire `onSubmit` — so
+                      `handleSubmit`'s message never ran and the Compute button appeared
+                      dead. Every one of those constraints now lives in
+                      `validateBirthLocation`, which always produces a visible message.
+                      `onInvalid` is belt-and-braces for any residual native constraint
+                      (a browser's `badInput` on a number field): reveal the field rather
+                      than let the failure happen out of sight.
+                    */}
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1">Latitude * <span className="text-muted-foreground/70">(±90, 7 decimals)</span></label>
+                        <Input type="number" step="0.0000001" value={form.latitude}
+                          onChange={(e) => handleManualCoordinateChange('latitude', e.target.value)}
+                          onInvalid={() => setManualCoordinatesOpen(true)} placeholder="28.6139000"
+                          className="font-mono" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1">Longitude * <span className="text-muted-foreground/70">(±180, 7 decimals)</span></label>
+                        <Input type="number" step="0.0000001" value={form.longitude}
+                          onChange={(e) => handleManualCoordinateChange('longitude', e.target.value)}
+                          onInvalid={() => setManualCoordinatesOpen(true)} placeholder="77.2090000"
+                          className="font-mono" />
+                      </div>
+                    </div>
+                  </details>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">
@@ -513,8 +677,11 @@ export default function ComputePage() {
                 )}
               </div>
 
+              {/* role="alert" so a validation failure is announced, not just
+                  coloured red — the message is the only signal a screen-reader
+                  user gets that submission stopped. */}
               {error && (
-                <div className="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded px-3 py-2">{error}</div>
+                <div role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded px-3 py-2">{error}</div>
               )}
             </form>
           </CardContent>

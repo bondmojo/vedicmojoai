@@ -25,14 +25,14 @@ and a Varshesha (year-lord) pick.
 | Varsha Pravesh | Sidereal (Lahiri) solar return, same birthplace | ✅ implemented |
 | Annual chart | Full chart at the return instant | ✅ (reuses `computeFullChart`) |
 | Muntha | +1 sign/year from natal lagna; shows sign, lord, house | ✅ implemented |
-| Year Lord (Varshesha) | 5 office-bearers → lordship count + **favourable-Lagna-aspect override** + Panchavargeeya tiebreak | ⚠️ lordship-count + PV tiebreak; aspect override deferred |
+| Year Lord (Varshesha) | 5 office-bearers → the strongest (Panchavargeeya) that **aspects the Varsha Lagna**; office count only breaks ties (Tajika Neelakanthi). JHora's exact ordering is unverified — see §7 | ✅ strength-first + sign-based Lagna aspect; ⚠️ unverified vs JHora |
 | Panchavargeeya Bala (Tajika) | Kshetra + Uccha + Hadda + Drekkana + Navamsa, ÷4 | ⚠️ scale unverified |
 | Harsha Bala | 4-source Tajika joy strength (max 20) | ❌ |
 | Dwadasavargeeya Bala | dignity across 12 vargas | ❌ |
-| Tajika aspects | sign-distance aspects with deeptamsha orbs, applying/separating | ❌ |
+| Tajika aspects | sign-distance aspects with deeptamsha orbs, applying/separating | ⚠️ Phase 1: sign distance only (`tajikaAspects.ts`); orbs + applying/separating = Phase 2 |
 | Tajika yogas | Ithasala, Ishrafa, Nakta, Yamaya, Kamboola, Manau, Radda, Khallasara… | ❌ |
 | Sahams | Punya + ~50 sensitive points, day/night reversal | ❌ |
-| Dashas | Mudda (annual Vimshottari), Patyayini; Yogini/Chara optional | ❌ |
+| Dashas | Mudda (annual Vimshottari), Patyayini; Yogini/Chara optional | ✅ natal Vimshottari through the year + Mudda (with antardashas), `varshaphalDashas.ts`; ⚠️ Mudda balance/year length unverified; ❌ Patyayini |
 | Tri-pataki chakra | Moon-based year transit device | ❌ |
 
 > ❓ **Validation requests (need a JHora screen not yet available):**
@@ -144,32 +144,129 @@ classical "luminaries have no motional strength" rule).
 > `deterministic-1c-1d` spec update and re-baseline any fixtures.
 
 ### Tier C — Varshaphal-specific
-7. ✅ Varshesha selection now uses lordship-count among the five office-bearers,
-   with Panchavargeeya Bala as the tiebreak.
-8. ⏳ Favourable-Lagna-aspect override — needs Tajika aspects (Tier D).
+7. ✅ Varshesha selection is strength-first (Tajika Neelakanthi): among the five
+   office-bearers, the highest Panchavargeeya Bala that aspects the Varsha Lagna
+   wins, and the number of offices held only breaks ties. If none aspects the
+   Lagna, the strongest of all five wins; `varshesha.selectionBasis` says which
+   branch fired. This replaced an earlier lordship-count-first rule, so the
+   Varshesha can differ from what was shown before for the same year. Spec:
+   `.kiro/specs/varshesha-lagna-aspect/`.
+8. ✅ Lagna aspect: any sign-based Tajika aspect counts — sextile (3/11) and
+   trine (5/9) are friendly; conjunction (1), square (4/10) and opposition (7)
+   are inimical. Per Tajika Neelakanthi the same sign and the 7th are both the
+   open inimical aspect (pratyaksha shatru), so a candidate in the Varsha Lagna
+   itself counts; it did not until the 2026-10-28 astrologer review, which meant
+   a Varsha Lagna lord in its own Lagna could never be year lord.
+   Every candidate reports its raw `lagnaAspect` plus `aspectsLagna` (whether it
+   counts). `VARSHESHA_LAGNA_ASPECT_NATURES` in `varshaphal.ts` is the code switch
+   to make the rule friendly-only; the result's `method` note is built from it,
+   but this doc and the spec describe the current setting and need a hand edit.
 8a. ✅ **Dinaratri & Trirashi lords now use the year's commencement (Varsha
-    Pravesh) day/night** — the annual Sun above (houses 7–12) vs below (1–6) the
-    horizon — matching the Tajika convention ("if the year commences by day, take
+    Pravesh) day/night** — the annual Sun above vs below the horizon, judged
+    from its longitude against the Ascendant degree (`isSunAboveHorizon`). Whole-
+    sign houses 7–12 were used at first; they misclassify a Varsha Pravesh near
+    sunrise or sunset (a Sun in the Lagna sign that has already risen, or in the
+    7th sign that has already set). Across 6 birth times × 50 years for the test
+    birth, 34 of 300 annual charts flipped; this was corrected with the Varshesha
+    change. The rule matches the Tajika convention ("if the year commences by day, take
     the lord of the Sun's sign; if by night, the lord of the Moon's sign") and
     JHora. Previously these two offices were derived from the *natal* chart's
     day/night, which could pick the wrong luminary sign lord (and hence a
     different Varshesha) whenever the Varsha Pravesh fell on the opposite side of
     the horizon from the birth. The result field is now `dayVarsha` (was
     `dayBirth`).
+8b. ✅ **Trirashi lord per the Neelakanthi sign table** (`TRIRASHI_LORDS`,
+    `getTrirashiLord`). The engine used one Dorothean day/night pair per element,
+    which is right only for Aries, Taurus, Gemini and Cancer. The Tajika table
+    swaps the pair for the second sign of each element and gives the third sign
+    its participating ruler by day and night:
+
+    | Varsha Lagna | Day | Night |
+    |---|---|---|
+    | Aries, Taurus, Gemini, Cancer | Sun, Venus, Saturn, Venus | Jupiter, Moon, Mercury, Mars |
+    | Leo, Virgo, Libra, Scorpio | Jupiter, Moon, Mercury, Mars | Sun, Venus, Saturn, Venus |
+    | Sagittarius, Capricorn, Aquarius, Pisces | Saturn, Mars, Jupiter, Moon | Saturn, Mars, Jupiter, Moon |
+
+    Sources disagree on the Sagittarius night lord (Saturn here; some give
+    Jupiter) — see §7.
+8c. ✅ **Kshetra Bala by sign lord only.** Moolatrikona no longer scores full
+    Kshetra. Only the Moon was affected: Taurus is its moolatrikona *and*
+    exaltation sign, so it was counted twice (full Uccha and full Kshetra). It
+    now scores 7.5 there (Venus is neutral to the Moon), 5.63 less PV.
+
+8d. ✅ **Annual-chart Sade Sati from the natal Moon.** `computeFullChart` treats
+    the return instant as a birth, so the annual chart's `transits` block
+    reckoned Sade Sati (and Ashtama/Kantaka Shani, houses from Moon and Lagna)
+    from the *annual* Moon and Lagna, evaluated at the wall-clock time of the
+    request. For the test birth (natal Moon in Taurus) the 2026 Varshaphal
+    reported Sade Sati for a Leo Moon and the 2030 one for an Aquarius Moon.
+    `computeVarshaphal` now replaces that block with `computeTransits` run on the
+    natal Moon and Lagna as of the Varsha Pravesh (`transits.asOf` = the return
+    instant), so `active`/`phase`/`isCurrent` describe the start of the year and
+    the period list is the same whichever year is asked for. A Sade Sati that
+    begins or ends during the year shows in the period dates, not in `active`.
+
+8e. ✅ **Dashas for the year** (`engine/compute/varshaphalDashas.ts`, spec
+    `.kiro/specs/varshaphal-dashas/`), returned as `VarshaphalResult.dashas`:
+    - `natalVimshottari` — the natal MD/AD/PD chain at the Varsha Pravesh plus every
+      antardasha and pratyantardasha overlapping the year (this Varsha Pravesh to
+      the next), with true period dates. The tree is built exactly as
+      `POST /api/compute` builds it (natal Moon longitude, UTC birth instant).
+    - `mudda` — Tajika Mudda dasha: Vimshottari compressed into the year, each lord
+      taking its Vimshottari years ÷ 120 of it, with Vimshottari antardashas.
+      Starting lord by the classical rule (Janma nakshatra number + completed
+      years − 2) mod 9 → 1 Sun … 8 Ketu, 0 Venus — the natal lord at age 0, one
+      step on per year. The first period runs for the natal balance fraction and
+      the rest of that lord's period closes the year (`portion: balance /
+      remainder`). The year is this return to the next (~365.26 days); the
+      classical 3-days-per-year table (360 days) supplies the proportions.
+
+    Items 8 (conjunction), 8b and 8c came from an astrologer review on
+    2026-10-28. Together they change the year lord in 90 of 306 annual charts
+    (6 birth times × 1990–2040 for the test birth date), and in 14 of 51 years
+    for the 12:00 test birth.
 9. Keep Tajika **Panchavargeeya Bala** as a clearly-labelled "indicative" extra
    until a JHora year-lord screen is available to reconcile the Vishwa scale.
 
 ### Tier D — new Tajika features (separate planning doc)
-10. Tajika aspects (deeptamsha) → yogas (Ithasala/Ishrafa/…) → Sahams →
-    Mudda & Patyayini dashas → Tri-pataki. To be specced in
-    `docs/computation_tajika_aspects_dashas.md`.
+10. **Phase 2 aspects:** deeptamsha orbs (Sun 15°, Moon 12°, Mars 8°, Mercury
+    7°, Jupiter 9°, Venus 7°, Saturn 9°) and applying/separating motion, on top
+    of the Phase 1 sign-based aspects in `tajikaAspects.ts`.
+11. Then yogas (Ithasala/Ishrafa/…) → Sahams → Patyayini dasha (Mudda done, 8e) →
+    Tri-pataki. To be specced in `docs/computation_tajika_aspects_dashas.md`.
+12. **Natal-contact flag** (requested 2026-11-02; not started): flag the Varsha
+    Lagna, or a year planet, within 1° of a natal planet, by longitude. Show it in
+    the Varshaphal tab and return it from `compute_varshaphal`. To settle before
+    speccing:
+    - The annual Sun always sits on the natal Sun (that is the solar return), so it
+      must be left out or it flags every year.
+    - Conjunction only, or the opposition / Tajika aspects as well?
+    - Which bodies count on each side: the seven classical planets only, or Rahu/Ketu
+      too, and does the natal Lagna count as a target?
+    - Whether the 1° limit is inclusive.
 
 ---
 
 ## 7. Open items / needs a JHora reference
 
-- Tajika year-lord **Panchavargeeya Bala** table + selected Varshesha (blocks the
-  Lagna-aspect override and the PV scale reconciliation).
+- Tajika year-lord **Panchavargeeya Bala** table + selected Varshesha. Needed to
+  confirm the year-lord ordering (strength-first with a Lagna aspect, as
+  implemented) and to reconcile the PV scale. The Tajika Neelakanthi verse should
+  be checked too. Still unverified:
+  - whether inimical aspects (conjunction, square, opposition) qualify a planet
+    for the Lagna check, or only friendly ones (sources confirm they are Tajika
+    aspects, not that the year-lord rule accepts them);
+  - the strongest-of-five fallback when no office-holder aspects the Lagna, and
+    whether some texts bar the Moon from year lordship in that case;
+  - the Sagittarius night Trirashi lord (Saturn here; some sources give Jupiter);
+  - for Panchavargeeya Bala: whether Tajika uses its own friendship table (the
+    engine uses Parashari natural friendship), whether the Drekkana is the
+    Parashari one (1st/5th/9th, as implemented) or the Perso-Arabic decan, and
+    the friend/neutral/enemy fractions (½, ¼, ⅛);
+  - Mudda dasha: the first-period balance (natal balance, remainder closing the
+    year) and the year length (return to return, where the classical table
+    assumes 360 days). A JHora Mudda screen for one known chart would settle both.
+    Patyayini dasha is still not implemented.
 - A **numeric per-planet diff**: run our engine on one canonical birth record
   (date + time + lat/long + timezone) and diff against §4.1. Blocked on a single
   consistent birth record — the sample JSONs (`djma.json`, `vedic_chart_FINAL.json`)

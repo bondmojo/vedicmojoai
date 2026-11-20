@@ -1,7 +1,7 @@
 # VedicMojoAI — Claude Desktop Guide
 
 **Version:** 1.3
-**Last updated:** 2026-08-06
+**Last updated:** 2026-10-28
 
 This file orients Claude Desktop (and any AI assistant) working on VedicMojoAI. It
 mirrors the guidance in `Agents.md` and the Kiro AI Skills (`.kiro/skills/`) so the
@@ -80,6 +80,33 @@ tab (`app/components/GrahasTable.tsx`; `KarakaTable.tsx` deleted, `PlanetTable.t
 added a **Yogas** tab after Ashtakavarga rendering the deterministic `chart.yogas`
 catalogue.
 
+**Birth-place picker:** `app/components/PlacePicker.tsx` searches the locally ingested,
+India-only OSM settlement data through `GET /api/places` and fills the visible coordinates
+for chart computation. Search ranks six tiers: the whole normalized query against the
+stored name (exact → prefix → substring, no narrowing), then the leading name token with
+every remaining token required to match state/district/tehsil. The phrase tiers are what
+make multi-word names ("Rampur Bushahr", "St. Thomas Mount") reachable; the token tiers are
+skipped when there is nothing to narrow with. The 3-character floor is measured against the
+whole normalized query, not its first word.
+
+It is an input-resolution layer only: manual coordinate entry remains available for
+non-India or unlisted places. Both birth-data forms (`/` and Unified Charts → Compute from
+Birth Data) use the picker, forward the same optional `place` display metadata on save, and
+share one contract in `lib/place-form.ts` — the seven-field persisted place shape (the save
+route validates it strictly, so a selection's coordinates must be stripped, not forwarded)
+and `validateBirthLocation()`. Location validation is explicit JS rather than `required`
+attributes: the manual coordinate inputs sit inside a closed `<details>`, where a native
+constraint failure aborts submission without firing the submit handler and the Compute
+button just looks broken.
+
+The external NDJSON source is loaded once per environment with `npm run db:load-places`; it
+is not read at runtime or committed to the repository. `--truncate` uses `TRUNCATE TABLE`
+inside one transaction with the reload (a failed run rolls back to the previous rows;
+searches wait for the commit) and a successful load ends with `ANALYZE "place"` — the only raw SQL outside
+`prisma/migrations/`, both fixed strings with no interpolation, and
+`tests/place-schema-indexes.test.ts` statically guards the schema/migration index
+declarations that `prisma migrate dev` keeps trying to undo.
+
 The **Transits → Gochar** section keeps the current-position table, renders four
 compact North-Indian charts (natal D1, JHora-style Transit Moment Chart from the
 moving Ascendant, plus current Lahiri Gochar from birth Lagna and natal Moon), and
@@ -102,6 +129,14 @@ tool: `POST /api/compute/varshaphal`
 → `engine/compute/varshaphal.ts` computes the Varsha Pravesh (solar return), the
 annual chart (reusing `computeFullChart`, so the annual Shadbala uses the same
 engine as natal), the Muntha, Panchavargeeya Bala, and the Varshesha (year lord).
+The Varshesha is the strongest of the five office-holders that aspects the Varsha
+Lagna, with office count as the tie-break (strongest of five if none aspects it);
+the aspect comes from the sign-based `engine/compute/tajikaAspects.ts` (Phase 1 —
+deeptamsha orbs are Phase 2; a planet in the Lagna counts as a conjunction). The
+Trirashi lord follows the Tajika Neelakanthi per-sign table, and Kshetra Bala gives
+no moolatrikona credit. The result also carries the year's dashas
+(`engine/compute/varshaphalDashas.ts`): the natal Vimshottari MD/AD/PD running
+through the year and the Tajika Mudda dasha (see `.kiro/specs/varshaphal-dashas/`). See `.kiro/specs/varshesha-lagna-aspect/`.
 
 > An **AI report chat** feature is specified in `.kiro/specs/report-ai-chat` but is
 > not implemented yet (no routes/tables). Do not assume it exists.
@@ -241,9 +276,22 @@ Geometry**) live in `engine/compute/`:
 > Duration-Analysis slicer, and is exposed via the `get_yogas` MCP tool. Stored as
 > `UnifiedChart.yogas` (null on paste path). See `.kiro/specs/named-yoga-engine/`.
 
+> **Birth Mahadasha sub-periods:** `engine/computeVimshottari.ts` lays the first
+> (birth) MD's antardashas and pratyantardashas out over the full-length MD, which
+> began before birth, and clips them at birth (`computeBirthMahadashaAntardashas`,
+> Parashara/JHora). The birth MD still starts at birth and lasts the balance, but
+> can hold fewer than 9 ADs, and its first AD is the one running at birth — find
+> periods by time, never by index or by assuming the MD lord leads. `balance_years`
+> and MDs 2–9 are unchanged. Stored `UnifiedChart.dashaTree` rows from before the
+> fix are corrected by `npm run db:backfill-birth-md`. See
+> `.kiro/specs/vimshottari-birth-mahadasha/`.
+
 > **Chara Dasha (Jaimini rasi dasha):** `engine/compute/charaDasha.ts`
-> (`computeCharaDasha`, KN Rao/Parashara method) is an on-demand sibling of the
-> Vimshottari tree — returned by `POST /api/compute` as `charaDasha`, shown in the
+> (`computeCharaDasha`, Parasara/PVR method as Jagannatha Hora computes it) is an
+> on-demand sibling of the Vimshottari tree. The first dasha is the sign of the
+> Lagna, Moon or Sun with the strongest lord (`seedSignNumber`/`seedRule`), so it
+> is not always the lagna; Scorpio/Aquarius take the stronger co-lord
+> (`periods[].lordRule`). Returned by `POST /api/compute` as `charaDasha`, shown in the
 > `/compute` "Chara Dasha" tab + Copy-for-AI, and exposed to Claude Desktop via the
 > MCP `get_chara_dasha` tool and the `chara_dasha` knowledge framework. Not
 > persisted to `UnifiedChart` (recomputed from `birthInput` on demand). See
@@ -290,6 +338,26 @@ Geometry**) live in `engine/compute/`:
 > legacy Drik dedup cannot accept it. The strict SSS 72-hour/polar-sunrise error
 > contract remains Task 4 work; the current Drik 06:00 fallback is unchanged.
 
+> **Nakshatra boundaries:** `engine/compute/nakshatras.ts`'s `locateInNakshatra()`
+> derives the nakshatra index and the fraction traversed from one quotient
+> (`q = lon / span`, `index = floor(q)`, `fraction = q − index`). Pada and sub-lord
+> share one exact test against whole-year cut points (`9 × lon ≥ years`, via
+> TwoSum), so they agree at the pada-3 cut of Mars- and Mercury-led nakshatras.
+> Never pair `floor(lon / span)` with `lon % span`: `360 / 27` rounds up, so at an
+> exact boundary (reachable from the 4-decimal `moonLongitude`/`lagnaLongitude`,
+> e.g. 40.0000) the two disagree, which read 40° as Rohini pada 4 and gave a ~0
+> Moon dasha balance. Matchmaking takes the Moon's rashi from this pada, so a Moon
+> stored at 30°, 60°, 80°, … now scores in its true sign. `locateInNakshatra()`,
+> `normalizeLongitude()` and `distanceToNakshatraBoundary()` are exported and are
+> the engine's only nakshatra arithmetic: `computeVimshottari` (birth nakshatra and
+> balance), matchmaking's `computeBoundaryRisk` and the Sree Lagna use them. Tables
+> come from `engine/constants.ts`. The lossy `normLong` copies in `upagrahas.ts`,
+> `gochar.ts`, `specialLagnas.ts` and `transits.ts` are deliberately left: they do
+> no nakshatra arithmetic, and switching them changes emitted longitudes in their
+> last bits. Tests: `tests/nakshatra-pada-boundary.test.ts`,
+> `tests/nakshatra-shared-locator.test.ts`, `tests/vimshottari-nakshatra-boundary.test.ts`.
+> Spec: `.kiro/specs/nakshatra-shared-locator/`.
+
 > **Marriage Matchmaking engine:** `engine/compute/matchmaking.ts` +
 > `matchmakingTables.ts` — pure, never-throwing Ashtakoota + Mangal Dosha
 > scoring, completely separate from the wave pipeline and Duration Analysis.
@@ -300,8 +368,16 @@ Geometry**) live in `engine/compute/`:
 > hand-transcribed from classical sources then verified against a local,
 > never-vendored PyJHora oracle sweep (`scripts/oracle/`, AGPL-isolated —
 > see `docs/computation_matchmaking.md`'s KNOWN DIVERGENCE table for what was
-> and wasn't adopted from that sweep). `MATCHMAKING_TABLES_VERSION` is
-> stamped onto every persisted `CompatibilityMatch.result`.
+> and wasn't adopted from that sweep). Two stamps go onto every persisted
+> `CompatibilityMatch.result`: `MATCHMAKING_TABLES_VERSION` for table contents
+> only, and `MATCHMAKING_ENGINE_VERSION` (`matchmakingVersion.ts`) for the logic —
+> derivation (including the `nakshatras.ts` helpers it calls), scorers,
+> cancellations, verdict, boundary risk and Mangal Dosha. Bump the one that
+> matches what changed. `engineVersion` lives only in the `result` JSONB (no
+> column) and is absent on rows saved before it existed; read it through
+> `describeMatchVersion`, which is how `GET /api/matchmaking/[id]` returns
+> `engineVersion` (null on old rows) and `stale`. See
+> `.kiro/specs/matchmaking-result-versioning/`.
 
 ---
 
@@ -379,6 +455,8 @@ npm run db:push      # prisma db push
 npm run db:seed      # seed model_config defaults (prisma/seed.ts)
 npm run db:backfill-owner  # assign every unowned UnifiedChart to one User (-- <email>)
 npm run db:backfill-gender # populate UnifiedChart.gender from chartInputV1.meta.gender (idempotent)
+npm run db:backfill-pd     # fill missing pratyantardashas into pre-full-PD dasha trees (idempotent)
+npm run db:backfill-birth-md # rebuild the birth MD's ADs/PDs in stored dasha trees (idempotent; -- --dry-run)
 npm run db:studio    # Prisma Studio
 npm run docker:up    # docker-compose up -d (Postgres + app)
 npm run docker:down  # docker-compose down

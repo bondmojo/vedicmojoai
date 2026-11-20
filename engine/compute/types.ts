@@ -605,6 +605,20 @@ export interface BhavaBalaResult {
 
 // ─── Varshaphal (Tajika annual solar-return chart) ───────────────────
 
+/** Tajika aspect kinds by sign distance (see tajikaAspects.ts). */
+export type TajikaAspectKind = 'conjunction' | 'sextile' | 'trine' | 'square' | 'opposition'
+
+/** Sextile/trine are friendly; conjunction/square/opposition are inimical. */
+export type TajikaAspectNature = 'friendly' | 'inimical'
+
+/** A sign-based Tajika aspect (Phase 1 — no deeptamsha orbs yet). */
+export interface TajikaSignAspect {
+  kind: TajikaAspectKind
+  nature: TajikaAspectNature
+  /** Inclusive sign count from the aspecting sign (same sign = 1): 1, 3, 4, 5, 7, 9, 10 or 11. */
+  distance: number
+}
+
 /** The five office-bearer candidates competing to be Varshesha (year lord). */
 export interface VarsheshaCandidate {
   /** Which office this planet holds among the five. */
@@ -619,12 +633,18 @@ export interface VarsheshaCandidate {
   officeLabel: string
   /** Final Panchavargeeya Bala (0–20 scale). */
   panchavargeeyaBala: number
+  /** How many of the five offices this planet holds (tie-break only). */
+  officeCount: number
+  /** This planet's Tajika aspect to the Varsha Lagna (conjunction when in it), or null when it has none. */
+  lagnaAspect: TajikaSignAspect | null
+  /** Whether that aspect counts for selection (its nature is in VARSHESHA_LAGNA_ASPECT_NATURES). */
+  aspectsLagna: boolean
 }
 
 /** Per-planet Panchavargeeya Bala breakdown (Tajika 5-fold strength). */
 export interface PanchavargeeyaBalaEntry {
   planet: string
-  kshetraBala: number   // sign dignity (Vishwa)
+  kshetraBala: number   // sign-lord dignity, no moolatrikona (Vishwa)
   ucchaBala: number     // exaltation proximity (Vishwa)
   haddaBala: number     // Egyptian term / bound (Vishwa)
   drekkanaBala: number  // D3 dignity (Vishwa)
@@ -654,6 +674,64 @@ export interface VarshaPravesh {
   weekdayLord: string
 }
 
+/** A natal Vimshottari antardasha overlapping the Varsha year (true bounds, ISO UTC). */
+export interface VarshaNatalAntardasha {
+  mahadasha: string
+  antardasha: string
+  start: string
+  end: string
+}
+
+/** A natal Vimshottari pratyantardasha overlapping the Varsha year (true bounds, ISO UTC). */
+export interface VarshaNatalPratyantardasha extends VarshaNatalAntardasha {
+  pratyantardasha: string
+}
+
+/** The natal Vimshottari periods running through the Varsha year. */
+export interface VarshaNatalDasha {
+  /** MD/AD/PD running at the Varsha Pravesh, or null outside the 120-year tree. */
+  atVarshaPravesh: { mahadasha: string; antardasha: string; pratyantardasha: string } | null
+  antardashas: VarshaNatalAntardasha[]
+  pratyantardashas: VarshaNatalPratyantardasha[]
+}
+
+/** A Mudda antardasha, clipped to the Varsha year (ISO UTC). */
+export interface MuddaAntardasha {
+  lord: string
+  start: string
+  end: string
+  days: number
+}
+
+/** A Mudda dasha period, clipped to the Varsha year (ISO UTC). */
+export interface MuddaDashaPeriod {
+  lord: string
+  start: string
+  end: string
+  days: number
+  /**
+   * `balance` opens the year with the part of the starting lord's period left
+   * (as at birth); `remainder` closes it with the part already used.
+   */
+  portion: 'full' | 'balance' | 'remainder'
+  antardashas: MuddaAntardasha[]
+}
+
+/** Tajika Mudda dasha: Vimshottari compressed into one Varsha year. */
+export interface MuddaDasha {
+  janmaNakshatra: string
+  /** Natal Moon's nakshatra counted from Ashwini = 1. */
+  janmaNakshatraNumber: number
+  startLord: string
+  /** Part (0–1) of the starting lord's period left at the Varsha Pravesh. */
+  balanceFraction: number
+  yearStart: string
+  /** The next Varsha Pravesh. */
+  yearEnd: string
+  yearDays: number
+  periods: MuddaDashaPeriod[]
+}
+
 export interface VarshaphalResult {
   varshaYear: number
   /** Completed years of age at the solar return (= varshaYear − birthYear). */
@@ -661,22 +739,40 @@ export interface VarshaphalResult {
   natalSunLongitude: number
   natalLagnaSignNumber: number
   varshaPravesh: VarshaPravesh
-  /** Full chart cast for the solar-return instant at the birthplace. */
+  /**
+   * Full chart cast for the solar-return instant at the birthplace. Its
+   * `transits` (Gochar, Sade Sati, Ashtama/Kantaka Shani) are reckoned from the
+   * NATAL Moon and Lagna as of the Varsha Pravesh (`transits.asOf`), not from
+   * the annual Moon or the time of computation.
+   */
   annualChart: ComputedChart
   muntha: Muntha
   /**
    * Whether the year COMMENCES (Varsha Pravesh) by day — the annual Sun above
-   * the horizon (houses 7–12). Drives the Dinaratri & Trirashi year-lord offices.
+   * the horizon, judged from its longitude against the Ascendant degree (not
+   * whole-sign houses). Drives the Dinaratri & Trirashi year-lord offices.
    */
   dayVarsha: boolean
   panchavargeeyaBala: PanchavargeeyaBalaEntry[]
   candidates: VarsheshaCandidate[]
-  /** The selected year lord (strongest candidate by Panchavargeeya Bala). */
+  /**
+   * The selected year lord: the strongest candidate (Panchavargeeya Bala) that
+   * aspects the Varsha Lagna; office count breaks ties. When no candidate
+   * aspects the Lagna, the strongest of all five.
+   */
   varshesha: {
     planet: string
     office: VarsheshaCandidate['office']
     officeLabel: string
     panchavargeeyaBala: number
+    lagnaAspect: TajikaSignAspect | null
+    /** Which branch picked the winner. */
+    selectionBasis: 'aspects_lagna' | 'no_candidate_aspects_lagna'
+  }
+  /** Natal Vimshottari periods through the Varsha year, and the Tajika Mudda dasha. */
+  dashas: {
+    natalVimshottari: VarshaNatalDasha
+    mudda: MuddaDasha
   }
   /** Method notes / caveats surfaced to the UI. */
   method: string
@@ -755,10 +851,15 @@ export interface CharaDashaPeriod {
   sign: string
   /** Mahadasha sign number (1–12). */
   signNumber: number
-  /** Classical lord of the sign (Scorpio→Mars, Aquarius→Saturn; no nodes). */
+  /**
+   * Lord whose placement sets the duration. Single-lord signs → the classical
+   * owner; Scorpio (Mars/Ketu) and Aquarius (Saturn/Rahu) → the stronger co-lord.
+   */
   lord: string
   /** Sign number the lord occupies in D1 (drives the duration). */
   lordSignNumber: number
+  /** Scorpio/Aquarius only: which co-lord rule picked `lord`, in plain words. */
+  lordRule?: string
   /** Duration in years (variable per sign; second-cycle = 12 − first-cycle). */
   durationYears: number
   /** Which of the two 12-sign cycles this period belongs to (1 or 2). */
@@ -771,13 +872,25 @@ export interface CharaDashaPeriod {
   antardashas: CharaAntardasha[]
 }
 
+/** A reference point the Chara Dasha seed can start from. */
+export type CharaSeedReference = 'lagna' | 'moon' | 'sun'
+
 /** Complete Jaimini Chara Dasha (Parasara / PVR method) for a chart. */
 export interface CharaDashaResult {
   /** Method label, e.g. "Parasara / PVR (JHora-matching, 2-cycle)". */
   method: string
   /** Ascendant sign number (1–12). */
   lagnaSignNumber: number
-  /** 9th sign from the lagna — decides the sequence direction. */
+  /**
+   * Sign the first mahadasha belongs to: whichever of the lagna, Moon and Sun
+   * signs has the strongest lord. Often, but not always, the lagna.
+   */
+  seedSignNumber: number
+  /** Which references sit in the seed sign (several when they share a sign). */
+  seedReferences: CharaSeedReference[]
+  /** The strength test that picked the seed, in plain words. */
+  seedRule: string
+  /** 9th sign from the SEED — decides the sequence direction. */
   ninthSignNumber: number
   /** Sequence direction of the mahadashas. */
   direction: 'forward' | 'reverse'
@@ -911,6 +1024,35 @@ export interface MatchResult {
     groom: MangalDoshaNative
     compatibility: 'matched' | 'mismatched' | 'cancelled' | 'unavailable'
   }
-  /** Bump when a koota table changes — see matchmakingTables.MATCHMAKING_TABLES_VERSION. */
+  /**
+   * Which static koota tables produced this result — bumped only when a table
+   * in matchmakingTables.ts changes. See MATCHMAKING_TABLES_VERSION.
+   */
   tablesVersion: string
+  /**
+   * Which engine logic produced this result — derivation, scorers,
+   * cancellations, verdict, boundary risk, Mangal Dosha. See
+   * matchmakingVersion.MATCHMAKING_ENGINE_VERSION. Always set on a freshly computed
+   * result; ABSENT on `CompatibilityMatch.result` rows saved before it
+   * existed, so read persisted JSON through `describeMatchVersion`, never by
+   * trusting this type.
+   */
+  engineVersion: string
+}
+
+/**
+ * Version stamps read off a persisted or freshly computed `MatchResult` by
+ * `describeMatchVersion` (engine/compute/matchmakingVersion.ts).
+ */
+export interface MatchVersionInfo {
+  /** `null` when missing, not a string, or empty. */
+  tablesVersion: string | null
+  /** `null` on every result saved before the engine version existed. */
+  engineVersion: string | null
+  /**
+   * True when either stamp is `null` or differs from what the running build
+   * stamps — a fresh computation of the same pair might differ. Not a claim
+   * that the saved score is wrong.
+   */
+  stale: boolean
 }

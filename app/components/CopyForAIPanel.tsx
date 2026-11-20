@@ -77,25 +77,29 @@ const FIXED_SECTIONS: Section[] = [
 
 // ─── Props ───────────────────────────────────────────────────────────
 
+export interface CopyForAIForm {
+  name: string
+  date: string
+  time: string
+  timezone: string
+  latitude: string
+  longitude: string
+  placeId: string | null
+  placeLabel: string
+  sunriseMode: 'precise' | 'jhora'
+}
+
 interface Props {
   chart: Record<string, unknown>
   dashaTree: Record<string, unknown>
   charaDasha?: Record<string, unknown>
-  form: {
-    name: string
-    date: string
-    time: string
-    timezone: string
-    latitude: string
-    longitude: string
-    sunriseMode: string
-  }
+  form: CopyForAIForm
   onClose: () => void
 }
 
 // ─── JSON builders ───────────────────────────────────────────────────
 
-function buildPayload(
+export function buildPayload(
   selected: Set<string>,
   chart: Record<string, unknown>,
   dashaTree: Record<string, unknown>,
@@ -106,7 +110,7 @@ function buildPayload(
   const out: Record<string, unknown> = {}
 
   if (selected.has('birth_info')) {
-    out.birth_info = {
+    const birthInfo: Record<string, unknown> = {
       name: form.name || null,
       birth_date: form.date,
       birth_time: form.time,
@@ -115,6 +119,13 @@ function buildPayload(
       longitude: parseFloat(form.longitude),
       sunrise_convention: form.sunriseMode,
     }
+
+    // Manual coordinates deliberately have no authoritative place label.
+    if (form.placeId !== null && form.placeLabel.trim() !== '') {
+      birthInfo.birth_place = form.placeLabel
+    }
+
+    out.birth_info = birthInfo
   }
 
   if (selected.has('lagna_meta')) {

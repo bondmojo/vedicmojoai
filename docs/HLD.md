@@ -1,12 +1,36 @@
 # VedicMojoAI — High Level Design (HLD)
 
-**Version:** 1.9
-**Last updated:** 2026-08-11
+**Version:** 1.11
+**Last updated:** 2026-10-28
 **Status:** Draft
 
 > **Maintenance rule:** Any change to architecture, data flow, routes, pages, or the
 > engine must be reflected here **and** in the AI Skills (`.kiro/skills/`), ERD, and DFD
 > in the same change. See `Agents.md → Documentation Maintenance`.
+
+## What changed in v1.11
+
+- **Fix: birth Mahadasha sub-periods**
+  (`.kiro/specs/vimshottari-birth-mahadasha/`). `computeVimshottari` now lays the
+  first MD's antardashas and pratyantardashas out over the full-length MD, which
+  began before birth, and clips them at birth (Parashara, JHora). Previously all
+  nine ADs were squeezed into the balance, starting with the MD lord. MD dates,
+  `balance_years` and MDs 2–9 are unchanged; integrity check 2 now also checks AD
+  contiguity. New backfill `npm run db:backfill-birth-md` for stored trees. See
+  §3.5.
+
+## What changed in v1.10
+
+- Added the **Place Location Picker** (`.kiro/specs/place-location-picker/`):
+  one-off OpenStreetMap-derived Indian-settlement ingestion into shared `Place`
+  reference data, authenticated offline `GET /api/places` search, and a reusable
+  `PlacePicker` in both birth-data forms. Selected place metadata is optional
+  `UnifiedChart.birthInput` display context; coordinates remain the sole compute
+  contract and chart-hash input. Search ranks six tiers — the whole query as a
+  phrase ahead of a name token plus administrative narrowing — and both forms
+  share one birth-location contract, `lib/place-form.ts`, which owns the
+  persisted place shape and the submit-time location validation. See §3.1, §3.2,
+  and §8.2.
 
 ## What changed in v1.9
 
@@ -180,6 +204,7 @@ The system now organizes around three practitioner-facing features.
   calls use lenient JSON parsing with one retry.
 - Backfill: `npm run db:backfill-pd` fills missing Pratyantardashas into charts
   computed before full-PD storage (`scripts/backfill-pratyantardashas.ts`).
+  `npm run db:backfill-birth-md` corrects the birth MD's ADs/PDs (§3.5).
 
 1. **Generate Chart** — deterministic Swiss Ephemeris computation. Two ingestion
    paths land in a single `UnifiedChart` store: `from-compute` (birth data) and
@@ -266,7 +291,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 │   PostgreSQL (via Prisma)          File System                  │
 │   - Chart (legacy, paste-path)     - reports/{slug}.html        │
 │   - UnifiedChart                   - prompts/agents/*.md        │
-│   - PipelineRun                    (prompt files read-only)     │
+│   - Place (shared OSM reference)   (prompt files read-only)     │
+│   - PipelineRun                                                   │
 │   - WaveOutput                                                  │
 │   - Wave1Cache                                                  │
 │   - RunMessage                                                  │
@@ -291,7 +317,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 
 | Page | Route | Purpose |
 |---|---|---|
-| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Transits → Gochar shows natal D1, a JHora-style Transit Moment Chart from the moving Ascendant at the snapshot moment/place, and Gochar charts from birth Lagna and natal Moon; it also provides a Moon-opt-in UTC date-range form. Vimshottari PD rows expose the same range in a single expandable **View Gochar** panel using their exact UTC bounds. Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
+| Chart Compute (home) | `/` | Real-time chart computation from birth data + Save/Load computed charts. Birth location is resolved through the shared `PlacePicker` (offline Indian-settlement search) or retained manual coordinates; the selected place fills visible coordinates and can be replaced by manual entry. **10 tabs:** Summary · Grahas · Divisional Charts · Ashtakavarga · **Yogas** · Dasha (Vimshottari) · Chara Dasha · Transits · Pinda Strength · **Varshaphal** (annual solar-return chart per year). Transits → Gochar shows natal D1, a JHora-style Transit Moment Chart from the moving Ascendant at the snapshot moment/place, and Gochar charts from birth Lagna and natal Moon; it also provides a Moon-opt-in UTC date-range form. Vimshottari PD rows expose the same range in a single expandable **View Gochar** panel using their exact UTC bounds. Was 11 — Planets + Nakshatras + Karakas merged into one **Grahas** tab and **Yogas** added after Ashtakavarga (`chart-ui-enhancements` spec) |
 | Run Progress | `/runs/[id]` | Live SSE stream — per-agent status, token count, cost running total |
 | Report Viewer | `/runs/[id]/report` | Tabbed HTML report: Health / Wealth / Career / Marriage / Property / Dasha |
 | Unified Charts | `/unified-charts` | Generate Chart hub — list unified charts (compute + paste), filter, open |
@@ -314,7 +340,8 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 | Route | Method | Purpose |
 |---|---|---|
 | `/api/compute` | POST, GET | Compute a full Vedic chart from birth data (stateless) |
-| `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha |
+| `/api/compute/varshaphal` | POST, GET | Compute a Tajika Varshaphal (annual solar-return chart) for a given year (stateless): Varsha Pravesh, annual chart, Muntha, Panchavargeeya Bala, Varshesha, natal Vimshottari through the year + Mudda dasha |
+| `/api/places` | GET | Authenticated, read-only offline Indian-settlement search over shared `Place` reference data. Validates query parameters, skips queries whose whole normalized text is under three characters without a DB query, then ranks six tiers — the full phrase (exact → prefix → substring, unnarrowed) ahead of the leading name token with administrative-token narrowing (exact → prefix → substring) — with deterministic kind/state ordering, deduplicates OSM duplicates, and excludes hamlets by default (opt-in). Token tiers are skipped when there is nothing to narrow with. Returns display metadata plus numeric coordinates; it never geocodes or mutates data. |
 | `/api/gochar` | POST | Authenticated, deterministic, read-only Lahiri Gochar range. Resolves natal Moon/Lagna signs from a saved chart's scalar longitudes or unsaved birth data, then returns UTC whole-sign occupancy intervals; Moon is opt-in. The home Transits Gochar section and Vimshottari PD expansion send the birth-data snapshot captured with the chart on screen, so later form edits cannot create a wrong-chart request. PD requests preserve the dasha tree's exact ISO UTC bounds. |
 | `/api/unified-charts` | GET | List unified charts (filters: `search`, `lagna`, `source`) + run counts |
 | `/api/unified-charts/from-compute` | POST | **Generate Chart (Path A)** — compute from birth data, persist as `source="compute"` (shared creator: `lib/unified-chart-create.ts`) |
@@ -351,7 +378,7 @@ pipeline engine, and report renderer all in one project, one language, one deplo
 engine/
 ├── constants.ts          # YEAR_DAYS=365.2425, nakshatra map, dasha years, domain→agent map
 ├── pre_analysis.ts       # 11 deterministic rules → alerts[]
-├── computeVimshottari.ts # Moon longitude → full DashaTree (MD/AD/PD + dates)
+├── computeVimshottari.ts # Moon longitude → full DashaTree (MD/AD/PD + dates; birth MD clipped from full length)
 ├── planner.ts            # query types[] → ordered agent execution plan
 ├── orchestrator.ts       # fan-out execution, DB writes, SSE emission
 ├── llm.ts                # Vercel AI SDK wrapper — provider/model swappable
@@ -380,6 +407,8 @@ engine/
 │   ├── bhavaBala.ts       # NEW — Bhavadhipati / Bhava Dig / Bhava Drishti bala
 │   ├── yogas.ts           # NEW — deterministic named-yoga catalogue (Mahapurusha, Raja/DKA, Dhana, Viparita, Neechabhanga, lunar, Gaja Kesari, Budha-Aditya, Parivartana, Kartari)
 │   ├── varshaphal.ts      # NEW — Tajika annual solar-return chart (on-demand; reuses computeFullChart)
+│   ├── tajikaAspects.ts   # NEW — sign-based Tajika aspects (Phase 1); Varshesha's Varsha Lagna aspect check
+│   ├── varshaphalDashas.ts # NEW — Varsha-year dashas: natal Vimshottari MD/AD/PD slice + Tajika Mudda dasha
 │   ├── matchmakingTables.ts # NEW — static Ashtakoota reference tables (nakshatra/rashi attributes, 5 scoring matrices), hand-transcribed + oracle-verified (docs/computation_matchmaking.md)
 │   └── matchmaking.ts     # NEW — pure, never-throwing Ashtakoota (computeAshtakootaMatch) + Mangal Dosha (computeMangalDosha) + composition (computeMatch)
 └── waves/
@@ -388,6 +417,29 @@ engine/
     ├── wave3.ts           # parallel, planner-selected: 3A–3D
     └── wave4.ts           # sequential: 4X → 4A → 4B → 4C
 ```
+
+**Nakshatra boundaries (`compute/nakshatras.ts`):** the exported
+`locateInNakshatra()` is the engine's only nakshatra arithmetic.
+`computeVimshottari` (birth nakshatra and balance), matchmaking's
+`computeBoundaryRisk` (via `distanceToNakshatraBoundary()`) and the Sree Lagna
+take their position from it. The nakshatra index and the fraction of it traversed
+both come from one quotient, `q = lon / NAKSHATRA_SPAN_DEG` (`index = floor(q)`,
+`fraction = q − index`, exact and always in [0, 1)). Pada and sub-lord are decided
+by one exact comparison against their cut points, which are whole numbers of dasha
+years from 0° Ashwini (9 per degree): `9 × lon ≥ years`, computed with TwoSum.
+So the two always agree where they share a cut, at pada 3 of Mars- and Mercury-led
+nakshatras. `normalizeLongitude()` leaves an in-range longitude untouched. A
+longitude exactly on a boundary (e.g. 40°, reachable from the 4-decimal
+`moonLongitude`/`lagnaLongitude`) is pada 1 of the new nakshatra with its own lord
+as sub-lord. A boundary a 4-decimal value can hit exactly is always a whole degree;
+the tests check every 4-decimal longitude within 0.005° of each whole degree and
+each nakshatra boundary against an exact integer oracle, and every double within
+64 ulps of every cut against a BigInt oracle. Taking the position from `lon % span`
+instead read 40° as Rohini pada 4, because `NAKSHATRA_SPAN_DEG` rounds up. The
+`normLong` helpers in `upagrahas.ts`, `gochar.ts`, `specialLagnas.ts` and
+`transits.ts` still use the lossy `((lon % 360) + 360) % 360`: they do no
+nakshatra arithmetic, and switching them would change emitted longitudes in their
+last bits (`.kiro/specs/nakshatra-shared-locator/design.md`).
 
 **Duration Analysis engine** (separate from the wave pipeline):
 
@@ -432,7 +484,7 @@ Both are stored in `Wave1Cache` and injected into agent contexts via `chart_summ
 Pure TypeScript function. No LLM, no external dependencies.
 
 ```
-Input:  moonLongitudeDeg: number   (0–360, sidereal)
+Input:  moonLongitudeDeg: number   ([0, 360], sidereal; 360 reads as 0°)
         birthDatetime: Date
 
 Output: DashaTree {
@@ -442,10 +494,10 @@ Output: DashaTree {
 
 MahaDasha {
   lord: Planet
-  start: Date
+  start: Date                      // birth, for the first (birth) MD
   end: Date
-  duration_days: number
-  antardashas: AnterDasha[]        // 9 sub-periods
+  duration_days: number            // the balance, for the birth MD
+  antardashas: AntarDasha[]        // 9 sub-periods (1–9 for the birth MD)
 }
 
 AntarDasha {
@@ -453,14 +505,38 @@ AntarDasha {
   start: Date
   end: Date
   duration_days: number
-  pratyantardashas?: PratyanDasha[] // populated for current + next MD only
+  pratyantardashas: PratyanDasha[] // all 9 MDs (full PD storage)
 }
 ```
 
+**Birth nakshatra and balance:** `computeVimshottari` takes the nakshatra index
+and the fraction the Moon has traversed from `locateInNakshatra()`
+(`compute/nakshatras.ts`), both from one quotient, and
+`balance_years = (1 − fraction) × lord years`. A Moon exactly on a boundary
+(e.g. 40°, reachable from the 4-decimal `UnifiedChart.moonLongitude`) starts the
+new nakshatra: a full MD of its lord. Taking the fraction from `lon % span`
+instead gave ~0 there, because `NAKSHATRA_SPAN_DEG` rounds up. The input check
+accepts [0, 360] and rejects anything else, NaN included (`DashaIntegrityError`).
+360 is accepted because `Decimal(8,4)` rounds a Moon in [359.99995°, 360°) up to
+360.0000; the locator reads it as 0°, the start of Ashwini.
+
+**Birth MD sub-periods** (`.kiro/specs/vimshottari-birth-mahadasha/`): the birth
+MD is the tail of a full-length MD that began before birth, at
+`birth − (full − balance)`. `computeBirthMahadashaAntardashas()` lays its ADs and
+PDs out over the full MD and clips them to [birth, birth + balance], dropping
+those that ended before birth (Parashara, JHora). So the AD/PD running at birth
+follows from the Moon's elapsed fraction of its nakshatra, and the birth MD can
+have fewer than 9 ADs. `balance_years`, MD dates and MDs 2–9 are unchanged.
+Stored trees are corrected with `npm run db:backfill-birth-md`
+(`scripts/backfill-birth-mahadasha.ts`, idempotent, rebuilds only
+`mahadashas[0].antardashas` from the stored birth MD).
+
 Year constant: `YEAR_DAYS = 365.2425` defined once in `constants.ts`.
 
-Self-verification: sum of all MD duration_days must equal `120 × 365.2425 ± 1`.
-If check fails → `DashaIntegrityError` thrown before any LLM agent runs.
+Self-verification: MDs are contiguous; each MD's ADs run contiguously from the MD
+start and sum to its `duration_days` (the balance, for the birth MD); and the MDs
+sum to `balance + (120 − birth-lord years)` years, ± 1 day.
+If a check fails → `DashaIntegrityError` thrown before any LLM agent runs.
 
 ### 3.6 Planner (`planner.ts`)
 
@@ -1052,6 +1128,114 @@ PRACTITIONER
 Both paths deduplicate on `chartHash` and return `409` with the existing record on
 a duplicate.
 
+### Place resolution (offline input-resolution layer)
+
+`Place` is shared, unowned reference data (see `docs/ERD.md`); it is neither
+user content nor a chart foreign key. It is populated once per environment from an
+OpenStreetMap-derived India dataset and read only at chart-entry time:
+
+```
+OSM NDJSON files outside the repository
+(PLACES_DATA_DIR or `--dir`)
+        │  one-off `npm run db:load-places`
+        ▼
+scripts/load-places.ts
+  • streams each city/town/village/hamlet NDJSON file line by line
+  • normalizes names; maps source [longitude, latitude] to named coordinates
+  • batches 5,000 rows through Prisma createMany(skipDuplicates)
+        ▼
+PostgreSQL Place table (shared reference data)
+        │  authenticated GET /api/places
+        ▼
+PlacePicker (client combobox)
+        │  selected coordinates + optional display metadata
+        ├── `/` Chart Compute form
+        └── `/unified-charts` Generate Chart ComputeForm
+```
+
+The source data remains outside version control and the deployment bundle: no route
+reads NDJSON at runtime, and `next.config.mjs` deliberately does not trace it. The
+loader takes `--dir` (or `PLACES_DATA_DIR`), optional `--kinds`, and explicit
+`--truncate` for corrections. It reports load/skip counts, validates OSM identity
+and coordinate ranges, and remains idempotent through the `Place` natural key plus
+`skipDuplicates`; a normal re-run does not rewrite existing rows. `--truncate` empties
+the table with `TRUNCATE` rather than a quarter-million-row delete, and a successful
+load ends with `ANALYZE` so the planner does not spend the first minutes after ingestion
+costing searches against statistics for an empty table. Those two statements are the
+only raw SQL outside `prisma/migrations/` — both maintenance DDL, both fixed strings
+with no interpolation (see `.kiro/skills/database-prisma.md`).
+
+`GET /api/places?q=&limit=&includeHamlets=` first resolves the requesting user, so
+unauthenticated callers receive `401`. It validates input, returns immediately —
+without querying Postgres — when the *whole* normalized query is shorter than three
+characters, and executes only Prisma queries against the locally ingested table, each
+scoped to the India country code.
+
+A query is read two ways at once, because nothing in its text says which is meant:
+`"rampur bushahr"` is one town's full name, `"rampur shimla"` is a town plus its
+district. Parsing (`parsePlaceQuery` in `lib/places-normalize.ts`, beside the
+normalizer that produced the stored names) yields a phrase — the whole query
+normalized — plus a leading name token and the remaining administrative narrowing
+tokens, which stay raw because the state/district/tehsil columns hold display text.
+The name token grows by absorbing following tokens until it reaches three characters,
+so a dotted name such as "St. Thomas Mount" searches instead of being rejected for its
+two-character first word.
+
+Retrieval is six ranked tiers, one ordered query each: the phrase against the stored
+normalized name (exact → prefix → substring, unnarrowed), then the name token with
+every narrowing token required to match state, district, or tehsil (exact → prefix →
+substring). Phrase matches rank above token matches, since a row whose own name is
+everything the practitioner typed satisfies every reading of the query; that is also
+what makes multi-word settlement names reachable, which a token-plus-narrowing reading
+alone could not do. The token tiers are skipped entirely when there is nothing to
+narrow with, so a single-word query still costs at most three reads. Within a tier,
+ordering is by settlement kind then administrative name; results are deduplicated
+across same-settlement OSM records and returned with numeric coordinates and a display
+label. Hamlets are normally ingested but filtered at search time; the response reports
+that exclusion and whether result over-fetching found additional matches. No runtime
+geocoder or outbound lookup is involved.
+
+`app/components/PlacePicker.tsx` is a presentation-only client component built with
+`Popover` and `Command` (`shouldFilter={false}` preserves the server ranking). It
+waits 250 ms after input, cancels stale fetches with `AbortController`, shows ranked
+two-line rows (name; tehsil/district/state) and a textual kind badge, and saves the
+include-hamlets preference in local storage. The hamlet toggle skips that debounce —
+it is a click on a query already finished being typed, so there is nothing left to
+coalesce — while still routing through the same single request path. A dropdown footer
+carries an always-visible OpenStreetMap/ODbL attribution line, rendered last so it never
+displaces the truncation hint or the toggle; when the server rejects a query as too
+short even though it looks long enough locally (punctuation does not survive
+normalization), the dropdown says so in terms of the characters that actually count
+rather than repeating the type-three-letters hint.
+
+The two birth-data forms own selection state: a selected Indian place fills visible
+latitude/longitude and sets the timezone to IST (`5.5`); their read-only coordinate
+display can always switch to the retained manual-coordinate disclosure. Empty,
+unavailable, or unseeded searches expose the same manual-entry escape hatch, so
+India-only coverage and reference-data failures never block calculation.
+
+Both forms share one birth-location contract, `lib/place-form.ts` — the persisted
+place shape and its guard, the selection-to-persisted reduction, the coordinate bounds,
+and the submit-time location validator. It is deliberately free of React and Prisma so
+it stays unit-testable in the existing node test environment. Two rules live there:
+the persisted place is exactly the seven display fields (the save route validates
+`place` strictly, so forwarding a selection's coordinates would reject the entire
+save), and the either-a-place-or-both-coordinates constraint is enforced in JavaScript
+rather than through `required` attributes — those inputs sit inside a closed-by-default
+disclosure, where a native constraint failure aborts submission without firing the
+submit handler and the Compute button simply appears inert. The validator's message is
+rendered as an announced alert and opens the disclosure it refers to.
+
+The picker is an input-resolution boundary, not an engine change. `/api/compute` and
+`/api/compute/varshaphal` continue to accept coordinates only. When either form's
+unified-chart save path is used, `POST /api/unified-charts/from-compute` optionally
+validates place display metadata and `mapComputedToUnified()` stores it as
+`UnifiedChart.birthInput.place`; the mapper passes no place field into
+`engine/compute`'s `BirthInput`. The chart hash remains strictly based on source,
+date/time, timezone, coordinates, and sunrise mode, so selecting a place and manually
+entering identical coordinates deduplicate identically. Previously saved charts without
+place metadata stay coordinate-only, and paste-sourced charts are unchanged.
+
 ### AI Analysis (POST /api/unified-charts/[id]/analyze)
 
 ```
@@ -1205,13 +1389,14 @@ PRACTITIONER
 │    mangalDoshaCompatibility, boundaryRisk,       │
 │    limitations                                  │
 └──────────────────┬──────────────────────────────┘
-                   │ MatchResult, stamped with tablesVersion
+                   │ MatchResult, stamped with tablesVersion + engineVersion
                    ▼
               CompatibilityMatch row (POST only — /preview computes and
               returns the same MatchResult without persisting)
                    │
                    ▼
-        PRACTITIONER (`/matchmaking/[id]` renders the persisted result verbatim)
+        PRACTITIONER (`/matchmaking/[id]` renders the persisted result verbatim,
+                      flagged stale when either stamp is missing or not current)
 ```
 
 - **Role-awareness is structural.** `brideChartId`/`groomChartId` (distinct

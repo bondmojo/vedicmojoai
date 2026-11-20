@@ -556,10 +556,18 @@ export const TOTAL_KOOTA_MAXIMA: number = Object.values(KOOTA_MAXIMA).reduce((su
 /**
  * Bumped whenever any table in this module changes (nakshatra/rashi
  * attributes, any scoring matrix, the Bhakoot/Nadi rules, or the koota
- * maxima). Stamped onto every `MatchResult` (task 4.3) and persisted on
- * every `CompatibilityMatch` row (task 6.1) so a stored snapshot always
- * records which version of these tables produced it — mirrors
+ * maxima) — and ONLY then. Stamped onto every `MatchResult` (task 4.3) and
+ * persisted on every `CompatibilityMatch` row (task 6.1) so a stored snapshot
+ * always records which version of these tables produced it — mirrors
  * `WEIGHTS_VERSION` in the scorer.
+ *
+ * A change to the engine LOGIC that reads these tables (the longitude →
+ * nakshatra/pada/rashi derivation, a scorer, a cancellation detector,
+ * boundary risk, Mangal Dosha) bumps `MATCHMAKING_ENGINE_VERSION` in
+ * matchmakingVersion.ts instead, stamped as `MatchResult.engineVersion`. That split
+ * came after `v1.1-nadi-bhanga-fix` below, which was a logic fix stamped here
+ * because no engine stamp existed yet; it is left as-is so rows carrying it
+ * stay identifiable. See .kiro/specs/matchmaking-result-versioning/.
  */
 export const MATCHMAKING_TABLES_VERSION = 'matchmaking-tables-v1.1-nadi-bhanga-fix'
 

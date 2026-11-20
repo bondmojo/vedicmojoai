@@ -122,7 +122,7 @@ export function registerTools(server: McpServer, api: ApiClient): void {
     {
       title: 'Compute a Varshaphal (annual Tajika) chart',
       description:
-        'Annual solar-return chart for a given civil year: Varsha Pravesh instant, annual chart, Muntha, Panchavargeeya Bala, and the Varshesha (year lord).',
+        'Annual solar-return chart for a given civil year: Varsha Pravesh instant, annual chart, Muntha, Panchavargeeya Bala, and the Varshesha (year lord) — the strongest office-holder aspecting the Varsha Lagna (sign-based Tajika aspect; a planet in the Lagna counts as a conjunction), with each candidate\'s Lagna aspect. annualChart.transits (Gochar, Sade Sati) is reckoned from the NATAL Moon and Lagna as of the Varsha Pravesh. dashas.natalVimshottari lists the natal MD/AD/PD running through the year; dashas.mudda is the Tajika Mudda dasha (Vimshottari compressed into the year, with antardashas).',
       inputSchema: { ...birthDataSchema.shape, varshaYear: z.number().int().min(1800).max(2399) },
     },
     async (a) => guard(async () => ok(await api.post('/api/compute/varshaphal', a)))
@@ -267,7 +267,8 @@ export function registerTools(server: McpServer, api: ApiClient): void {
     {
       title: 'Get the Jaimini Chara Dasha (sign/rasi dasha)',
       description:
-        'Chara Dasha (KN Rao / Parashara method): SIGN-based mahadashas with 12 equal antardashas each, ' +
+        'Chara Dasha (Parasara / PVR method, Jagannatha Hora-matching): SIGN-based mahadashas with 12 equal ' +
+        'antardashas each, starting from the strongest of the Lagna, Moon and Sun signs (seedSignNumber/seedRule), ' +
         'plus direction, per-sign lord + duration, and the full dated timeline. Distinct from the planet-based ' +
         'Vimshottari dasha (use get_dasha_tree for that). Pass `asOf` to also resolve the running MD/AD at a date.',
       inputSchema: { ...chartRefShape, asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('YYYY-MM-DD; also return the running period at this date') },

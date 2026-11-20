@@ -7,6 +7,136 @@ Newest release first. Each entry covers one merge to `main`.
 
 ---
 
+## Unreleased
+
+- **Fix: Chara Dasha seed and Scorpio/Aquarius co-lords.** The dasha always
+  started from the lagna, and Scorpio/Aquarius always used their node co-lord
+  unless the node sat in the sign. It now starts from whichever of the Lagna,
+  Moon and Sun signs has the strongest lord (P.V.R. Narasimha Rao's Parasara
+  method, as Jagannatha Hora computes it), with the direction set by the 9th sign
+  from that seed, and picks the stronger co-lord by Jagannatha Hora's ordered
+  tests. **Chara Dasha periods change for any chart whose seed is not the lagna,
+  or whose Scorpio/Aquarius co-lord flips.** Verified against Jagannatha Hora on
+  a Moon-seeded Aquarius-lagna chart (previously wrong from birth) and a
+  lagna-seeded Taurus chart (unchanged). New fields: `seedSignNumber`,
+  `seedReferences`, `seedRule`, `periods[].lordRule`. Not persisted, so no
+  backfill. See `docs/computation_chara_dasha.md`.
+- **Varshaphal dashas.** The Varshaphal result, tab and MCP `compute_varshaphal`
+  now include the year's dashas: the natal Vimshottari Mahadasha / Antardasha /
+  Pratyantardasha running through the year (true dates, the chain at the Varsha
+  Pravesh highlighted), and the Tajika Mudda dasha — Vimshottari compressed into the
+  year, with antardashas. New pure module `engine/compute/varshaphalDashas.ts`;
+  new field `VarshaphalResult.dashas`. The Mudda first-period balance and year
+  length are documented as unverified. Spec: `.kiro/specs/varshaphal-dashas/`.
+- **Varshesha (year lord) is now strength-first.** The strongest of the five
+  office-holders (Panchavargeeya Bala) that aspects the Varsha Lagna wins; the
+  number of offices held only breaks ties, and the strongest of all five wins when
+  none aspects the Lagna. Previously the planet holding the most offices won. **The
+  year lord shown for an existing chart and year can change** (33 of 51 years for
+  the test birth). New sign-based Tajika aspect module
+  `engine/compute/tajikaAspects.ts` (deeptamsha orbs are Phase 2); each candidate
+  now carries `lagnaAspect`, `aspectsLagna` and `officeCount`, and the result
+  carries `varshesha.selectionBasis`. See `docs/computation_varshaphal.md` and
+  `.kiro/specs/varshesha-lagna-aspect/`.
+- **Fix: Varshaphal day/night near sunrise and sunset.** Whether the year
+  commences by day was read from the Sun's whole-sign house (7–12), which is wrong
+  when the Varsha Pravesh falls close to the horizon. It now compares the Sun's
+  longitude with the Ascendant degree. This changes the Dinaratri and Trirashi
+  lords (and so possibly the year lord and `dayVarsha`) for those charts.
+- **Fix: three Tajika rules in the Varshaphal (astrologer review).**
+  - The Trirashi lord now follows the Tajika Neelakanthi sign table. The old
+    one-pair-per-element table was wrong for Leo through Pisces.
+  - A planet in the Varsha Lagna now aspects it by conjunction (Tajika's open
+    inimical aspect, like the opposition), so a Varsha Lagna lord in its own
+    Lagna can be year lord. `TajikaAspectKind` gains `'conjunction'`.
+  - Kshetra Bala no longer gives moolatrikona full credit; the Moon in Taurus
+    drops from 30 to 7.5.
+
+  **The year lord can change again for an existing chart and year** — 90 of 306
+  annual charts for the test birth date across six birth times.
+- **Fix: Sade Sati in the Varshaphal.** The annual chart's transit block reckoned
+  Sade Sati from the annual chart's Moon, as of the moment of the request, so it
+  changed with the year asked for and the day it was run. It now uses the natal
+  Moon and Lagna, as of the Varsha Pravesh (`annualChart.transits.asOf`). This
+  reaches MCP users through `compute_varshaphal`; the Varshaphal tab does not
+  show transits.
+- **Fix: a longitude exactly on a nakshatra or pada boundary got the wrong pada and
+  sub-lord.** 40° read as Rohini pada 4 with the Sun sub-lord; it is now Rohini pada 1
+  with the Moon sub-lord, and the same holds at every nakshatra start. The same
+  floating-point rounding put pada starts in the previous pada (30° as Krittika
+  pada 1, so Aries) and missed exact sub-lord cut points (33°, 37°, 101°, …). Swiss
+  Ephemeris longitudes almost never land on these, but the stored 4-decimal
+  `moonLongitude` and `lagnaLongitude` can.
+
+  Visible effects: Marriage Matchmaking now scores a Moon stored at 30, 60, 80, 90,
+  150, 180, 200, 210, 270, 300, 320 or 330.0000° in its true sign. Before, the
+  rashi-based kootas (Varna, Vashya, Graha Maitri, Bhakoot) used the neighbouring
+  sign. The lagna pada a compute chart sends to AI Analysis also changes when no
+  stored Ascendant entry exists and `lagnaLongitude` sits on a boundary. Away from
+  boundaries nothing changes: no differences in nakshatra, pada or sub-lord across
+  20 million random longitudes. Stored `UnifiedChart.nakshatras` and
+  `CompatibilityMatch` rows are not rewritten.
+
+- **Fix: a Moon exactly on a nakshatra boundary got the wrong birth Mahadasha, and
+  nakshatra arithmetic is now shared.** At 40° the dasha engine read the nakshatra
+  as Rohini but put the Moon at its very end, so the Moon MD balance came out ~0 and
+  the Mars MD started at birth. It now reads 40° as the start of Rohini: a full
+  10-year Moon MD. The same applied at the other boundaries. AI Analysis recomputes
+  the tree from the stored 4-decimal `moonLongitude`, which can sit exactly on one.
+  `computeVimshottari`, matchmaking's boundary-risk flag and the Sree Lagna now all
+  take the Moon's position from `locateInNakshatra()`.
+
+  Visible effects: a Moon stored at 39, 79, 119, 159, 199, 239, 279, 319 or
+  359.0000° (exactly 1° from a boundary) is now flagged at nakshatra-boundary risk
+  in Marriage Matchmaking. Pada and sub-lord now come from one exact test, so a
+  longitude right at the start of pada 3 in a Mars- or Mercury-led nakshatra can
+  no longer show an impossible pair (e.g. Revati pada 2 with the Mars sub-lord).
+  Away from boundaries no nakshatra, pada, sub-lord, mahadasha lord, Sree Lagna
+  sign or risk flag changes. `balance_years` changes only in its last bits. For the
+  4-decimal longitudes AI Analysis recomputes from, about 1% of trees move a period
+  boundary by up to 9 ms (about 0.05%, by 1–2 ms, for full-precision longitudes).
+
+- **Fix: a Moon stored as 360.0000 made AI Analysis fail.** `Decimal(8,4)` rounds a
+  Moon in [359.99995°, 360°) up to 360.0000, which `computeVimshottari` rejected,
+  so the analyze route returned a 500. 360 now reads as 0°, the start of Ashwini.
+  A NaN Moon is now rejected with `DashaIntegrityError` instead of a `TypeError`.
+
+- **Saved matches now record which engine version computed them.** Every new
+  Marriage Matchmaking result carries `engineVersion`
+  (`matchmaking-engine-v1-pada-boundary-fix`) beside `tablesVersion` inside the
+  saved `result`. The koota tables did not change, so `tablesVersion` stays
+  `matchmaking-tables-v1.1-nadi-bhanga-fix`. Matches saved earlier have no
+  `engineVersion`: the saved-match page shows them as "engine unversioned" with a
+  note to run the pair again and save it. No rows are rewritten and no migration is
+  needed. Only a match with a Moon stored at one of the twelve boundary longitudes
+  above can actually score differently; each saved result records both Moons in
+  `result.ashtakoota.boundaryRisk[].moonLongitude`.
+- **Fix: Vimshottari sub-periods inside the first (birth) Mahadasha.** The
+  engine squeezed all nine antardashas of the birth MD into the balance left at
+  birth, always starting with the MD lord's own antardasha, and laid the
+  pratyantardashas out the same way. It now follows the standard method
+  (Parashara, Jagannatha Hora): the birth MD is the full-length MD, which began
+  before birth, and its antardashas and pratyantardashas keep their full lengths
+  and are clipped at birth. For a 1990-04-27 12:00 IST Delhi birth the period at
+  birth changes from Moon / Moon / Moon to Moon / Rahu / Saturn.
+
+  **Dasha periods inside the first Mahadasha change for existing charts** — the
+  antardasha at birth changes for about 88% of charts, and the antardasha or
+  pratyantardasha at a given date inside the first MD for about 95% of dates. This
+  reaches the Dasha tab, the Duration Analyser, Duration Analysis, the AI
+  pipeline's chart summary, the MCP `get_dasha_tree` / `get_active_dasha` tools and
+  the Varshaphal natal dashas. Mahadasha dates, the balance at birth, and every
+  date after the first Mahadasha ends are unchanged.
+
+  **Run `npm run db:backfill-birth-md` on each environment after deploying**
+  (add `-- --dry-run` to preview). It rewrites the first Mahadasha's sub-periods in
+  every stored `UnifiedChart.dashaTree` and is safe to re-run. Until it runs, saved
+  charts keep the old periods. Past AI Analysis reports and Duration Analysis runs
+  are not rewritten; re-run them if they cover the first Mahadasha. Spec:
+  `.kiro/specs/vimshottari-birth-mahadasha/`.
+
+---
+
 ## v1.4 — Compute-first analysis, MCP for Claude Desktop, brand UI
 
 **Date:** 2026-07-26

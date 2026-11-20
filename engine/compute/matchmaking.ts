@@ -66,7 +66,7 @@ import type {
   PlanetPosition,
   AspectEdge,
 } from './types'
-import { getNakshatraIndex, getPada, getNakshatraLord } from './nakshatras'
+import { getNakshatraIndex, getPada, getNakshatraLord, distanceToNakshatraBoundary } from './nakshatras'
 import { PERMANENT_FRIENDSHIP, SIGN_LORDS, OWN_SIGNS, EXALTATION_SIGNS } from './dignity'
 import { NATURAL_BENEFICS } from './relationships'
 import {
@@ -682,8 +682,6 @@ export function scoreNadi(bride: MatchNativeInput, groom: MatchNativeInput): Koo
  */
 export const BOUNDARY_RISK_THRESHOLD_DEG = 1.0
 
-const NAKSHATRA_SPAN_DEG = 360 / 27
-
 /**
  * Per-native distance in degrees to the nearest nakshatra boundary and a
  * derived `atRisk` flag at `BOUNDARY_RISK_THRESHOLD_DEG`. Pure arithmetic on
@@ -698,9 +696,9 @@ export function computeBoundaryRisk(role: MatchRole, moonLongitude?: number): Bo
   if (moonLongitude === undefined || moonLongitude === null || !Number.isFinite(moonLongitude)) {
     return { role, atRisk: false }
   }
-  const normalized = ((moonLongitude % 360) + 360) % 360
-  const posInNakshatra = normalized % NAKSHATRA_SPAN_DEG
-  const distanceToBoundaryDeg = Math.min(posInNakshatra, NAKSHATRA_SPAN_DEG - posInNakshatra)
+  // From the shared nakshatra locator: exact for every 4-decimal longitude, so
+  // 39.0000 (exactly 1° below Rohini) is at risk, and 40.0000 is 0, not ~1e-15.
+  const distanceToBoundaryDeg = distanceToNakshatraBoundary(moonLongitude)
   return {
     role,
     moonLongitude,
@@ -1006,6 +1004,13 @@ export function computeMangalDosha(input: MangalNativeInput | null | undefined):
   return { status: 'manglik', triggeredFrom: [...triggeredFrom], marsHouseFrom, cancellations }
 }
 
+// ─── Versioning ──────────────────────────────────────────────────────────
+
+// The engine stamp and its reader live in matchmakingVersion.ts, which avoids
+// this module's Swiss Ephemeris imports; re-exported here for existing callers.
+import { MATCHMAKING_ENGINE_VERSION } from './matchmakingVersion'
+export { MATCHMAKING_ENGINE_VERSION, describeMatchVersion } from './matchmakingVersion'
+
 // ─── 4.3 computeMatch ────────────────────────────────────────────────────
 
 /** One native's koota input plus its optional Mangal Dosha input (design.md's `computeMatch` signature). */
@@ -1091,7 +1096,8 @@ function deriveMangalDoshaCompatibility(
 /**
  * Composes `computeAshtakootaMatch` + `computeMangalDosha` per native into
  * one `MatchResult`, derives the pairwise `mangalDoshaCompatibility` verdict,
- * and stamps `tablesVersion` (Requirement 5.1). Mangal Dosha is reported
+ * and stamps `tablesVersion` (Requirement 5.1) and `engineVersion`
+ * (matchmaking-result-versioning Requirement 1.2). Mangal Dosha is reported
  * BESIDE `gunaScore` — never folded into the 36-point total (Requirement 3.4).
  *
  * Role-aware, not positional, exactly like `computeAshtakootaMatch`:
@@ -1125,5 +1131,6 @@ export function computeMatch(bride: MatchNative, groom: MatchNative): MatchResul
     ashtakoota,
     mangalDosha: { bride: brideMangal, groom: groomMangal, compatibility },
     tablesVersion: MATCHMAKING_TABLES_VERSION,
+    engineVersion: MATCHMAKING_ENGINE_VERSION,
   }
 }

@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const result = computeMatchResult(charts.bride, charts.groom)
 
-    return NextResponse.json({ result, tablesVersion: result.tablesVersion })
+    return NextResponse.json({ result, tablesVersion: result.tablesVersion, engineVersion: result.engineVersion })
   } catch (error) {
     console.error('Preview compatibility match error:', error)
     return NextResponse.json(

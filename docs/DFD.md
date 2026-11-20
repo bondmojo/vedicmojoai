@@ -1,12 +1,112 @@
 # VedicMojoAI — Data Flow Diagram (DFD)
 
-**Version:** 1.9
-**Last updated:** 2026-08-10
+**Version:** 2.0
+**Last updated:** 2026-08-27
 **Status:** Draft
 
 > **Maintenance rule:** Update this DFD alongside any change to processes, data
 > stores, or flows — together with the AI Skills, ERD, and HLD. See
 > `Agents.md → Documentation Maintenance`.
+
+## What changed in v2.0
+
+- Added **P14 — Place Resolution** and **D16: Place**, the offline shared
+  Indian-settlement reference flow used before birth-data computation. A one-off,
+  streamed NDJSON loader populates D16; authenticated `GET /api/places` reads it
+  through Prisma and never calls an online geocoder.
+- Both practitioner birth-data surfaces — the home Chart Compute page and
+  Unified Charts' Compute from Birth Data form — now resolve a selected place to
+  visible latitude/longitude and an editable IST default, with retained manual
+  coordinate entry as the no-result, non-India, and correction fallback.
+- Place resolution is above the computation contract: `POST /api/compute` and
+  `POST /api/compute/varshaphal` continue to receive coordinates, not a place.
+  `POST /api/unified-charts/from-compute` alone optionally accepts display
+  metadata for `UnifiedChart.birthInput.place`; that metadata is excluded from
+  `chartHash` and is not passed into `engine/` types.
+- **Both** save paths forward that metadata, and both derive it the same way:
+  `lib/place-form.ts` reduces a picker selection to the seven persisted display
+  fields before it leaves the browser. Coordinates remain top-level compute
+  inputs and are never part of `place`, because the route validates `place`
+  strictly and would reject the whole save over an extra key.
+- Search ranking is a six-tier retrieval: the whole normalized query matched
+  against the stored normalized name (exact → prefix → substring, unnarrowed),
+  then the leading name token with administrative narrowing (exact → prefix →
+  substring). The token tiers are skipped when the query carries nothing to
+  narrow with, so a single-word query issues no extra reads.
+- Home-page restoration now reads `birthInput.place` when present. Compute-path
+  charts saved before place metadata restore their stored coordinates with Manual
+  Coordinates open; paste-path charts remain outside this restore flow.
+
+## Level 2 — P14: Place Resolution (NEW in v2.0)
+
+P14 is an input-resolution support process, not part of the deterministic
+astrology engine. It turns an Indian settlement selection into the coordinate
+fields the existing compute interfaces already consume. Search degradation never
+blocks computation because both forms retain Manual Coordinates.
+
+```
+OPERATOR (one-off / re-runnable)                  D16: Place
+     │  OSM-derived India NDJSON                    shared, unowned reference data
+     │  (outside repository; PLACES_DATA_DIR)       (no chart/User ownership)
+     ▼                                                        ▲
+┌─────────────────────────────────────────────┐               │
+│ P14.1  PLACE LOADER                          │               │
+│ scripts/load-places.ts                       │── normalized ─┘
+│ • stream city/town/village/hamlet NDJSON     │   settlement rows
+│ • validate name/admin area/[lon, lat]         │   createMany + skipDuplicates
+│ • normalize name + assign kindRank            │
+└─────────────────────────────────────────────┘
+
+PRACTITIONER                                   API / P14.2                    D16
+     │ type place name in either form              │                              │
+     ├── Home Chart Compute (`/`) ────────────────►│ GET /api/places             │
+     └── Unified Charts → Compute from Birth Data ►│ (authenticated, offline) ──►│
+                                                     │ ranked PlaceResult[]        │
+     ◄─────────────────────────────────────────────┴──────────────────────────────┘
+       { id, label, admin display data, latitude, longitude }
+     │
+     ├── select result → each form sets visible latitude/longitude,
+     │                     selected-place state, and timezone = 5.5 (editable)
+     │
+     └── no match/search failure/non-India/correction → reveal Manual Coordinates
+          → practitioner enters latitude + longitude → clear selected-place state
+
+Coordinates are the shared compute input:
+
+  Home Compute form
+    ├── POST /api/compute { date, time, timezone, latitude, longitude, sunriseMode }
+    │     └── P8.1 deterministic compute → on-screen ComputedChart
+    └── Save Chart / Run AI Analysis
+          └── POST /api/unified-charts/from-compute
+              { same coordinates, optional place display metadata }
+
+  Unified Charts → Compute from Birth Data form
+    └── POST /api/unified-charts/from-compute
+        { same coordinates, optional place display metadata — identical payload
+          shape to the home page's save, through the same shared contract }
+
+  P9.1 compute + map
+    ├── computeFullChart()/computeVimshottari() consume only birth coordinates
+    ├── mapComputedToUnified(..., place?) writes place only to
+    │   D7: UnifiedChart.birthInput.place
+    └── chartHash remains { source, date, time, timezone, latitude, longitude,
+        sunriseMode }; place metadata never changes deduplication.
+```
+
+**Submit-time location gate (both forms):** before either form issues its request, the
+shared validator in `lib/place-form.ts` decides whether a usable location exists —
+either a selected place or both coordinates, within range. A rejection produces no
+request at all: the form renders the returned message as an announced alert and opens
+the Manual Coordinates disclosure. The gate is deliberately not delegated to native
+input constraints, which cannot report anything while the inputs sit inside a collapsed
+disclosure.
+
+**Saved-chart restoration (home Compute form):** `GET /api/unified-charts/[id]`
+loads a compute-path chart's `birthInput`. A valid nested `birthInput.place` restores
+both the picker label and its stored latitude/longitude readout. For legacy charts
+without that object (or invalid metadata), the form still restores the stored
+coordinates, leaves the picker empty, and opens Manual Coordinates. A `source="paste"`
+chart has no compute-form birth input and remains rejected from this restoration path.
 
 ## What changed in v1.9
 
@@ -258,8 +358,8 @@ Data Stores:
   D13: McpApiToken     — per-user MCP credentials (tokenHash, label, lastUsedAt, revokedAt)
   D14: OAuthClient / OAuthAuthorizationCode / OAuthAccessToken / OAuthRefreshToken
                        — MCP OAuth 2.1 authorization server (P11-OAuth); all secrets hashed at rest
-  D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB,
-                       tablesVersion, brideChartId/groomChartId → D7)
+  D15: CompatibilityMatch — persisted Ashtakoota + Mangal Dosha result (gunaScore, verdict, result JSONB
+                       carrying engineVersion, tablesVersion, brideChartId/groomChartId → D7)
   FS: reports/       — legacy/local HTML/Markdown report files on disk (best-effort)
 ```
 
@@ -677,9 +777,18 @@ PRACTITIONER (Varshaphal tab: birth data + varshaYear)
 │  • computeFullChart(annual)     → annual    │
 │    chart (planets, Varsha Lagna, vargas,    │
 │    Shadbala, …)                             │
+│  • computeTransits(natal Moon + Lagna, at   │
+│    Varsha Pravesh) → replaces the annual    │
+│    chart's transits / Sade Sati             │
 │  • computeMuntha()  (+1 sign/year)          │
 │  • computePanchavargeeyaBala()  (7 planets) │
-│  • computeVarshesha() (5 candidates → lord) │
+│  • computeVarshesha() (5 candidates →       │
+│    Lagna-aspect filter via                  │
+│    getTajikaSignAspect() → strongest)       │
+│  • next Varsha Pravesh → year window;       │
+│    computeVimshottari(natal Moon) →         │
+│    sliceNatalVimshottari(); and             │
+│    computeMuddaDasha() → dashas             │
 └──────────────┬──────────────────────────────┘
                │ VarshaphalResult (JSON)
                ▼
@@ -1105,6 +1214,8 @@ PRACTITIONER
 │    limitations             │
 │  stamped: tablesVersion    │
 │  (MATCHMAKING_TABLES_      │
+│   VERSION) + engineVersion │
+│  (MATCHMAKING_ENGINE_      │
 │   VERSION)                 │
 └──────────────┬─────────────┘
                │ MatchResult JSON
@@ -1154,7 +1265,7 @@ DELETE /api/matchmaking/[id]: plain delete, no dependents ──► D15
 | `Markdown report` | TEXT (primary) + optional file | ~20–100KB | renderer.ts | PipelineRun.reportMarkdown, browser; FS fallback |
 | `conversation_history` | JSON array | ~2KB/turn | RunMessage table | Verification Agent |
 | `ComputedChart` | JSON (JSONB) | ~80–120KB | computeFullChart() | SavedChart.chartData, UnifiedChart domains, /compute UI |
-| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
+| `DashaTree` (serialized) | JSON (JSONB) | ~5KB | computeVimshottari() — birth MD's ADs/PDs clipped from the full-length MD; stored rows corrected by `db:backfill-birth-md` | SavedChart.dashaTree, UnifiedChart.dashaTree, /compute UI |
 | `UnifiedChart` (domain columns) | JSONB per domain | ~80–120KB total | chart-mapper.ts | Unified chart UI, AI Analysis (`wave1_delta` on compute path) |
 | `shadbala` / `relationships` / `jaimini` / `bhavaBala` | JSON (JSONB) | ~4–15KB each | engine/compute deterministic modules | UnifiedChart columns, Wave 2 agents (compute path 1C/1D substitute) |
 | `TransitAnalysis.sadeSatiByDegree` | JSON (nested) | ~2KB | computeDegreeSadeSati() via computeTransits(…, moon.longitude) | UnifiedChart.transits (Json), SadeSatiPanel UI. Not passed to transitOverlay.ts |
