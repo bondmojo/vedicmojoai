@@ -41,7 +41,9 @@ import {
   LATITUDE_MIN,
   LONGITUDE_MAX,
   LONGITUDE_MIN,
+  PLACE_TIMEZONE,
   persistedPlaceFromSelection,
+  placeTimezoneNotice,
   validateBirthLocation,
   type PersistedBirthPlace,
 } from '@/lib/place-form'
@@ -194,6 +196,10 @@ export default function ComputePage() {
   const [loadingCharts, setLoadingCharts] = useState(false)
   const [loadingChart, setLoadingChart] = useState<string | null>(null)
 
+  // Set when a place selection replaced a timezone the practitioner had chosen.
+  // Declared last: app/page.test.tsx addresses this component's state by position.
+  const [timezoneNotice, setTimezoneNotice] = useState<string | null>(null)
+
   // Load saved charts list (UnifiedChart — the canonical store)
   const fetchSavedCharts = useCallback(async () => {
     setLoadingCharts(true)
@@ -221,8 +227,9 @@ export default function ComputePage() {
       longitude: String(place.longitude),
       placeId: place.id,
       placeLabel: place.label,
-      timezone: '5.5',
+      timezone: PLACE_TIMEZONE,
     })
+    setTimezoneNotice(placeTimezoneNotice(form.timezone))
     setSelectedPlace(place)
     setManualCoordinatesOpen(false)
   }
@@ -399,7 +406,10 @@ export default function ComputePage() {
       const loadedForm: ComputeForm = {
         name: typeof data.name === 'string' ? data.name : '',
         date: birth.date,
-        time: birth.time.length === 8 ? birth.time.slice(0, 5) : birth.time,
+        // Drop only zero seconds (10:30:00 → 10:30). Non-zero or fractional
+        // seconds stay: cutting them would display a different chart, and a
+        // re-save would overwrite the stored birth time.
+        time: birth.time.replace(/^(\d{2}:\d{2}):00$/, '$1'),
         timezone: formCoordinateValue(birth.timezone ?? 5.5),
         latitude: formCoordinateValue(birth.latitude),
         longitude: formCoordinateValue(birth.longitude),
@@ -411,6 +421,7 @@ export default function ComputePage() {
       setForm(loadedForm)
       setSelectedPlace(restoredPlace)
       setManualCoordinatesOpen(restoredPlace === null)
+      setTimezoneNotice(null)
 
       // Recompute for display — deterministic and fast, avoids storing a
       // second copy of the display shape.
@@ -510,7 +521,13 @@ export default function ComputePage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Timezone *</label>
-                  <Select value={form.timezone} onValueChange={(v) => setForm({ ...form, timezone: v })}>
+                  <Select
+                    value={form.timezone}
+                    onValueChange={(v) => {
+                      setForm({ ...form, timezone: v })
+                      setTimezoneNotice(null)
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -518,6 +535,11 @@ export default function ComputePage() {
                       {TIMEZONES.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {timezoneNotice && (
+                    <p role="status" className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                      {timezoneNotice}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Birth Location</label>

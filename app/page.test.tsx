@@ -333,6 +333,20 @@ describe('ComputePage — place and coordinate transitions (R5.2, R5.4, R5.5)', 
     }])
     expect(setterCalls[6]).toEqual([false])
     expect(setterCalls[7]).toEqual([SELECTED_PLACE])
+    // The form was already IST, so nothing the practitioner chose was replaced.
+    expect(setterCalls[16]).toEqual([null])
+  })
+
+  it('says so when a place selection replaces a timezone the practitioner chose', () => {
+    const { value: page, setterCalls } = callWithCapturedSetters(
+      () => ComputePage(),
+      { 0: { ...EMPTY_FORM, timezone: '6.5' } },
+    )
+    findComponent(page as ReactElement, PlacePicker)!.props.onSelect(SELECTED_PLACE)
+
+    expect((setterCalls[0][0] as { timezone: string }).timezone).toBe('5.5')
+    expect(setterCalls[16]).toHaveLength(1)
+    expect(setterCalls[16][0]).toContain('replacing +6.5')
   })
 
   it('only opens manual entry until a coordinate is changed', () => {
@@ -616,6 +630,17 @@ describe('ComputePage — saved place restoration (R7.5, R9.1)', () => {
       longitude: 73.8981129,
       sunriseMode: 'precise',
     })
+  })
+
+  it('keeps non-zero birth seconds when loading a chart, and recomputes with them', async () => {
+    const fixture = loadedChartFixture()
+    const { fetchMock, setterCalls } = await loadChartThroughPicker({
+      ...fixture,
+      birthInput: { ...fixture.birthInput, time: '12:00:45' },
+    })
+
+    expect((setterCalls[0][0] as { time: string }).time).toBe('12:00:45')
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).time).toBe('12:00:45')
   })
 
   it('reloads a place-less legacy compute chart, then re-saves it with coordinate-only input', async () => {

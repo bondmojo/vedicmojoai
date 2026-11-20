@@ -135,9 +135,16 @@ export function resolvePlaceName(row: RawPlaceRow): string | null {
  * validate the row agrees, so an unexpected value is a skip rather than a throw.
  */
 export function toPlaceKind(value: unknown): PlaceKind | null {
-  return typeof value === 'string' && value in KIND_RANK
-    ? (value as PlaceKind)
-    : null
+  return isPlaceKind(value) ? value : null
+}
+
+/**
+ * Whether `value` is one of the four settlement kinds. An own-property check,
+ * not `in`: `'constructor' in KIND_RANK` is true through the prototype, and
+ * would hand the loader `KIND_RANK['constructor']` (a function) as a rank.
+ */
+export function isPlaceKind(value: unknown): value is PlaceKind {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(KIND_RANK, value)
 }
 
 // ─── Search-query parsing ─────────────────────────────────────────────────

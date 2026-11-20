@@ -200,9 +200,10 @@ classical "luminaries have no motional strength" rule).
     from the *annual* Moon and Lagna, evaluated at the wall-clock time of the
     request. For the test birth (natal Moon in Taurus) the 2026 Varshaphal
     reported Sade Sati for a Leo Moon and the 2030 one for an Aquarius Moon.
-    `computeVarshaphal` now replaces that block with `computeTransits` run on the
-    natal Moon and Lagna as of the Varsha Pravesh (`transits.asOf` = the return
-    instant), so `active`/`phase`/`isCurrent` describe the start of the year and
+    `computeVarshaphal` now passes `computeFullChart` a `transitReference` (the
+    natal Moon and Lagna as of the Varsha Pravesh), so the annual chart's one
+    transit block is reckoned from those (`transits.asOf` = the return
+    instant) instead of being computed and then replaced, so `active`/`phase`/`isCurrent` describe the start of the year and
     the period list is the same whichever year is asked for. A Sade Sati that
     begins or ends during the year shows in the period dates, not in `active`.
 

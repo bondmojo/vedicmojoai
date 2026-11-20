@@ -96,9 +96,28 @@ export type {
 export { DEFAULT_GOCHAR_GRAHAS, ALL_GOCHAR_GRAHAS, GOCHAR_BODY_IDS, computeGocharRange, GocharValidationError, resolveNatalGocharContext } from './gochar'
 
 /**
+ * Whose Moon and Lagna the chart's transit block (Gochar, Sade Sati) is read
+ * from, and as of when. By default that is the chart's own Moon and Lagna, as
+ * of now. A Varshaphal casts a chart for the solar-return instant but reads its
+ * transits from the NATAL Moon and Lagna, as of the return.
+ */
+export interface TransitReference {
+  moonSignNumber: number
+  moonLongitude?: number
+  lagnaSignNumber: number
+  birthYear: number
+  asOf: Date
+}
+
+export interface FullChartOptions {
+  /** Overrides the default reference for the transit block (see TransitReference). */
+  transitReference?: TransitReference
+}
+
+/**
  * Computes a complete Vedic chart from birth data.
  */
-export function computeFullChart(input: BirthInput): ComputedChart {
+export function computeFullChart(input: BirthInput, options: FullChartOptions = {}): ComputedChart {
   const profile = resolveCalculationProfile(input.calculationProfile)
   const sunriseMode = input.sunriseMode ?? 'precise'
   if (profile.id === 'surya_siddhanta_makaranda_v1' && sunriseMode === 'jhora') {
@@ -252,15 +271,21 @@ export function computeFullChart(input: BirthInput): ComputedChart {
 
   // Step 13: Current transits (Gochar)
   const moon = planets.find((p) => p.planet === 'Moon')
-  const birthYear = parseInt(input.date.split('-')[0])
+  const transitReference: TransitReference = options.transitReference ?? {
+    moonSignNumber: moon?.signNumber ?? 1,
+    moonLongitude: moon?.longitude,
+    lagnaSignNumber: ascendant.signNumber,
+    birthYear: parseInt(input.date.split('-')[0]),
+    asOf: new Date(),
+  }
   const transits = computeTransits(
-    moon?.signNumber ?? 1,
-    ascendant.signNumber,
-    birthYear,
-    new Date(),
+    transitReference.moonSignNumber,
+    transitReference.lagnaSignNumber,
+    transitReference.birthYear,
+    transitReference.asOf,
     input.latitude,
     input.longitude,
-    moon?.longitude,
+    transitReference.moonLongitude,
     provider,
   )
 

@@ -5,14 +5,19 @@
  * Next.js type-checks a page module's exports and rejects anything besides
  * `default` and its own reserved names (`metadata`, `generateMetadata`,
  * `dynamic`, …), so exporting this component from the page failed the build.
- * `app/unified-charts/page.test.tsx` imports it from here.
+ * Its tests are in `app/unified-charts/ComputeForm.test.tsx`.
  */
 
 'use client'
 
 import { useState } from 'react'
 import PlacePicker, { type SelectedPlace } from '../components/PlacePicker'
-import { persistedPlaceFromSelection, validateBirthLocation } from '@/lib/place-form'
+import {
+  PLACE_TIMEZONE,
+  persistedPlaceFromSelection,
+  placeTimezoneNotice,
+  validateBirthLocation,
+} from '@/lib/place-form'
 
 export default function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
   const [form, setForm] = useState({
@@ -29,15 +34,18 @@ export default function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null)
   const [manualCoordinatesOpen, setManualCoordinatesOpen] = useState(false)
+  // Set when a place selection replaced a timezone the practitioner had entered.
+  const [timezoneNotice, setTimezoneNotice] = useState<string | null>(null)
 
   function handlePlaceSelect(place: SelectedPlace): void {
     setSelectedPlace(place)
     setManualCoordinatesOpen(false)
+    setTimezoneNotice(placeTimezoneNotice(form.timezone))
     setForm({
       ...form,
       latitude: String(place.latitude),
       longitude: String(place.longitude),
-      timezone: '5.5',
+      timezone: PLACE_TIMEZONE,
     })
   }
 
@@ -101,6 +109,7 @@ export default function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
         setForm({ name: '', date: '', time: '', timezone: '5.5', latitude: '', longitude: '', sunriseMode: 'precise' })
         setSelectedPlace(null)
         setManualCoordinatesOpen(false)
+        setTimezoneNotice(null)
         onSuccess()
       } else if (res.status === 409) {
         setError(`Duplicate: ${data.message}`)
@@ -155,11 +164,19 @@ export default function ComputeForm({ onSuccess }: { onSuccess: () => void }) {
             type="number"
             step="0.5"
             value={form.timezone}
-            onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, timezone: e.target.value })
+              setTimezoneNotice(null)
+            }}
             required
             className="w-full rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
             placeholder="5.5"
           />
+          {timezoneNotice && (
+            <p role="status" className="mt-1 text-xs text-amber-400">
+              {timezoneNotice}
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Sunrise Mode</label>

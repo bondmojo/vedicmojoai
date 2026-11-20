@@ -14,12 +14,21 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { createUnifiedChartFromBirthData } from '@/lib/unified-chart-create'
 import { resolveRequestUser } from '@/lib/auth'
+import { PLACE_KINDS } from '@/lib/place-form'
+import type { PlaceKind } from '@/lib/places-normalize'
 import {
   CalculationProfilePersistenceUnavailableError,
   CalculationProfileUnavailableError,
 } from '@/engine/compute/profiles'
 
 // ─── Input Validation ───────────────────────────────────────────────
+
+/**
+ * The settlement kinds, from the same list the picker and the client validator
+ * use (`PLACE_KINDS`, derived from `KIND_RANK`), so a new kind cannot be
+ * searchable yet rejected here.
+ */
+const PLACE_KIND_ENUM = [...PLACE_KINDS] as [PlaceKind, ...PlaceKind[]]
 
 /**
  * Display metadata resolved by PlacePicker. Coordinates deliberately do not
@@ -29,7 +38,7 @@ const BirthPlaceSchema = z
   .object({
     id: z.string().uuid(),
     name: z.string().trim().min(1),
-    kind: z.enum(['city', 'town', 'village', 'hamlet']),
+    kind: z.enum(PLACE_KIND_ENUM),
     state: z.string().trim().min(1),
     district: z.string().trim().min(1),
     county: z.string().trim().min(1).nullable(),

@@ -114,7 +114,9 @@ OpenStreetMap and loaded solely by `scripts/load-places.ts`. It is deliberately
   sequential scans.
 - **Maintenance DDL in the loader:** `scripts/load-places.ts` issues
   `TRUNCATE TABLE "place"` for `--truncate` and `ANALYZE "place"` after a
-  successful load. These are the only raw SQL outside `prisma/migrations/` — no
+  successful load. The TRUNCATE runs in one transaction with the reload, so a
+  failed run rolls back to the previous rows (searches wait for the commit
+  rather than see an empty table). These are the only raw SQL outside `prisma/migrations/` — no
   interpolation, no rows read or written — and `@@map("place")` is the literal
   they hard-code, so renaming the table means updating them too.
 - **No ownership or delete dependency:** `UnifiedChart.birthInput.place` is

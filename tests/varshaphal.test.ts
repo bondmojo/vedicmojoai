@@ -17,6 +17,7 @@ import {
 import { computeFullChart } from '../engine/compute/index'
 import { computeVimshottari } from '../engine/computeVimshottari'
 import { birthInputToJulianDay, siderealSunLongitude } from '../engine/compute/planets'
+import { birthInputToUtcDate } from '../engine/compute/time'
 import { SIGN_LORDS } from '../engine/compute/relationships'
 import type { Muntha, PanchavargeeyaBalaEntry, PlanetPosition } from '../engine/compute/types'
 
@@ -267,6 +268,19 @@ describe('computeVarshaphal dashas', () => {
       pratyantardasha: pd.lord,
     })
     expect(v2026.dashas.natalVimshottari.antardashas.some((a) => a.start === ad.start.toISOString())).toBe(true)
+  })
+
+  it('keeps fractional birth seconds, as the Dasha tab does', () => {
+    // Date.UTC truncated 12:00:30.75 to 12:00:30, moving every natal period 750 ms.
+    const birth = { ...BIRTH, time: '12:00:30.75' }
+    const v = computeVarshaphal({ ...birth, varshaYear: 2026 })
+    const moon = computeFullChart(birth).planets.find((p) => p.planet === 'Moon')!
+    const tree = computeVimshottari(moon.longitude, birthInputToUtcDate(birth))
+    const at = Date.parse(v.varshaPravesh.utcISO)
+    const runs = <T extends { start: Date; end: Date }>(ps: T[]) =>
+      ps.find((p) => p.start.getTime() <= at && at < p.end.getTime())!
+    const ad = runs(runs(tree.mahadashas).antardashas)
+    expect(v.dashas.natalVimshottari.antardashas.some((a) => a.start === ad.start.toISOString())).toBe(true)
   })
 })
 

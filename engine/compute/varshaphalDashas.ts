@@ -25,8 +25,8 @@
  */
 
 import type { DashaTree } from '@/lib/types'
-import { DASHA_SEQUENCE, NAKSHATRA_SPAN_DEG, TOTAL_DASHA_YEARS } from '../constants'
-import { getNakshatraName } from './nakshatras'
+import { DASHA_SEQUENCE, TOTAL_DASHA_YEARS } from '../constants'
+import { getNakshatraName, locateInNakshatra } from './nakshatras'
 import type {
   MuddaAntardasha,
   MuddaDasha,
@@ -151,13 +151,11 @@ export function computeMuddaDasha(
   yearEnd: Date
 ): MuddaDasha {
   const validMoon = Number.isFinite(natalMoonLongitude)
-  // Normalise only out-of-range values: the modulo round-trip would nudge an
-  // exact nakshatra boundary off by a float ulp.
-  const inRange = validMoon && natalMoonLongitude >= 0 && natalMoonLongitude < 360
-  const lon = inRange ? natalMoonLongitude : validMoon ? ((natalMoonLongitude % 360) + 360) % 360 : 0
-  const nakshatraIndex = Math.min(26, Math.floor(lon / NAKSHATRA_SPAN_DEG))
+  // The shared locator: index and fraction from one quotient, so a Moon exactly
+  // on a boundary (40°) starts its nakshatra with a balance of exactly 1.
+  const { nakshatraIndex, fraction } = locateInNakshatra(validMoon ? natalMoonLongitude : 0)
   const startIndex = (nakshatraIndex + Math.max(0, Math.floor(age))) % 9
-  const balanceFraction = 1 - (lon - nakshatraIndex * NAKSHATRA_SPAN_DEG) / NAKSHATRA_SPAN_DEG
+  const balanceFraction = 1 - fraction
 
   const year: Span = { start: yearStart.getTime(), end: yearEnd.getTime() }
   const yearMs = year.end - year.start

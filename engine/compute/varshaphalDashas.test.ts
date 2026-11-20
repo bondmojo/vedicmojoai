@@ -90,6 +90,17 @@ describe('computeMuddaDasha — periods', () => {
     })
   })
 
+  it('reads a Moon exactly on a whole-degree boundary as the start of the next nakshatra', () => {
+    // 40° is where Rohini begins. 40 / span rounds to 3, and the old
+    // `lon − index × span` came out a hair negative, so the balance read
+    // 1.0000000000000004. The shared locator gives exactly 1.
+    const m = computeMuddaDasha(40, 0, YEAR_START, YEAR_END)
+    expect(m.janmaNakshatra).toBe('Rohini')
+    expect(m.balanceFraction).toBe(1)
+    expect(m.startLord).toBe('Moon')
+    expect(m.periods[0].portion).toBe('full')
+  })
+
   it('has nine periods and no remainder when the Moon is at the start of its nakshatra', () => {
     const full = computeMuddaDasha(2 * SPAN, 0, YEAR_START, YEAR_END)
     expect(full.balanceFraction).toBe(1)

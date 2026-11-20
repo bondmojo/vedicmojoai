@@ -2,8 +2,7 @@
  * lib/place-form.ts
  * -----------------
  * The birth-location contract shared by every form that collects birth data:
- * `app/page.tsx` (Chart Computation) and the `ComputeForm` in
- * `app/unified-charts/page.tsx`.
+ * `app/page.tsx` (Chart Computation) and `app/unified-charts/ComputeForm.tsx`.
  *
  * Two forms previously modelled the same decision — "do we have a usable birth
  * location, and is there trustworthy place metadata to persist alongside it?" —
@@ -78,6 +77,32 @@ export const PLACE_KINDS: readonly PlaceKind[] = Object.keys(KIND_RANK) as Place
  * save down with it — better to omit the metadata than lose the chart.
  */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/**
+ * The timezone a place selection fills in. Every place the picker returns is in
+ * India, so a selection always means IST; historical offsets (pre-1947 local
+ * time, the 1942–45 war-time +6.5) are out of the picker's scope.
+ */
+export const PLACE_TIMEZONE = '5.5'
+
+/**
+ * The message to show when a place selection replaced the timezone the form
+ * held, or `null` when nothing the practitioner chose was lost (the field was
+ * empty or already IST). Selection still sets IST either way, as the
+ * place-picker spec requires; this only makes the change visible, so an
+ * offset entered on purpose for a historical birth is not lost silently.
+ */
+export function placeTimezoneNotice(previousTimezone: string): string | null {
+  const trimmed = previousTimezone.trim()
+  if (trimmed === '') return null
+  const previous = Number(trimmed)
+  if (previous === Number(PLACE_TIMEZONE)) return null
+  const shown = Number.isFinite(previous) && previous >= 0 ? `+${previous}` : trimmed
+  return (
+    `Timezone set to +${PLACE_TIMEZONE} (IST) for the selected place, replacing ${shown}. ` +
+    'If this birth used a different offset (for example +6.5 in 1942–45), set it again.'
+  )
+}
 
 export const LATITUDE_MIN = -90
 export const LATITUDE_MAX = 90

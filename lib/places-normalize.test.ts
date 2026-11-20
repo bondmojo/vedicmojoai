@@ -347,4 +347,12 @@ describe('KIND_RANK and toPlaceKind', () => {
     expect(toPlaceKind(undefined)).toBeNull()
     expect(toPlaceKind(42)).toBeNull()
   })
+
+  it('rejects inherited Object keys, which `in KIND_RANK` would accept', () => {
+    // Accepting one would hand the loader KIND_RANK['constructor'] — a
+    // function — as a kindRank, and createMany would reject the whole batch.
+    for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      expect(toPlaceKind(key)).toBeNull()
+    }
+  })
 })

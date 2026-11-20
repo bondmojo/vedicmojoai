@@ -30,7 +30,9 @@ import {
   LONGITUDE_MAX,
   LONGITUDE_MIN,
   PLACE_KINDS,
+  PLACE_TIMEZONE,
   persistedPlaceFromSelection,
+  placeTimezoneNotice,
   validateBirthLocation,
   type BirthPlaceSelection,
 } from './place-form'
@@ -56,6 +58,26 @@ const SELECTION: BirthPlaceSelection = {
 const PERSISTED_KEYS = ['id', 'name', 'kind', 'state', 'district', 'county', 'label'] as const
 
 // ─── PLACE_KINDS ─────────────────────────────────────────────────────────
+
+describe('placeTimezoneNotice', () => {
+  it('says nothing when the timezone was empty or already IST', () => {
+    expect(placeTimezoneNotice('')).toBeNull()
+    expect(placeTimezoneNotice('  ')).toBeNull()
+    expect(placeTimezoneNotice('5.5')).toBeNull()
+    expect(placeTimezoneNotice('5.50')).toBeNull()
+  })
+
+  it('names the offset a place selection replaced, so it is not lost silently', () => {
+    const notice = placeTimezoneNotice('6.5')
+    expect(notice).toContain(`+${PLACE_TIMEZONE}`)
+    expect(notice).toContain('replacing +6.5')
+  })
+
+  it('shows a negative or unparsable previous value as entered', () => {
+    expect(placeTimezoneNotice('-5')).toContain('replacing -5')
+    expect(placeTimezoneNotice('abc')).toContain('replacing abc')
+  })
+})
 
 describe('PLACE_KINDS', () => {
   it('is derived from the search layer\u2019s KIND_RANK, so the two cannot disagree', () => {

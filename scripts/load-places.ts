@@ -18,7 +18,9 @@
  * leaves the row count unchanged and does not throw. Because a re-run cannot
  * therefore *correct* an existing row, fixing bad data is an explicit
  * `--truncate` opt-in that empties the table first (with `TRUNCATE`, not a
- * 272,499-row `deleteMany`).
+ * 272,499-row `deleteMany`). The TRUNCATE and the reload share one transaction,
+ * so a run that fails part-way rolls back to the previous rows instead of
+ * leaving place search empty.
  *
  * A successful load ends with `ANALYZE "place"`: bulk `createMany` inserts leave
  * the planner's statistics stale, and the ranked search depends on the planner
@@ -38,9 +40,11 @@
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { join } from 'node:path'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../lib/db'
 import {
   isJunkPlaceName,
+  isPlaceKind,
   KIND_RANK,
   normalizePlaceName,
   resolvePlaceName,
@@ -120,6 +124,8 @@ Options:
                    is only for operators who want a smaller table.
   --truncate       Empty the place table first. Required to CORRECT existing rows,
                    because a plain re-run skips duplicates instead of updating them.
+                   Runs in one transaction with the reload: a failure restores the
+                   previous rows, and place searches wait until the reload commits.
   --help           Show this message.
 `.trim()
 
@@ -199,7 +205,7 @@ function parseKinds(csv: string): PlaceKind[] {
     throw new LoaderArgsError('--kinds needs at least one kind')
   }
 
-  const unknown = requested.filter((kind) => !(kind in KIND_RANK))
+  const unknown = requested.filter((kind) => !isPlaceKind(kind))
   if (unknown.length > 0) {
     throw new LoaderArgsError(
       `Unknown kind(s): ${unknown.join(', ')}. Expected any of ${ALL_KINDS.join(', ')}.`
@@ -312,6 +318,19 @@ const TRUNCATE_PLACE_SQL = 'TRUNCATE TABLE "place"'
 const ANALYZE_PLACE_SQL = 'ANALYZE "place"'
 
 /**
+ * The client the loader writes through: the shared `prisma`, or the
+ * transaction client of a `--truncate` reload.
+ */
+type PlaceDb = Prisma.TransactionClient
+
+/**
+ * Upper bound on a `--truncate` reload's transaction. Prisma's 5 s default
+ * would abort a full load; a whole-dataset reload takes on the order of a
+ * minute, so 30 minutes only stops a run that has hung.
+ */
+const TRUNCATE_RELOAD_TIMEOUT_MS = 30 * 60 * 1000
+
+/**
  * Skip reasons in report order: the five named in Requirement 2.3 in the order
  * `mapPlaceRow` checks them, then the two structural ones. Keeping this aligned
  * with the check order is what makes the printed breakdown comparable to the
@@ -346,9 +365,9 @@ function totalSkipped(skipped: SkipCounts): number {
  * caller keeps one array for the whole file — that array is the only reason peak
  * memory is a batch rather than a file.
  */
-async function flushBatch(batch: PlaceRow[]): Promise<number> {
+async function flushBatch(batch: PlaceRow[], db: PlaceDb): Promise<number> {
   if (batch.length === 0) return 0
-  const { count } = await prisma.place.createMany({
+  const { count } = await db.place.createMany({
     data: batch,
     skipDuplicates: true,
   })
@@ -512,8 +531,14 @@ export function mapPlaceRow(
  * streaming path — `flushBatch` + `skipDuplicates` — not of `mapPlaceRow`, so it
  * cannot be verified through the pure helpers alone. `parseError` is likewise
  * only reachable here.
+ *
+ * `db` is the transaction client during a `--truncate` reload.
  */
-export async function loadFile(kind: PlaceKind, path: string): Promise<FileStats> {
+export async function loadFile(
+  kind: PlaceKind,
+  path: string,
+  db: PlaceDb = prisma
+): Promise<FileStats> {
   const stats: FileStats = {
     kind,
     file: path,
@@ -563,13 +588,13 @@ export async function loadFile(kind: PlaceKind, path: string): Promise<FileStats
       // completes. That backpressure is deliberate: without it the reader would
       // race ahead of Postgres and the queued batches, not the buffer, would
       // become the memory ceiling.
-      stats.loaded += await flushBatch(batch)
+      stats.loaded += await flushBatch(batch, db)
     }
   }
 
   // The tail — the final partial batch, and on a `--kinds` subset possibly the
   // only one.
-  stats.loaded += await flushBatch(batch)
+  stats.loaded += await flushBatch(batch, db)
 
   console.log(
     `  read ${stats.read.toLocaleString()}` +
@@ -674,10 +699,13 @@ function printSummary(results: FileStats[]): void {
  * the operator-facing "removed N row(s)" line is the same as it was under
  * `deleteMany`, and is worth one cheap `COUNT(*)` on a flag that is used rarely
  * and deliberately.
+ *
+ * `main` passes the reload's transaction client, so the TRUNCATE commits only
+ * together with the rows that replace it (Postgres TRUNCATE is transactional).
  */
-export async function truncatePlaceTable(): Promise<number> {
-  const removed = await prisma.place.count()
-  await prisma.$executeRawUnsafe(TRUNCATE_PLACE_SQL)
+export async function truncatePlaceTable(db: PlaceDb = prisma): Promise<number> {
+  const removed = await db.place.count()
+  await db.$executeRawUnsafe(TRUNCATE_PLACE_SQL)
   return removed
 }
 
@@ -745,14 +773,27 @@ async function main(): Promise<void> {
     return
   }
 
-  if (args.truncate) {
-    const removed = await truncatePlaceTable()
-    console.log(`Truncate: removed ${removed.toLocaleString()} existing place row(s)`)
+  const results: FileStats[] = []
+  const loadAll = async (db: PlaceDb): Promise<void> => {
+    for (const { kind, path } of files) {
+      results.push(await loadFile(kind, path, db))
+    }
   }
 
-  const results: FileStats[] = []
-  for (const { kind, path } of files) {
-    results.push(await loadFile(kind, path))
+  if (args.truncate) {
+    // TRUNCATE and reload commit together. A failure part-way rolls back to the
+    // previous rows rather than leaving search empty; meanwhile TRUNCATE's lock
+    // makes searches wait for the commit instead of seeing a half-loaded table.
+    await prisma.$transaction(
+      async (tx) => {
+        const removed = await truncatePlaceTable(tx)
+        console.log(`Truncate: removed ${removed.toLocaleString()} existing place row(s) (commits with the reload)`)
+        await loadAll(tx)
+      },
+      { maxWait: 10_000, timeout: TRUNCATE_RELOAD_TIMEOUT_MS }
+    )
+  } else {
+    await loadAll(prisma)
   }
 
   printSummary(results)

@@ -9,10 +9,10 @@
  *   2. Casts a full chart for that instant at the birthplace (reuses
  *      {@link computeFullChart}) — so the annual planets, Varsha Lagna,
  *      divisional charts, and (Parashari) Shadbala all come for free. Its
- *      transit block (Gochar, Sade Sati) is recomputed against the NATAL Moon
- *      and Lagna as of the Varsha Pravesh: computeFullChart treats the return
- *      instant as a birth, so its own block would read Sade Sati from the
- *      annual Moon, as of the wall clock.
+ *      transit block (Gochar, Sade Sati) is reckoned from the NATAL Moon and
+ *      Lagna as of the Varsha Pravesh, via computeFullChart's
+ *      `transitReference`: by default it treats the return instant as a birth
+ *      and would read Sade Sati from the annual Moon, as of the wall clock.
  *   3. Computes the Muntha (progressed ascendant, +1 sign/year).
  *   4. Computes Panchavargeeya Bala (Tajika 5-fold strength) for the seven
  *      classical planets.
@@ -71,7 +71,7 @@ import {
   getSignName,
 } from './planets'
 import { computeFullChart } from './index'
-import { computeTransits } from './transits'
+import { birthInputToUtcDate } from './time'
 import { computeVimshottari } from '../computeVimshottari'
 import { computeMuddaDasha, sliceNatalVimshottari } from './varshaphalDashas'
 import { SIGN_LORDS, arcDist, normLon } from './relationships'
@@ -448,24 +448,19 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
     date: civil.date,
     time: civil.time,
   }
-  const castChart = computeFullChart(annualInput)
-
-  // ── Gochar & Sade Sati: natal Moon and Lagna, as of the Varsha Pravesh ──
-  // Sade Sati is always reckoned from the natal Moon. computeFullChart's own
-  // block used the annual Moon and today's date, so it changed with the year
-  // asked for and with the day it was computed.
-  const annualChart: ComputedChart = {
-    ...castChart,
-    transits: computeTransits(
-      natalMoon?.signNumber ?? castChart.planets.find((p) => p.planet === 'Moon')?.signNumber ?? 1,
-      natalLagnaSignNumber,
+  // Gochar & Sade Sati come from the natal Moon and Lagna, as of the Varsha
+  // Pravesh: Sade Sati is always reckoned from the natal Moon. The default
+  // reference (the annual Moon, as of today) would change with the year asked
+  // for and with the day it was computed.
+  const annualChart = computeFullChart(annualInput, {
+    transitReference: {
+      moonSignNumber: natalMoon?.signNumber ?? 1,
+      moonLongitude: natalMoon?.longitude,
+      lagnaSignNumber: natalLagnaSignNumber,
       birthYear,
-      new Date(utcISO),
-      birth.latitude,
-      birth.longitude,
-      natalMoon?.longitude
-    ),
-  }
+      asOf: new Date(utcISO),
+    },
+  })
   const varshaLagnaSignNumber = annualChart.lagnaSignNumber
 
   // ── Muntha ──
@@ -503,14 +498,9 @@ export function computeVarshaphal(input: VarshaphalInput): VarshaphalResult {
   const nextReturnJulianDay = findSolarReturnJulianDay(natalSunLongitude, returnJulianDay + 365.25636)
   const yearStart = new Date(utcISO)
   const yearEnd = new Date(julianDayToUtcISO(nextReturnJulianDay))
-  // The UTC birth instant built as POST /api/compute builds it, so the natal
-  // tree here matches the chart's Dasha tab exactly.
-  const [, birthMonth, birthDay] = birth.date.split('-').map(Number)
-  const [birthHour, birthMinute, birthSecond] = birth.time.split(':').map(Number)
-  const birthInstant = new Date(
-    Date.UTC(birthYear, birthMonth - 1, birthDay, birthHour, birthMinute, birthSecond || 0) -
-      birth.timezone * 3600 * 1000
-  )
+  // The UTC birth instant built as POST /api/compute builds it (fractional
+  // seconds included), so the natal tree here matches the chart's Dasha tab.
+  const birthInstant = birthInputToUtcDate(birth)
   const natalMoonLongitude = natalMoon?.longitude ?? Number.NaN
   const dashas: VarshaphalResult['dashas'] = {
     natalVimshottari: natalMoon

@@ -1159,7 +1159,8 @@ loader takes `--dir` (or `PLACES_DATA_DIR`), optional `--kinds`, and explicit
 `--truncate` for corrections. It reports load/skip counts, validates OSM identity
 and coordinate ranges, and remains idempotent through the `Place` natural key plus
 `skipDuplicates`; a normal re-run does not rewrite existing rows. `--truncate` empties
-the table with `TRUNCATE` rather than a quarter-million-row delete, and a successful
+the table with `TRUNCATE` rather than a quarter-million-row delete, in one transaction
+with the reload so a failed run rolls back to the previous rows, and a successful
 load ends with `ANALYZE` so the planner does not spend the first minutes after ingestion
 costing searches against statistics for an empty table. Those two statements are the
 only raw SQL outside `prisma/migrations/` — both maintenance DDL, both fixed strings

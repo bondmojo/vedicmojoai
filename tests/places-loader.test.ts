@@ -109,6 +109,7 @@ import {
   analyzePlaceTable,
   loadFile,
   mapPlaceRow,
+  parseArgs,
   truncatePlaceTable,
 } from '../scripts/load-places'
 import { prisma } from '@/lib/db'
@@ -489,6 +490,59 @@ describe('--truncate empties the table with TRUNCATE, not deleteMany', () => {
   })
 })
 
+describe('--truncate is atomic with the reload', () => {
+  it('truncates and loads through the client it is given, not the shared one', async () => {
+    // main() hands both the transaction client; writes that went to the shared
+    // `prisma` instead would commit outside the transaction.
+    const writes: unknown[] = []
+    const tx = {
+      place: {
+        count: vi.fn(async () => 7),
+        createMany: vi.fn(async ({ data }: { data: unknown[] }) => {
+          writes.push(...data)
+          return { count: data.length }
+        }),
+      },
+      $executeRawUnsafe: vi.fn(async () => 0),
+    }
+    vi.mocked(prisma.place.createMany).mockClear()
+    vi.mocked(prisma.$executeRawUnsafe).mockClear()
+
+    const removed = await truncatePlaceTable(tx as never)
+    const stats = await loadFile('city', writeFixture('place-tx.ndjson', [BENGALURU]), tx as never)
+
+    expect(removed).toBe(7)
+    expect(tx.$executeRawUnsafe).toHaveBeenCalledWith('TRUNCATE TABLE "place"')
+    expect(stats.loaded).toBe(1)
+    expect(writes).toHaveLength(1)
+    expect(prisma.place.createMany).not.toHaveBeenCalled()
+    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled()
+  })
+
+  it('main runs the TRUNCATE and the per-file loads inside one $transaction', () => {
+    // main() is argv-gated, so the wiring is asserted against the source.
+    const mainBody = loaderSource.slice(loaderSource.indexOf('async function main('))
+    const txAt = mainBody.indexOf('prisma.$transaction(')
+    const truncateAt = mainBody.indexOf('truncatePlaceTable(tx)')
+    const loadAt = mainBody.indexOf('loadAll(tx)')
+
+    expect(txAt).toBeGreaterThan(-1)
+    expect(truncateAt).toBeGreaterThan(txAt)
+    expect(loadAt).toBeGreaterThan(truncateAt)
+  })
+})
+
+describe('parseArgs --kinds', () => {
+  it('rejects inherited Object keys rather than loading nothing', () => {
+    expect(() => parseArgs(['--dir', '/tmp', '--kinds', 'toString'])).toThrow(/Unknown kind/)
+    expect(() => parseArgs(['--dir', '/tmp', '--kinds', 'city,constructor'])).toThrow(/constructor/)
+  })
+
+  it('accepts the four real kinds', () => {
+    expect(parseArgs(['--dir', '/tmp', '--kinds', 'village,city']).kinds).toEqual(['city', 'village'])
+  })
+})
+
 describe('a successful load ends in ANALYZE', () => {
   it('issues exactly ANALYZE "place"', async () => {
     await analyzePlaceTable()
@@ -543,13 +597,14 @@ describe('the two raw statements take no input', () => {
     const callSites = loaderSource
       .split('\n')
       .map((line) => line.trim())
-      .filter((line) => /^await prisma\.\$(?:execute|query)Raw/.test(line))
+      // Any client: TRUNCATE runs on the reload's transaction client (`db`).
+      .filter((line) => /^await \w+\.\$(?:execute|query)Raw/.test(line))
 
     // Two call sites, each passing one of the frozen constants by name. Anything
     // else — a third statement, or a literal inlined at the call site where a
     // later edit could start appending to it — fails here.
     expect(callSites).toEqual([
-      'await prisma.$executeRawUnsafe(TRUNCATE_PLACE_SQL)',
+      'await db.$executeRawUnsafe(TRUNCATE_PLACE_SQL)',
       'await prisma.$executeRawUnsafe(ANALYZE_PLACE_SQL)',
     ])
   })

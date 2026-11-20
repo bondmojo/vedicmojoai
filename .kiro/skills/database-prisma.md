@@ -54,7 +54,10 @@ input. Neither of these is a query:
   immediately before the loader inserts 272,499 fresh rows into that bloated
   heap. Prisma exposes no truncate API. `place` has no inbound foreign keys, so
   no `CASCADE` is used — a future FK should make this fail loudly rather than
-  cascade through user data.
+  cascade through user data. It runs inside a `prisma.$transaction` with the
+  reload (TRUNCATE is transactional in Postgres), so a failed run rolls back to
+  the previous rows; its ACCESS EXCLUSIVE lock makes searches wait for the
+  commit instead of reading a half-loaded table.
 - `ANALYZE` is maintenance DDL: it touches no rows and returns nothing.
   `createMany` does not update `pg_statistic`, so until autovacuum's analyze
   worker catches up the planner costs searches against statistics for an empty
