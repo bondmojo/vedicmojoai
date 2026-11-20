@@ -24,6 +24,7 @@ interface CharaPeriod {
   signNumber: number
   lord: string
   lordSignNumber: number
+  lordRule?: string
   durationYears: number
   cycle: number
   start: string
@@ -34,6 +35,9 @@ interface CharaPeriod {
 interface CharaDasha {
   method: string
   lagnaSignNumber: number
+  seedSignNumber?: number
+  seedReferences?: Array<'lagna' | 'moon' | 'sun'>
+  seedRule?: string
   ninthSignNumber: number
   direction: 'forward' | 'reverse'
   cycleYears: number
@@ -94,10 +98,16 @@ export default function CharaDashaView({ charaDasha }: { charaDasha: CharaDasha 
             </div>
           )}
         </div>
+        {charaDasha.seedRule && (
+          <p className="mt-2 text-xs text-gray-400">
+            First dasha sign — {charaDasha.seedRule}.
+          </p>
+        )}
         <p className="mt-2 text-[11px] text-gray-500">
-          Mahadashas are SIGNS (not planets). Duration = count from the sign to its lord (direction by sign parity),
-          minus 1, with the lord in its own sign giving 12 years. Parasara / PVR method: runs two cycles (second-cycle
-          duration = 12 − first); Scorpio/Aquarius use their node co-lord (Ketu/Rahu). Matches Jagannatha Hora.
+          Mahadashas are SIGNS (not planets). The first is whichever of the Lagna, Moon and Sun signs has the strongest
+          lord. Duration = count from the sign to its lord (direction by sign parity), minus 1, with the lord in its own
+          sign giving 12 years. Parasara / PVR method: runs two cycles (second-cycle duration = 12 − first);
+          Scorpio/Aquarius use their stronger co-lord. Matches Jagannatha Hora.
         </p>
       </div>
 
@@ -118,7 +128,7 @@ export default function CharaDashaView({ charaDasha }: { charaDasha: CharaDasha 
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${ELEMENT_COLOR(p.signNumber)}`} />
                   <span className="font-medium text-sm text-ink">{p.sign} Dasha</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500" title={p.lordRule}>
                     lord <span className={planetColorClass(p.lord)}>{p.lord}</span> in {SIGN_SHORT[p.lordSignNumber - 1]}
                   </span>
                   {isCurrent && (

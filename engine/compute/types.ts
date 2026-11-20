@@ -840,10 +840,15 @@ export interface CharaDashaPeriod {
   sign: string
   /** Mahadasha sign number (1–12). */
   signNumber: number
-  /** Classical lord of the sign (Scorpio→Mars, Aquarius→Saturn; no nodes). */
+  /**
+   * Lord whose placement sets the duration. Single-lord signs → the classical
+   * owner; Scorpio (Mars/Ketu) and Aquarius (Saturn/Rahu) → the stronger co-lord.
+   */
   lord: string
   /** Sign number the lord occupies in D1 (drives the duration). */
   lordSignNumber: number
+  /** Scorpio/Aquarius only: which co-lord rule picked `lord`, in plain words. */
+  lordRule?: string
   /** Duration in years (variable per sign; second-cycle = 12 − first-cycle). */
   durationYears: number
   /** Which of the two 12-sign cycles this period belongs to (1 or 2). */
@@ -856,13 +861,25 @@ export interface CharaDashaPeriod {
   antardashas: CharaAntardasha[]
 }
 
+/** A reference point the Chara Dasha seed can start from. */
+export type CharaSeedReference = 'lagna' | 'moon' | 'sun'
+
 /** Complete Jaimini Chara Dasha (Parasara / PVR method) for a chart. */
 export interface CharaDashaResult {
   /** Method label, e.g. "Parasara / PVR (JHora-matching, 2-cycle)". */
   method: string
   /** Ascendant sign number (1–12). */
   lagnaSignNumber: number
-  /** 9th sign from the lagna — decides the sequence direction. */
+  /**
+   * Sign the first mahadasha belongs to: whichever of the lagna, Moon and Sun
+   * signs has the strongest lord. Often, but not always, the lagna.
+   */
+  seedSignNumber: number
+  /** Which references sit in the seed sign (several when they share a sign). */
+  seedReferences: CharaSeedReference[]
+  /** The strength test that picked the seed, in plain words. */
+  seedRule: string
+  /** 9th sign from the SEED — decides the sequence direction. */
   ninthSignNumber: number
   /** Sequence direction of the mahadashas. */
   direction: 'forward' | 'reverse'

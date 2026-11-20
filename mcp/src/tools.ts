@@ -267,7 +267,8 @@ export function registerTools(server: McpServer, api: ApiClient): void {
     {
       title: 'Get the Jaimini Chara Dasha (sign/rasi dasha)',
       description:
-        'Chara Dasha (KN Rao / Parashara method): SIGN-based mahadashas with 12 equal antardashas each, ' +
+        'Chara Dasha (Parasara / PVR method, Jagannatha Hora-matching): SIGN-based mahadashas with 12 equal ' +
+        'antardashas each, starting from the strongest of the Lagna, Moon and Sun signs (seedSignNumber/seedRule), ' +
         'plus direction, per-sign lord + duration, and the full dated timeline. Distinct from the planet-based ' +
         'Vimshottari dasha (use get_dasha_tree for that). Pass `asOf` to also resolve the running MD/AD at a date.',
       inputSchema: { ...chartRefShape, asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('YYYY-MM-DD; also return the running period at this date') },

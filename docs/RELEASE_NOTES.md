@@ -9,6 +9,18 @@ Newest release first. Each entry covers one merge to `main`.
 
 ## Unreleased
 
+- **Fix: Chara Dasha seed and Scorpio/Aquarius co-lords.** The dasha always
+  started from the lagna, and Scorpio/Aquarius always used their node co-lord
+  unless the node sat in the sign. It now starts from whichever of the Lagna,
+  Moon and Sun signs has the strongest lord (P.V.R. Narasimha Rao's Parasara
+  method, as Jagannatha Hora computes it), with the direction set by the 9th sign
+  from that seed, and picks the stronger co-lord by Jagannatha Hora's ordered
+  tests. **Chara Dasha periods change for any chart whose seed is not the lagna,
+  or whose Scorpio/Aquarius co-lord flips.** Verified against Jagannatha Hora on
+  a Moon-seeded Aquarius-lagna chart (previously wrong from birth) and a
+  lagna-seeded Taurus chart (unchanged). New fields: `seedSignNumber`,
+  `seedReferences`, `seedRule`, `periods[].lordRule`. Not persisted, so no
+  backfill. See `docs/computation_chara_dasha.md`.
 - **Varshaphal dashas.** The Varshaphal result, tab and MCP `compute_varshaphal`
   now include the year's dashas: the natal Vimshottari Mahadasha / Antardasha /
   Pratyantardasha running through the year (true dates, the chain at the Varsha

@@ -275,8 +275,11 @@ Geometry**) live in `engine/compute/`:
 > `.kiro/specs/vimshottari-birth-mahadasha/`.
 
 > **Chara Dasha (Jaimini rasi dasha):** `engine/compute/charaDasha.ts`
-> (`computeCharaDasha`, KN Rao/Parashara method) is an on-demand sibling of the
-> Vimshottari tree — returned by `POST /api/compute` as `charaDasha`, shown in the
+> (`computeCharaDasha`, Parasara/PVR method as Jagannatha Hora computes it) is an
+> on-demand sibling of the Vimshottari tree. The first dasha is the sign of the
+> Lagna, Moon or Sun with the strongest lord (`seedSignNumber`/`seedRule`), so it
+> is not always the lagna; Scorpio/Aquarius take the stronger co-lord
+> (`periods[].lordRule`). Returned by `POST /api/compute` as `charaDasha`, shown in the
 > `/compute` "Chara Dasha" tab + Copy-for-AI, and exposed to Claude Desktop via the
 > MCP `get_chara_dasha` tool and the `chara_dasha` knowledge framework. Not
 > persisted to `UnifiedChart` (recomputed from `birthInput` on demand). See

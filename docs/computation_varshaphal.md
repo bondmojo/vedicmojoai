@@ -234,6 +234,16 @@ classical "luminaries have no motional strength" rule).
     of the Phase 1 sign-based aspects in `tajikaAspects.ts`.
 11. Then yogas (Ithasala/Ishrafa/…) → Sahams → Patyayini dasha (Mudda done, 8e) →
     Tri-pataki. To be specced in `docs/computation_tajika_aspects_dashas.md`.
+12. **Natal-contact flag** (requested 2026-11-02; not started): flag the Varsha
+    Lagna, or a year planet, within 1° of a natal planet, by longitude. Show it in
+    the Varshaphal tab and return it from `compute_varshaphal`. To settle before
+    speccing:
+    - The annual Sun always sits on the natal Sun (that is the solar return), so it
+      must be left out or it flags every year.
+    - Conjunction only, or the opposition / Tajika aspects as well?
+    - Which bodies count on each side: the seven classical planets only, or Rahu/Ketu
+      too, and does the natal Lagna count as a target?
+    - Whether the 1° limit is inclusive.
 
 ---
 
